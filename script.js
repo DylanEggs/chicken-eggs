@@ -28,7 +28,12 @@ function normalizeEntry(e) {
 }
 
 function visibleEntries() {
-  return entries.filter(e => !e.deleted);
+  return entries.filter(e => {
+    if (e.deleted) return false;
+    if (e.type === "eggs" && Number(e.eggs) <= 0) return false;
+    if (e.type === "sale" && Number(e.dozenSold) <= 0 && Number(e.packSold) <= 0) return false;
+    return true;
+  });
 }
 
 function setSyncStatus(text) {
@@ -142,6 +147,7 @@ const data = await res.json();
 }
 
 function saveAndSync() {
+  entries = visibleEntries();
   saveLocal();
   updateApp();
   cloudSave();
