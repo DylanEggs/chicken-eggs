@@ -123,8 +123,7 @@ const data = await res.json();
     const cloudEntries = Array.isArray(data.entries) ? data.entries : [];
     const cloudFarm = data.farmSettings || {};
 
-    if (cloudEntries.length > 0 || entries.length === 0) {
-  entries = cloudEntries.map(normalizeEntry);
+    entries = mergeEntries(entries, cloudEntries);
 }
 
     if ((Number(cloudFarm.updatedAt) || 0) > (Number(farmSettings.updatedAt) || 0)) {
@@ -147,7 +146,6 @@ const data = await res.json();
 }
 
 function saveAndSync() {
-  entries = visibleEntries();
   saveLocal();
   updateApp();
   cloudSave();
