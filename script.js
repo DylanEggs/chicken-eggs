@@ -533,3 +533,45 @@ document.getElementById("farmHeroText").textContent =
 saveData();
 updateApp();
 showScreen("dashboard");
+function backupData() {
+  const backup = {
+    entries,
+    farmSettings
+  };
+
+  const blob = new Blob([JSON.stringify(backup, null, 2)], {
+    type: "application/json"
+  });
+
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = "chicken-eggs-backup.json";
+  link.click();
+}
+
+function restoreData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+
+  reader.onload = function(e) {
+    try {
+      const backup = JSON.parse(e.target.result);
+
+      entries = backup.entries || [];
+      farmSettings = backup.farmSettings || farmSettings;
+
+      localStorage.setItem("chickenEggEntries", JSON.stringify(entries));
+      localStorage.setItem("farmSettings", JSON.stringify(farmSettings));
+
+      alert("Backup restored!");
+      updateApp();
+      showScreen("dashboard");
+    } catch {
+      alert("That backup file could not be restored.");
+    }
+  };
+
+  reader.readAsText(file);
+}
