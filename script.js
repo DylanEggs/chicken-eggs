@@ -135,6 +135,7 @@ function saveEggs() {
   }
 
   saveData();
+  cloudSave(false);
   document.getElementById("eggCount").value = "";
   showScreen("dashboard");
 }
@@ -175,6 +176,7 @@ function saveSale() {
   }
 
   saveData();
+  cloudSave(false);
   document.getElementById("dozenSold").value = "";
   document.getElementById("dozenPrice").value = "";
   document.getElementById("packSold").value = "";
@@ -206,6 +208,7 @@ function deleteEntry(id) {
   if (confirm("Are you sure you want to delete this entry?")) {
     entries = entries.filter(e => e.id !== id);
     saveData();
+    cloudSave(false);
     updateApp();
   }
 }
@@ -532,6 +535,7 @@ document.getElementById("farmHeroText").textContent =
 }
 
 saveData();
+cloudSave(false);
 updateApp();
 showScreen("dashboard");
 function backupData() {
@@ -614,6 +618,7 @@ async function cloudLoad() {
     }));
 
     saveData();
+    cloudSave(false);
     updateApp();
     alert("Cloud data loaded!");
   }
