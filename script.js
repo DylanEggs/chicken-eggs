@@ -47,6 +47,7 @@ function loadLocal() {
     eggGoal: Number(farmSettings.eggGoal) || 0,
     dozenPrice: Number(farmSettings.dozenPrice) || 0,
     packPrice: Number(farmSettings.packPrice) || 0,
+    eggsUsed: Number(farmSettings.eggsUsed) || 0,
     updatedAt: Number(farmSettings.updatedAt) || Date.now()
   };
 }
@@ -63,6 +64,7 @@ function loadFarmSettings() {
   document.getElementById("farmEggGoal").value = farmSettings.eggGoal || "";
   document.getElementById("farmDozenPrice").value = farmSettings.dozenPrice || "";
   document.getElementById("farmPackPrice").value = farmSettings.packPrice || "";
+  document.getElementById("farmEggsUsed").value = farmSettings.eggsUsed || "";
 }
 
 function mergeEntries(localEntries, cloudEntries) {
@@ -111,7 +113,11 @@ async function cloudLoad() {
     entries = mergeEntries(entries, cloudEntries);
 
     if ((Number(cloudFarm.updatedAt) || 0) > (Number(farmSettings.updatedAt) || 0)) {
-      farmSettings = cloudFarm;
+      farmSettings = {
+        ...farmSettings,
+        ...cloudFarm,
+        eggsUsed: Number(cloudFarm.eggsUsed) || 0
+      };
     }
 
     saveLocal();
@@ -158,9 +164,20 @@ function saveFarmSettings() {
     eggGoal: Number(document.getElementById("farmEggGoal").value) || 0,
     dozenPrice: Number(document.getElementById("farmDozenPrice").value) || 0,
     packPrice: Number(document.getElementById("farmPackPrice").value) || 0,
+    eggsUsed: Number(document.getElementById("farmEggsUsed").value) || 0,
     updatedAt: Date.now()
   };
 
+  saveAndSync();
+  showScreen("dashboard");
+}
+
+function deleteAllEntries() {
+  if (!confirm("Delete ALL egg and sale entries? Farm settings will stay.")) return;
+  if (!confirm("Are you sure? This clears history on every synced device.")) return;
+
+  entries = [];
+  localStorage.setItem("chickenEggEntries", JSON.stringify(entries));
   saveAndSync();
   showScreen("dashboard");
 }
@@ -334,26 +351,34 @@ function isYear(date) {
 function updateApp() {
   const list = visibleEntries();
 
-  let lifeEggs = 0;
-  let weekEggs = 0;
-  let monthEggs = 0;
-  let yearEggs = 0;
-  let lifeRev = 0;
+  let lifeEggs = 0, weekEggs = 0, monthEggs = 0, yearEggs = 0;
+  let lifeRev = 0, weekRev = 0, monthRev = 0, yearRev = 0;
   let totalEggsSold = 0;
-  let totalDozensSold = 0;
 
   list.forEach(e => {
+    const eRev = revenue(e);
     lifeEggs += Number(e.eggs) || 0;
-    lifeRev += revenue(e);
+    lifeRev += eRev;
     totalEggsSold += eggsSold(e);
-    totalDozensSold += Number(e.dozenSold) || 0;
 
-    if (isWeek(e.date)) weekEggs += Number(e.eggs) || 0;
-    if (isMonth(e.date)) monthEggs += Number(e.eggs) || 0;
-    if (isYear(e.date)) yearEggs += Number(e.eggs) || 0;
+    if (isWeek(e.date)) {
+      weekEggs += Number(e.eggs) || 0;
+      weekRev += eRev;
+    }
+
+    if (isMonth(e.date)) {
+      monthEggs += Number(e.eggs) || 0;
+      monthRev += eRev;
+    }
+
+    if (isYear(e.date)) {
+      yearEggs += Number(e.eggs) || 0;
+      yearRev += eRev;
+    }
   });
 
-  const eggsAvailable = lifeEggs - totalEggsSold;
+  const eggsUsed = Number(farmSettings.eggsUsed) || 0;
+  const eggsAvailable = lifeEggs - totalEggsSold - eggsUsed;
   const safeAvailable = Math.max(eggsAvailable, 0);
   const dozensAvailable = Math.floor(safeAvailable / 12);
   const looseEggs = safeAvailable % 12;
@@ -361,6 +386,10 @@ function updateApp() {
 
   const eggDays = new Set(list.filter(e => e.type === "eggs" && e.eggs > 0).map(e => e.date)).size || 1;
   const avg = lifeEggs / eggDays;
+
+  const predictedWeek = avg * 7;
+  const predictedMonth = avg * 30;
+  const predictedYear = avg * 365;
 
   const best = list
     .filter(e => e.type === "eggs")
@@ -382,29 +411,43 @@ function updateApp() {
   document.getElementById("dashboardTotals").innerHTML = `
     ${statCard("🥚", "Lifetime Eggs", lifeEggs, "since day 1")}
     ${statCard("📦", "Eggs Available", eggsAvailable, `${dozensAvailable} dozen + ${looseEggs} loose`)}
+    ${statCard("🍳", "Used / Eaten / Hatched", eggsUsed, "subtracted from available")}
     ${statCard("💰", "Lifetime Revenue", "$" + lifeRev.toFixed(2), "all-time sales")}
-    ${statCard("📅", "This Week", weekEggs, "eggs collected")}
+    ${statCard("📅", "This Week Eggs", weekEggs, "eggs collected")}
+    ${statCard("💵", "This Week Revenue", "$" + weekRev.toFixed(2), "sales this week")}
+    ${statCard("🗓️", "This Month Eggs", monthEggs, "eggs collected")}
+    ${statCard("💰", "This Month Revenue", "$" + monthRev.toFixed(2), "sales this month")}
+    ${statCard("📆", "This Year Eggs", yearEggs, "eggs collected")}
+    ${statCard("🏦", "This Year Revenue", "$" + yearRev.toFixed(2), "sales this year")}
     ${statCard("🏆", "Best Day", best.eggs || 0, best.date || "No data yet")}
     ${statCard("📊", "Avg / Day", avg.toFixed(1), "collection days")}
-    ${statCard("🥚", "Dozens Produced", totalDozensProduced, "lifetime")}
   `;
 
   document.getElementById("statsTotals").innerHTML = `
     ${statCard("🥚", "Lifetime Eggs", lifeEggs, "all collected eggs")}
-    ${statCard("📦", "Eggs Available", eggsAvailable, "ready to sell")}
+    ${statCard("📦", "Eggs Available", eggsAvailable, "after sales and used eggs")}
+    ${statCard("🍳", "Used / Eaten / Hatched", eggsUsed, "manual adjustment")}
     ${statCard("📦", "Dozens Available", dozensAvailable, "full dozens")}
     ${statCard("🥚", "Loose Eggs", looseEggs, "extra eggs")}
     ${statCard("🛒", "Total Eggs Sold", totalEggsSold, "all sales")}
     ${statCard("🥚", "Dozens Produced", totalDozensProduced, "lifetime")}
     ${statCard("📅", "Week Eggs", weekEggs, "this week")}
+    ${statCard("💵", "Week Revenue", "$" + weekRev.toFixed(2), "this week")}
     ${statCard("🗓️", "Month Eggs", monthEggs, "this month")}
+    ${statCard("💰", "Month Revenue", "$" + monthRev.toFixed(2), "this month")}
     ${statCard("📆", "Year Eggs", yearEggs, "this year")}
+    ${statCard("🏦", "Year Revenue", "$" + yearRev.toFixed(2), "this year")}
+    ${statCard("🔮", "Predicted Week", predictedWeek.toFixed(0), "estimated eggs")}
+    ${statCard("🔮", "Predicted Month", predictedMonth.toFixed(0), "estimated eggs")}
+    ${statCard("🚀", "Predicted Year", predictedYear.toFixed(0), "estimated eggs")}
     ${statCard("💰", "Lifetime Revenue", "$" + lifeRev.toFixed(2), "all-time sales")}
   `;
 
   document.getElementById("recordsTotals").innerHTML = `
     ${statCard("🥚", "Highest Egg Day", best.eggs || 0, best.date || "No data yet")}
     ${statCard("💰", "Lifetime Revenue", "$" + lifeRev.toFixed(2), "all-time sales")}
+    ${statCard("📅", "Best Week Revenue", "$" + weekRev.toFixed(2), "current week")}
+    ${statCard("🗓️", "Best Month Revenue", "$" + monthRev.toFixed(2), "current month")}
   `;
 
   const search = (document.getElementById("historySearch")?.value || "").toLowerCase();
@@ -489,6 +532,5 @@ document.addEventListener("DOMContentLoaded", () => {
   cloudLoad();
 
   setInterval(cloudLoad, 60000);
-
   window.addEventListener("focus", cloudLoad);
 });
