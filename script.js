@@ -173,6 +173,79 @@ function isYear(date) {
   return d.getFullYear() === new Date().getFullYear();
 }
 
+function getDailyEggTotals() {
+  const totals = {};
+
+  entries.forEach(e => {
+    if (e.type === "eggs") {
+      totals[e.date] = (totals[e.date] || 0) + Number(e.eggs || 0);
+    }
+  });
+
+  return totals;
+}
+
+function getBestEggDay() {
+  const totals = getDailyEggTotals();
+  let bestDate = "No data yet";
+  let bestEggs = 0;
+
+  Object.keys(totals).forEach(date => {
+    if (totals[date] > bestEggs) {
+      bestEggs = totals[date];
+      bestDate = date;
+    }
+  });
+
+  return { date: bestDate, eggs: bestEggs };
+}
+
+function getCurrentStreak() {
+  const totals = getDailyEggTotals();
+  let streak = 0;
+  const d = new Date();
+
+  while (true) {
+    const date = d.toISOString().split("T")[0];
+
+    if (totals[date] && totals[date] > 0) {
+      streak++;
+      d.setDate(d.getDate() - 1);
+    } else {
+      break;
+    }
+  }
+
+  return streak;
+}
+
+function getLongestStreak() {
+  const totals = getDailyEggTotals();
+  const dates = Object.keys(totals).sort();
+
+  let longest = 0;
+  let current = 0;
+  let lastDate = null;
+
+  dates.forEach(date => {
+    const d = new Date(date + "T00:00:00");
+
+    if (!lastDate) {
+      current = 1;
+    } else {
+      const prev = new Date(lastDate + "T00:00:00");
+      prev.setDate(prev.getDate() + 1);
+
+      current = prev.toISOString().split("T")[0] === date ? current + 1 : 1;
+    }
+
+    if (current > longest) longest = current;
+    lastDate = date;
+  });
+
+  return longest;
+}
+
 function getLast7DaysData() {
   const days = [];
 
@@ -281,6 +354,18 @@ function updateRecords() {
       <div class="totalValue">${most18Packs.packSold || 0}</div>
       <p>${most18Packs.date || "No data yet"}</p>
     </div>
+
+    <div class="totalBox">
+      <h3>🔥 Current Streak</h3>
+      <div class="totalValue">${getCurrentStreak()}</div>
+      <p>days in a row</p>
+    </div>
+
+    <div class="totalBox">
+      <h3>🏆 Longest Streak</h3>
+      <div class="totalValue">${getLongestStreak()}</div>
+      <p>days in a row</p>
+    </div>
   `;
 }
 
@@ -288,6 +373,7 @@ function updateApp() {
   let weekEggs = 0, monthEggs = 0, yearEggs = 0, lifeEggs = 0;
   let weekRev = 0, monthRev = 0, yearRev = 0, lifeRev = 0;
   let totalEggsSold = 0;
+  let totalDozensSold = 0;
 
   entries.forEach(e => {
     const r = revenue(e);
@@ -296,6 +382,7 @@ function updateApp() {
     lifeEggs += Number(e.eggs) || 0;
     lifeRev += r;
     totalEggsSold += sold;
+    totalDozensSold += Number(e.dozenSold) || 0;
 
     if (isWeek(e.date)) {
       weekEggs += Number(e.eggs) || 0;
@@ -314,17 +401,19 @@ function updateApp() {
   });
 
   const eggsAvailable = lifeEggs - totalEggsSold;
-  const dozensAvailable = Math.floor(eggsAvailable / 12);
-  const looseEggs = eggsAvailable % 12;
-
+  const dozensAvailable = Math.floor(Math.max(eggsAvailable, 0) / 12);
+  const looseEggs = Math.max(eggsAvailable, 0) % 12;
+  const totalDozensProduced = Math.floor(lifeEggs / 12);
   const eggDays = new Set(entries.filter(e => Number(e.eggs) > 0).map(e => e.date)).size || 1;
   const avg = lifeEggs / eggDays;
+  const bestDay = getBestEggDay();
+  const avgPricePerDozen = totalDozensSold > 0 ? lifeRev / totalDozensSold : 0;
 
   document.getElementById("dashboardTotals").innerHTML = `
     <div class="totalBox">
-      <h3>🥚 Lifetime Eggs Collected</h3>
+      <h3>🥚 Lifetime Eggs</h3>
       <div class="totalValue">${lifeEggs}</div>
-      <p>Since day 1</p>
+      <p>since day 1</p>
     </div>
 
     <div class="totalBox">
@@ -336,25 +425,37 @@ function updateApp() {
     <div class="totalBox">
       <h3>💰 Lifetime Revenue</h3>
       <div class="totalValue">$${lifeRev.toFixed(2)}</div>
-      <p>All-time sales</p>
+      <p>all-time sales</p>
     </div>
 
     <div class="totalBox">
-      <h3>📅 Eggs This Week</h3>
+      <h3>📅 This Week</h3>
       <div class="totalValue">${weekEggs}</div>
-      <p>Current week</p>
+      <p>eggs collected</p>
     </div>
 
     <div class="totalBox">
-      <h3>📈 Predicted Week</h3>
-      <div class="totalValue">${(avg * 7).toFixed(0)}</div>
-      <p>Based on average</p>
+      <h3>🏆 Best Day</h3>
+      <div class="totalValue">${bestDay.eggs}</div>
+      <p>${bestDay.date}</p>
     </div>
 
     <div class="totalBox">
-      <h3>📊 Average / Day</h3>
+      <h3>🔥 Current Streak</h3>
+      <div class="totalValue">${getCurrentStreak()}</div>
+      <p>days in a row</p>
+    </div>
+
+    <div class="totalBox">
+      <h3>📊 Avg / Day</h3>
       <div class="totalValue">${avg.toFixed(1)}</div>
-      <p>Collection days only</p>
+      <p>collection days</p>
+    </div>
+
+    <div class="totalBox">
+      <h3>🥚 Dozens Produced</h3>
+      <div class="totalValue">${totalDozensProduced}</div>
+      <p>lifetime</p>
     </div>
 
     <div class="totalBox" style="grid-column: 1 / -1;">
@@ -373,10 +474,13 @@ function updateApp() {
     <div class="totalBox"><h3>Eggs Available</h3><div class="totalValue">${eggsAvailable}</div></div>
     <div class="totalBox"><h3>Dozens Available</h3><div class="totalValue">${dozensAvailable}</div></div>
     <div class="totalBox"><h3>Loose Eggs</h3><div class="totalValue">${looseEggs}</div></div>
+    <div class="totalBox"><h3>Total Eggs Sold</h3><div class="totalValue">${totalEggsSold}</div></div>
+    <div class="totalBox"><h3>Total Dozens Produced</h3><div class="totalValue">${totalDozensProduced}</div></div>
     <div class="totalBox"><h3>Week Eggs</h3><div class="totalValue">${weekEggs}</div></div>
     <div class="totalBox"><h3>Month Eggs</h3><div class="totalValue">${monthEggs}</div></div>
     <div class="totalBox"><h3>Year Eggs</h3><div class="totalValue">${yearEggs}</div></div>
     <div class="totalBox"><h3>Lifetime Revenue</h3><div class="totalValue">$${lifeRev.toFixed(2)}</div></div>
+    <div class="totalBox"><h3>Avg Price / Dozen</h3><div class="totalValue">$${avgPricePerDozen.toFixed(2)}</div></div>
     <div class="totalBox"><h3>Average / Day</h3><div class="totalValue">${avg.toFixed(1)}</div></div>
     <div class="totalBox"><h3>Predicted Month</h3><div class="totalValue">${(avg * 30).toFixed(0)}</div></div>
     <div class="totalBox"><h3>Predicted Year</h3><div class="totalValue">${(avg * 365).toFixed(0)}</div></div>
