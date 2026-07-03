@@ -428,7 +428,7 @@ function updateApp() {
     ${statCard("📦", "Eggs Available", eggsAvailable, "after sales and used eggs")}
     ${statCard("🍳", "Used / Eaten / Hatched", eggsUsed, "manual adjustment")}
     ${statCard("📦", "Dozens Available", dozensAvailable, "full dozens")}
-    ${statCard("🥚", "Loose Eggs", looseEggs, "extra eggs")}
+
     ${statCard("🛒", "Total Eggs Sold", totalEggsSold, "all sales")}
     ${statCard("🥚", "Dozens Produced", totalDozensProduced, "lifetime")}
     ${statCard("📅", "Week Eggs", weekEggs, "this week")}
