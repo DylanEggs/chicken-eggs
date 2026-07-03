@@ -617,9 +617,9 @@ async function cloudLoad() {
       packPrice: Number(e.packPrice) || 0
     }));
 
+    
     saveData();
-    cloudSave(false);
-    updateApp();
-    alert("Cloud data loaded!");
+updateApp();
+alert("Cloud data loaded!");
   }
 }
