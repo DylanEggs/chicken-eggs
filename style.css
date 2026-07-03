@@ -2,12 +2,13 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
 }
 
 body {
-  background: linear-gradient(180deg, #f7f0df, #e8f2e3);
-  color: #263322;
+  min-height: 100vh;
+  background: linear-gradient(160deg, #fff3d6, #dff4df);
+  color: #1f321f;
   padding: 14px;
 }
 
@@ -18,18 +19,19 @@ body {
 
 header {
   text-align: center;
-  margin: 14px 0 24px;
+  margin: 18px 0 24px;
 }
 
 h1 {
-  font-size: 38px;
-  color: #1f5f2a;
+  font-size: 40px;
+  color: #1f6b32;
+  letter-spacing: -1px;
 }
 
 #todayText {
-  margin-top: 7px;
-  color: #667060;
-  font-size: 15px;
+  margin-top: 8px;
+  color: #687568;
+  font-size: 16px;
 }
 
 .screen {
@@ -41,118 +43,121 @@ h1 {
 }
 
 section {
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 30px;
   padding: 18px;
-  box-shadow: 0 8px 24px rgba(38, 51, 34, 0.14);
+  box-shadow: 0 14px 35px rgba(31, 73, 36, 0.18);
+  backdrop-filter: blur(10px);
 }
 
 h2 {
-  color: #1f5f2a;
-  margin-bottom: 16px;
-  font-size: 28px;
+  color: #1f6b32;
+  font-size: 30px;
+  margin-bottom: 18px;
 }
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
-  gap: 13px;
-  margin-bottom: 18px;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 14px;
+  margin-bottom: 20px;
 }
 
 .totalBox {
-  background: #fffdf7;
-  border: 1px solid #eadfca;
-  border-radius: 20px;
-  padding: 16px;
+  background: linear-gradient(180deg, #ffffff, #fff8e8);
+  border-radius: 24px;
+  padding: 18px;
   text-align: center;
-  box-shadow: 0 5px 14px rgba(0, 0, 0, 0.09);
+  border: 1px solid #eadfc8;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.08);
 }
 
 .totalBox h3 {
   font-size: 15px;
-  color: #35703a;
-  margin-bottom: 8px;
+  color: #3b7d3f;
+  margin-bottom: 10px;
 }
 
 .totalValue {
-  font-size: 30px;
-  font-weight: bold;
-  color: #263322;
+  font-size: 34px;
+  font-weight: 900;
+  color: #203720;
 }
 
 .totalBox p {
   margin-top: 8px;
   color: #6b6b6b;
-  font-size: 14px;
 }
 
 label {
   display: block;
-  margin-top: 14px;
-  margin-bottom: 6px;
-  font-weight: bold;
-  color: #263322;
+  margin-top: 16px;
+  margin-bottom: 7px;
+  font-weight: 800;
 }
 
 input {
   width: 100%;
-  padding: 16px;
-  font-size: 18px;
-  border-radius: 16px;
-  border: 1px solid #b9c4b1;
-  background: #fffdf7;
+  padding: 17px;
+  font-size: 19px;
+  border-radius: 18px;
+  border: 2px solid #d6dfcf;
+  background: #fffdf6;
 }
 
 input:focus {
   outline: none;
-  border-color: #2f8f46;
-  box-shadow: 0 0 0 3px rgba(47, 143, 70, 0.18);
+  border-color: #2f9b4d;
+  box-shadow: 0 0 0 4px rgba(47, 155, 77, 0.18);
 }
 
 button {
   width: 100%;
-  padding: 17px;
-  margin-top: 14px;
-  font-size: 20px;
-  font-weight: bold;
+  padding: 18px;
+  margin-top: 15px;
+  font-size: 21px;
+  font-weight: 900;
   border: none;
-  border-radius: 18px;
-  background: #2f8f46;
+  border-radius: 22px;
+  background: linear-gradient(180deg, #39a653, #237a38);
   color: white;
-  box-shadow: 0 5px 0 #1f6b32;
+  box-shadow: 0 7px 0 #175b27;
 }
 
 button:active {
-  transform: translateY(3px);
-  box-shadow: 0 2px 0 #1f6b32;
+  transform: translateY(4px);
+  box-shadow: 0 3px 0 #175b27;
 }
 
 .secondary {
-  background: #6f756d;
-  box-shadow: 0 5px 0 #4f554d;
+  background: linear-gradient(180deg, #7d8678, #565f52);
+  box-shadow: 0 7px 0 #3c4439;
 }
 
 .entry {
-  background: #fffaf0;
-  border: 1px solid #ddd0bd;
-  border-radius: 18px;
-  padding: 15px;
-  margin-bottom: 12px;
-  line-height: 1.6;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
+  background: #fff8e8;
+  border: 1px solid #e1d0ad;
+  border-radius: 22px;
+  padding: 16px;
+  margin-bottom: 14px;
+  line-height: 1.7;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.08);
+}
+
+.entry strong {
+  color: #1f6b32;
 }
 
 .entry button {
-  background: #b3261e;
-  box-shadow: 0 5px 0 #7e1a15;
+  background: linear-gradient(180deg, #d83b31, #a82018);
+  box-shadow: 0 6px 0 #761611;
   font-size: 17px;
   padding: 13px;
 }
 
 canvas {
   width: 100%;
-  max-width: 420px;
+  max-width: 430px;
 }
 
 @media (max-width: 700px) {
@@ -161,33 +166,32 @@ canvas {
   }
 
   h1 {
-    font-size: 32px;
+    font-size: 34px;
   }
 
   h2 {
-    font-size: 25px;
+    font-size: 27px;
   }
 
   section {
+    border-radius: 26px;
     padding: 15px;
-    border-radius: 22px;
   }
 
   .grid {
     grid-template-columns: 1fr 1fr;
-    gap: 10px;
+    gap: 11px;
   }
 
   .totalBox {
-    padding: 13px;
+    padding: 15px;
   }
 
   .totalValue {
-    font-size: 25px;
+    font-size: 28px;
   }
 
   button {
-    font-size: 19px;
-    padding: 16px;
+    font-size: 20px;
   }
 }
