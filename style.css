@@ -326,9 +326,9 @@ canvas{
     left:50%;
     bottom:14px;
     transform:translateX(-50%);
-    width:min(94%,560px);
+    width:min(94%,720px);
     display:grid;
-    grid-template-columns:repeat(4,1fr);
+    grid-template-columns:repeat(5,1fr);
     gap:8px;
     padding:10px;
     border-radius:28px;
