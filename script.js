@@ -57,6 +57,7 @@ const today = new Date().toISOString().split("T")[0];
 document.getElementById("eggDate").value = today;
 document.getElementById("saleDate").value = today;
 document.getElementById("todayText").textContent = new Date().toDateString();
+loadFarmSettings();
 
 function showScreen(id) {
   document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
@@ -440,6 +441,21 @@ function updateApp() {
   const avg = lifeEggs / eggDays;
   const bestDay = getBestEggDay();
   const avgPricePerDozen = totalDozensSold > 0 ? lifeRev / totalDozensSold : 0;
+  const farmName = farmSettings.farmName || "Egg Production";
+const hens = Number(farmSettings.hens) || 0;
+const eggGoal = Number(farmSettings.eggGoal) || 0;
+const eggsToday = entries
+  .filter(e => e.type === "eggs" && e.date === today)
+  .reduce((sum, e) => sum + Number(e.eggs || 0), 0);
+
+const eggsPerHen = hens > 0 ? eggsToday / hens : 0;
+const productionPercent = hens > 0 ? (eggsToday / hens) * 100 : 0;
+
+document.getElementById("farmHeroName").textContent = farmName;
+document.getElementById("farmHeroText").textContent =
+  hens > 0
+    ? `${hens} hens • ${eggsToday} eggs today • ${productionPercent.toFixed(0)}% production`
+    : "Track collections, sales, records, and revenue.";
 
   document.getElementById("dashboardTotals").innerHTML = `
     ${statCard("🥚", "Lifetime Eggs", lifeEggs, "since day 1")}
