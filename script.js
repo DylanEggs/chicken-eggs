@@ -39,6 +39,16 @@ function revenue(e) {
          (Number(e.packSold) || 0) * (Number(e.packPrice) || 0);
 }
 
+function eggsSold(e) {
+  return ((Number(e.dozenSold) || 0) * 12) + ((Number(e.packSold) || 0) * 18);
+}
+
+function getEggsAvailable() {
+  const collected = entries.reduce((sum, e) => sum + (Number(e.eggs) || 0), 0);
+  const sold = entries.reduce((sum, e) => sum + eggsSold(e), 0);
+  return collected - sold;
+}
+
 function saveEggs() {
   const eggs = Number(document.getElementById("eggCount").value) || 0;
   const date = document.getElementById("eggDate").value;
@@ -153,10 +163,8 @@ function isWeek(date) {
   const start = new Date(now);
   start.setDate(now.getDate() - now.getDay());
   start.setHours(0, 0, 0, 0);
-
   const end = new Date(start);
   end.setDate(start.getDate() + 7);
-
   return d >= start && d < end;
 }
 
@@ -228,141 +236,26 @@ function drawBarChart(canvasId, data, valueKey, color) {
     ctx.textAlign = "center";
     ctx.fillText(d.label, x + barWidth / 2, height - 12);
 
-    const valueText = valueKey === "money"
-      ? "$" + d[valueKey].toFixed(0)
-      : d[valueKey];
-
+    const valueText = valueKey === "money" ? "$" + d[valueKey].toFixed(0) : d[valueKey];
     ctx.fillText(valueText, x + barWidth / 2, y - 6);
   });
-}
-
-function getHighestEggDay() {
-  const eggTotals = {};
-
-  entries.forEach(e => {
-    if (e.type === "eggs") {
-      eggTotals[e.date] = (eggTotals[e.date] || 0) + Number(e.eggs || 0);
-    }
-  });
-
-  let bestDate = "No data yet";
-  let bestEggs = 0;
-
-  Object.keys(eggTotals).forEach(date => {
-    if (eggTotals[date] > bestEggs) {
-      bestDate = date;
-      bestEggs = eggTotals[date];
-    }
-  });
-
-  return { date: bestDate, eggs: bestEggs };
-}
-
-function getHighestRevenueDay() {
-  const revenueTotals = {};
-
-  entries.forEach(e => {
-    if (e.type === "sale") {
-      revenueTotals[e.date] = (revenueTotals[e.date] || 0) + revenue(e);
-    }
-  });
-
-  let bestDate = "No data yet";
-  let bestRevenue = 0;
-
-  Object.keys(revenueTotals).forEach(date => {
-    if (revenueTotals[date] > bestRevenue) {
-      bestDate = date;
-      bestRevenue = revenueTotals[date];
-    }
-  });
-
-  return { date: bestDate, money: bestRevenue };
-}
-
-function getMostDozensSoldDay() {
-  let bestDate = "No data yet";
-  let bestAmount = 0;
-
-  entries.forEach(e => {
-    if (Number(e.dozenSold || 0) > bestAmount) {
-      bestDate = e.date;
-      bestAmount = Number(e.dozenSold || 0);
-    }
-  });
-
-  return { date: bestDate, amount: bestAmount };
-}
-
-function getMost18PacksSoldDay() {
-  let bestDate = "No data yet";
-  let bestAmount = 0;
-
-  entries.forEach(e => {
-    if (Number(e.packSold || 0) > bestAmount) {
-      bestDate = e.date;
-      bestAmount = Number(e.packSold || 0);
-    }
-  });
-
-  return { date: bestDate, amount: bestAmount };
-}
-
-function getLargestSingleSale() {
-  let bestDate = "No data yet";
-  let bestMoney = 0;
-
-  entries.forEach(e => {
-    const saleTotal = revenue(e);
-    if (saleTotal > bestMoney) {
-      bestDate = e.date;
-      bestMoney = saleTotal;
-    }
-  });
-
-  return { date: bestDate, money: bestMoney };
 }
 
 function updateRecords() {
   const recordsBox = document.getElementById("recordsTotals");
   if (!recordsBox) return;
 
-  const highestEggDay = getHighestEggDay();
-  const highestRevenueDay = getHighestRevenueDay();
-  const mostDozens = getMostDozensSoldDay();
-  const most18Packs = getMost18PacksSoldDay();
-  const largestSale = getLargestSingleSale();
+  const eggEntries = entries.filter(e => e.type === "eggs");
+  const saleEntries = entries.filter(e => e.type === "sale");
+
+  const highestEgg = eggEntries.reduce((best, e) => Number(e.eggs) > Number(best.eggs || 0) ? e : best, {});
+  const highestRevenue = saleEntries.reduce((best, e) => revenue(e) > revenue(best) ? e : best, {});
+  const largestSale = highestRevenue;
 
   recordsBox.innerHTML = `
-    <div class="totalBox">
-      <h3>Highest Egg Day</h3>
-      <div class="totalValue">${highestEggDay.eggs}</div>
-      <p>${highestEggDay.date}</p>
-    </div>
-
-    <div class="totalBox">
-      <h3>Highest Revenue Day</h3>
-      <div class="totalValue">$${highestRevenueDay.money.toFixed(2)}</div>
-      <p>${highestRevenueDay.date}</p>
-    </div>
-
-    <div class="totalBox">
-      <h3>Most Dozens Sold</h3>
-      <div class="totalValue">${mostDozens.amount}</div>
-      <p>${mostDozens.date}</p>
-    </div>
-
-    <div class="totalBox">
-      <h3>Most 18-Packs Sold</h3>
-      <div class="totalValue">${most18Packs.amount}</div>
-      <p>${most18Packs.date}</p>
-    </div>
-
-    <div class="totalBox">
-      <h3>Largest Single Sale</h3>
-      <div class="totalValue">$${largestSale.money.toFixed(2)}</div>
-      <p>${largestSale.date}</p>
-    </div>
+    <div class="totalBox"><h3>Highest Egg Day</h3><div class="totalValue">${highestEgg.eggs || 0}</div><p>${highestEgg.date || "No data yet"}</p></div>
+    <div class="totalBox"><h3>Highest Revenue Day</h3><div class="totalValue">$${revenue(highestRevenue).toFixed(2)}</div><p>${highestRevenue.date || "No data yet"}</p></div>
+    <div class="totalBox"><h3>Largest Single Sale</h3><div class="totalValue">$${revenue(largestSale).toFixed(2)}</div><p>${largestSale.date || "No data yet"}</p></div>
   `;
 }
 
@@ -391,14 +284,18 @@ function updateApp() {
     }
   });
 
+  const eggsAvailable = getEggsAvailable();
+  const dozensAvailable = Math.floor(eggsAvailable / 12);
+  const looseEggs = eggsAvailable % 12;
+
   const eggDays = new Set(entries.filter(e => Number(e.eggs) > 0).map(e => e.date)).size || 1;
   const avg = lifeEggs / eggDays;
 
   document.getElementById("dashboardTotals").innerHTML = `
-    <div class="totalBox"><h3>Lifetime Eggs</h3><div class="totalValue">${lifeEggs}</div></div>
-    <div class="totalBox"><h3>Lifetime Revenue</h3><div class="totalValue">$${lifeRev.toFixed(2)}</div></div>
-    <div class="totalBox"><h3>Eggs This Week</h3><div class="totalValue">${weekEggs}</div></div>
-    <div class="totalBox"><h3>Predicted Week</h3><div class="totalValue">${(avg * 7).toFixed(0)}</div></div>
+    <div class="totalBox"><h3>🥚 Eggs Available</h3><div class="totalValue">${eggsAvailable}</div><p>${dozensAvailable} dozen + ${looseEggs} loose</p></div>
+    <div class="totalBox"><h3>💰 Lifetime Revenue</h3><div class="totalValue">$${lifeRev.toFixed(2)}</div></div>
+    <div class="totalBox"><h3>📅 Eggs This Week</h3><div class="totalValue">${weekEggs}</div></div>
+    <div class="totalBox"><h3>📈 Predicted Week</h3><div class="totalValue">${(avg * 7).toFixed(0)}</div></div>
 
     <div class="totalBox" style="grid-column: 1 / -1;">
       <h3>Eggs Collected - Last 7 Days</h3>
@@ -412,6 +309,9 @@ function updateApp() {
   `;
 
   document.getElementById("statsTotals").innerHTML = `
+    <div class="totalBox"><h3>Eggs Available</h3><div class="totalValue">${eggsAvailable}</div></div>
+    <div class="totalBox"><h3>Dozens Available</h3><div class="totalValue">${dozensAvailable}</div></div>
+    <div class="totalBox"><h3>Loose Eggs</h3><div class="totalValue">${looseEggs}</div></div>
     <div class="totalBox"><h3>Week Eggs</h3><div class="totalValue">${weekEggs}</div></div>
     <div class="totalBox"><h3>Month Eggs</h3><div class="totalValue">${monthEggs}</div></div>
     <div class="totalBox"><h3>Year Eggs</h3><div class="totalValue">${yearEggs}</div></div>
@@ -445,6 +345,7 @@ function updateApp() {
       ${e.type === "sale" ? `
         💰 Dozen Sold: ${e.dozenSold} @ $${Number(e.dozenPrice).toFixed(2)}<br>
         💰 18-Packs Sold: ${e.packSold} @ $${Number(e.packPrice).toFixed(2)}<br>
+        🥚 Eggs Sold: ${eggsSold(e)}<br>
         <strong>Revenue: $${revenue(e).toFixed(2)}</strong>
       ` : ""}
       <button onclick="editEntry(${e.id})">Edit Entry</button>
