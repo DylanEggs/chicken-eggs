@@ -1,4 +1,4 @@
-const CLOUD_URL = "https://script.google.com/macros/s/AKfycbzgNiLMDmEZSnD8-yxAn8fBjouRLDkAimiCcCmwP-wAVwuiLk4EqwQ4TU4PHxhhwJjkUg/exec";
+const CLOUD_URL = "https://script.google.com/macros/s/AKfycby3l3hzS7hDMUZWzT23KM7hp1X0MzqfG_2mPQMY-b0YPVy6G4VfgiH-EEVDbNnGFpr6IQ/exec";
 let entries = JSON.parse(localStorage.getItem("chickenEggEntries")) || [];
 let editingId = null;
 let historyFilter = "all";
