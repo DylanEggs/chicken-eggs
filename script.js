@@ -22,6 +22,14 @@ document.getElementById("todayText").textContent = new Date().toDateString();
 function showScreen(id) {
   document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
   document.getElementById(id).classList.add("active");
+
+  document.querySelectorAll(".bottomNav button").forEach(btn => btn.classList.remove("navActive"));
+  document.querySelectorAll(".bottomNav button").forEach(btn => {
+    if (btn.getAttribute("onclick")?.includes(`'${id}'`)) {
+      btn.classList.add("navActive");
+    }
+  });
+
   updateApp();
 }
 
@@ -41,6 +49,16 @@ function revenue(e) {
 
 function eggsSold(e) {
   return ((Number(e.dozenSold) || 0) * 12) + ((Number(e.packSold) || 0) * 18);
+}
+
+function statCard(icon, title, value, note) {
+  return `
+    <div class="totalBox">
+      <h3>${icon} ${title}</h3>
+      <div class="totalValue">${value}</div>
+      <p>${note}</p>
+    </div>
+  `;
 }
 
 function saveEggs() {
@@ -235,7 +253,6 @@ function getLongestStreak() {
     } else {
       const prev = new Date(lastDate + "T00:00:00");
       prev.setDate(prev.getDate() + 1);
-
       current = prev.toISOString().split("T")[0] === date ? current + 1 : 1;
     }
 
@@ -282,28 +299,32 @@ function drawBarChart(canvasId, data, valueKey, color) {
 
   ctx.clearRect(0, 0, width, height);
 
-  const padding = 35;
-  const chartHeight = height - 70;
-  const chartWidth = width - 50;
+  const padding = 36;
+  const chartHeight = height - 76;
+  const chartWidth = width - 54;
   const maxValue = Math.max(...data.map(d => d[valueKey]), 1);
   const barWidth = chartWidth / data.length - 12;
 
-  ctx.font = "13px Arial";
+  ctx.font = "bold 13px -apple-system, BlinkMacSystemFont, Segoe UI";
+  ctx.textAlign = "center";
 
   data.forEach((d, i) => {
     const x = padding + i * (chartWidth / data.length) + 5;
     const barHeight = (d[valueKey] / maxValue) * chartHeight;
     const y = height - padding - barHeight;
+    const radius = 8;
 
     ctx.fillStyle = color;
-    ctx.fillRect(x, y, barWidth, barHeight);
+    ctx.beginPath();
+    ctx.roundRect(x, y, barWidth, barHeight || 4, radius);
+    ctx.fill();
 
-    ctx.fillStyle = "#333";
-    ctx.textAlign = "center";
+    ctx.fillStyle = "#7b8a7d";
     ctx.fillText(d.label, x + barWidth / 2, height - 12);
 
+    ctx.fillStyle = "#17351f";
     const valueText = valueKey === "money" ? "$" + d[valueKey].toFixed(0) : d[valueKey];
-    ctx.fillText(valueText, x + barWidth / 2, y - 6);
+    ctx.fillText(valueText, x + barWidth / 2, y - 8);
   });
 }
 
@@ -331,41 +352,12 @@ function updateRecords() {
   );
 
   recordsBox.innerHTML = `
-    <div class="totalBox">
-      <h3>🥚 Highest Egg Day</h3>
-      <div class="totalValue">${highestEgg.eggs || 0}</div>
-      <p>${highestEgg.date || "No data yet"}</p>
-    </div>
-
-    <div class="totalBox">
-      <h3>💰 Highest Revenue Day</h3>
-      <div class="totalValue">$${revenue(highestRevenue).toFixed(2)}</div>
-      <p>${highestRevenue.date || "No data yet"}</p>
-    </div>
-
-    <div class="totalBox">
-      <h3>📦 Most Dozens Sold</h3>
-      <div class="totalValue">${mostDozens.dozenSold || 0}</div>
-      <p>${mostDozens.date || "No data yet"}</p>
-    </div>
-
-    <div class="totalBox">
-      <h3>🥚 Most 18-Packs Sold</h3>
-      <div class="totalValue">${most18Packs.packSold || 0}</div>
-      <p>${most18Packs.date || "No data yet"}</p>
-    </div>
-
-    <div class="totalBox">
-      <h3>🔥 Current Streak</h3>
-      <div class="totalValue">${getCurrentStreak()}</div>
-      <p>days in a row</p>
-    </div>
-
-    <div class="totalBox">
-      <h3>🏆 Longest Streak</h3>
-      <div class="totalValue">${getLongestStreak()}</div>
-      <p>days in a row</p>
-    </div>
+    ${statCard("🥚", "Highest Egg Day", highestEgg.eggs || 0, highestEgg.date || "No data yet")}
+    ${statCard("💰", "Highest Revenue Day", "$" + revenue(highestRevenue).toFixed(2), highestRevenue.date || "No data yet")}
+    ${statCard("📦", "Most Dozens Sold", mostDozens.dozenSold || 0, mostDozens.date || "No data yet")}
+    ${statCard("🥚", "Most 18-Packs Sold", most18Packs.packSold || 0, most18Packs.date || "No data yet")}
+    ${statCard("🔥", "Current Streak", getCurrentStreak(), "days in a row")}
+    ${statCard("🏆", "Longest Streak", getLongestStreak(), "days in a row")}
   `;
 }
 
@@ -401,8 +393,9 @@ function updateApp() {
   });
 
   const eggsAvailable = lifeEggs - totalEggsSold;
-  const dozensAvailable = Math.floor(Math.max(eggsAvailable, 0) / 12);
-  const looseEggs = Math.max(eggsAvailable, 0) % 12;
+  const safeEggsAvailable = Math.max(eggsAvailable, 0);
+  const dozensAvailable = Math.floor(safeEggsAvailable / 12);
+  const looseEggs = safeEggsAvailable % 12;
   const totalDozensProduced = Math.floor(lifeEggs / 12);
   const eggDays = new Set(entries.filter(e => Number(e.eggs) > 0).map(e => e.date)).size || 1;
   const avg = lifeEggs / eggDays;
@@ -410,87 +403,48 @@ function updateApp() {
   const avgPricePerDozen = totalDozensSold > 0 ? lifeRev / totalDozensSold : 0;
 
   document.getElementById("dashboardTotals").innerHTML = `
-    <div class="totalBox">
-      <h3>🥚 Lifetime Eggs</h3>
-      <div class="totalValue">${lifeEggs}</div>
-      <p>since day 1</p>
-    </div>
+    ${statCard("🥚", "Lifetime Eggs", lifeEggs, "since day 1")}
+    ${statCard("📦", "Eggs Available", eggsAvailable, `${dozensAvailable} dozen + ${looseEggs} loose`)}
+    ${statCard("💰", "Lifetime Revenue", "$" + lifeRev.toFixed(2), "all-time sales")}
+    ${statCard("📅", "This Week", weekEggs, "eggs collected")}
+    ${statCard("🏆", "Best Day", bestDay.eggs, bestDay.date)}
+    ${statCard("🔥", "Current Streak", getCurrentStreak(), "days in a row")}
+    ${statCard("📊", "Avg / Day", avg.toFixed(1), "collection days")}
+    ${statCard("🥚", "Dozens Produced", totalDozensProduced, "lifetime")}
 
-    <div class="totalBox">
-      <h3>📦 Eggs Available</h3>
-      <div class="totalValue">${eggsAvailable}</div>
-      <p>${dozensAvailable} dozen + ${looseEggs} loose</p>
-    </div>
-
-    <div class="totalBox">
-      <h3>💰 Lifetime Revenue</h3>
-      <div class="totalValue">$${lifeRev.toFixed(2)}</div>
-      <p>all-time sales</p>
-    </div>
-
-    <div class="totalBox">
-      <h3>📅 This Week</h3>
-      <div class="totalValue">${weekEggs}</div>
-      <p>eggs collected</p>
-    </div>
-
-    <div class="totalBox">
-      <h3>🏆 Best Day</h3>
-      <div class="totalValue">${bestDay.eggs}</div>
-      <p>${bestDay.date}</p>
-    </div>
-
-    <div class="totalBox">
-      <h3>🔥 Current Streak</h3>
-      <div class="totalValue">${getCurrentStreak()}</div>
-      <p>days in a row</p>
-    </div>
-
-    <div class="totalBox">
-      <h3>📊 Avg / Day</h3>
-      <div class="totalValue">${avg.toFixed(1)}</div>
-      <p>collection days</p>
-    </div>
-
-    <div class="totalBox">
-      <h3>🥚 Dozens Produced</h3>
-      <div class="totalValue">${totalDozensProduced}</div>
-      <p>lifetime</p>
-    </div>
-
-    <div class="totalBox" style="grid-column: 1 / -1;">
-      <h3>Eggs Collected - Last 7 Days</h3>
+    <div class="totalBox" style="grid-column:1 / -1;">
+      <h3>🥚 Eggs Collected - Last 7 Days</h3>
       <canvas id="eggChart" width="340" height="220"></canvas>
     </div>
 
-    <div class="totalBox" style="grid-column: 1 / -1;">
-      <h3>Revenue - Last 7 Days</h3>
+    <div class="totalBox" style="grid-column:1 / -1;">
+      <h3>💰 Revenue - Last 7 Days</h3>
       <canvas id="revenueChart" width="340" height="220"></canvas>
     </div>
   `;
 
   document.getElementById("statsTotals").innerHTML = `
-    <div class="totalBox"><h3>Lifetime Eggs</h3><div class="totalValue">${lifeEggs}</div></div>
-    <div class="totalBox"><h3>Eggs Available</h3><div class="totalValue">${eggsAvailable}</div></div>
-    <div class="totalBox"><h3>Dozens Available</h3><div class="totalValue">${dozensAvailable}</div></div>
-    <div class="totalBox"><h3>Loose Eggs</h3><div class="totalValue">${looseEggs}</div></div>
-    <div class="totalBox"><h3>Total Eggs Sold</h3><div class="totalValue">${totalEggsSold}</div></div>
-    <div class="totalBox"><h3>Total Dozens Produced</h3><div class="totalValue">${totalDozensProduced}</div></div>
-    <div class="totalBox"><h3>Week Eggs</h3><div class="totalValue">${weekEggs}</div></div>
-    <div class="totalBox"><h3>Month Eggs</h3><div class="totalValue">${monthEggs}</div></div>
-    <div class="totalBox"><h3>Year Eggs</h3><div class="totalValue">${yearEggs}</div></div>
-    <div class="totalBox"><h3>Lifetime Revenue</h3><div class="totalValue">$${lifeRev.toFixed(2)}</div></div>
-    <div class="totalBox"><h3>Avg Price / Dozen</h3><div class="totalValue">$${avgPricePerDozen.toFixed(2)}</div></div>
-    <div class="totalBox"><h3>Average / Day</h3><div class="totalValue">${avg.toFixed(1)}</div></div>
-    <div class="totalBox"><h3>Predicted Month</h3><div class="totalValue">${(avg * 30).toFixed(0)}</div></div>
-    <div class="totalBox"><h3>Predicted Year</h3><div class="totalValue">${(avg * 365).toFixed(0)}</div></div>
+    ${statCard("🥚", "Lifetime Eggs", lifeEggs, "all collected eggs")}
+    ${statCard("📦", "Eggs Available", eggsAvailable, "ready to sell")}
+    ${statCard("📦", "Dozens Available", dozensAvailable, "full dozens")}
+    ${statCard("🥚", "Loose Eggs", looseEggs, "extra eggs")}
+    ${statCard("🛒", "Total Eggs Sold", totalEggsSold, "all sales")}
+    ${statCard("🥚", "Dozens Produced", totalDozensProduced, "lifetime")}
+    ${statCard("📅", "Week Eggs", weekEggs, "this week")}
+    ${statCard("🗓️", "Month Eggs", monthEggs, "this month")}
+    ${statCard("📆", "Year Eggs", yearEggs, "this year")}
+    ${statCard("💰", "Lifetime Revenue", "$" + lifeRev.toFixed(2), "all-time sales")}
+    ${statCard("💵", "Avg Price / Dozen", "$" + avgPricePerDozen.toFixed(2), "based on dozen sales")}
+    ${statCard("📊", "Average / Day", avg.toFixed(1), "collection days")}
+    ${statCard("🔮", "Predicted Month", (avg * 30).toFixed(0), "estimated eggs")}
+    ${statCard("🚀", "Predicted Year", (avg * 365).toFixed(0), "estimated eggs")}
   `;
 
   updateRecords();
 
   const chartData = getLast7DaysData();
-  drawBarChart("eggChart", chartData, "eggs", "#f4b400");
-  drawBarChart("revenueChart", chartData, "money", "#34a853");
+  drawBarChart("eggChart", chartData, "eggs", "#f5b91c");
+  drawBarChart("revenueChart", chartData, "money", "#1f7a3a");
 
   const searchText = (document.getElementById("historySearch")?.value || "").toLowerCase();
 
@@ -501,15 +455,18 @@ function updateApp() {
 
   document.getElementById("historyList").innerHTML = sorted.map(e => `
     <div class="entry">
-      <strong>${e.date}</strong><br>
+      <strong>${e.type === "eggs" ? "🥚 Egg Collection" : "💰 Egg Sale"}</strong><br>
+      <span>${e.date}</span><br>
 
-      ${e.type === "eggs" ? `🥚 Eggs Collected: ${e.eggs}` : ""}
+      ${e.type === "eggs" ? `
+        Eggs Collected: <strong>${e.eggs}</strong>
+      ` : ""}
 
       ${e.type === "sale" ? `
-        💰 Dozen Sold: ${e.dozenSold} @ $${Number(e.dozenPrice).toFixed(2)}<br>
-        💰 18-Packs Sold: ${e.packSold} @ $${Number(e.packPrice).toFixed(2)}<br>
-        🥚 Eggs Sold: ${eggsSold(e)}<br>
-        <strong>Revenue: $${revenue(e).toFixed(2)}</strong>
+        Dozen Sold: <strong>${e.dozenSold}</strong> @ $${Number(e.dozenPrice).toFixed(2)}<br>
+        18-Packs Sold: <strong>${e.packSold}</strong> @ $${Number(e.packPrice).toFixed(2)}<br>
+        Eggs Sold: <strong>${eggsSold(e)}</strong><br>
+        Revenue: <strong>$${revenue(e).toFixed(2)}</strong>
       ` : ""}
 
       <button onclick="editEntry(${e.id})">Edit Entry</button>
@@ -520,3 +477,4 @@ function updateApp() {
 
 saveData();
 updateApp();
+showScreen("dashboard");
