@@ -8,19 +8,22 @@
 </head>
 <body>
   <div class="app">
-    <header>
-      <h1>🥚 Chicken Eggs</h1>
+    <header class="appHeader">
+      <div class="logo">🥚</div>
+      <h1>Chicken Eggs</h1>
       <p id="todayText"></p>
     </header>
 
     <section id="dashboard" class="screen active">
-      <div id="dashboardTotals" class="grid"></div>
+      <div id="dashboardTotals" class="dashboardGrid"></div>
 
-      <button onclick="showScreen('collect')">🥚 Collect Eggs</button>
-      <button onclick="showScreen('sale')">💰 Record Sale</button>
-      <button onclick="showScreen('stats')">📊 Statistics</button>
-      <button onclick="showScreen('records')">🏆 Records</button>
-      <button onclick="showScreen('history')">📋 History</button>
+      <div class="mainActions">
+        <button onclick="showScreen('collect')">🥚 Collect Eggs</button>
+        <button onclick="showScreen('sale')">💰 Record Sale</button>
+        <button onclick="showScreen('stats')">📊 Statistics</button>
+        <button onclick="showScreen('records')">🏆 Records</button>
+        <button onclick="showScreen('history')">📋 History</button>
+      </div>
     </section>
 
     <section id="collect" class="screen">
@@ -74,11 +77,11 @@
       <input
         type="text"
         id="historySearch"
-        placeholder="Search by date (example: 2026-07)"
+        placeholder="Search by date, example: 2026-07"
         oninput="updateApp()"
       />
 
-      <div style="margin:12px 0;">
+      <div class="filterButtons">
         <button onclick="setHistoryFilter('all')">All</button>
         <button onclick="setHistoryFilter('eggs')">🥚 Eggs</button>
         <button onclick="setHistoryFilter('sale')">💰 Sales</button>
