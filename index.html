@@ -102,6 +102,9 @@
       <input type="number" id="farmPackPrice" step="0.01" placeholder="0.00" />
 
       <button onclick="saveFarmSettings()">Save Farm Settings</button>
+      <button onclick="backupData()">💾 Backup Data</button>
+<input type="file" id="restoreFile" accept=".json" onchange="restoreData(event)" style="display:none;" />
+<button onclick="document.getElementById('restoreFile').click()">📂 Restore Data</button>
       <button class="secondary" onclick="showScreen('dashboard')">Back</button>
     </section>
 
