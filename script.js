@@ -1,6 +1,45 @@
 let entries = JSON.parse(localStorage.getItem("chickenEggEntries")) || [];
 let editingId = null;
 let historyFilter = "all";
+// =========================
+// Farm Settings
+// =========================
+
+let farmSettings = JSON.parse(localStorage.getItem("farmSettings")) || {
+  farmName: "",
+  hens: 0,
+  roosters: 0,
+  eggGoal: 0,
+  dozenPrice: 0,
+  packPrice: 0
+};
+
+function loadFarmSettings() {
+  document.getElementById("farmName").value = farmSettings.farmName || "";
+  document.getElementById("farmHens").value = farmSettings.hens || "";
+  document.getElementById("farmRoosters").value = farmSettings.roosters || "";
+  document.getElementById("farmEggGoal").value = farmSettings.eggGoal || "";
+  document.getElementById("farmDozenPrice").value = farmSettings.dozenPrice || "";
+  document.getElementById("farmPackPrice").value = farmSettings.packPrice || "";
+}
+
+function saveFarmSettings() {
+
+  farmSettings = {
+    farmName: document.getElementById("farmName").value,
+    hens: Number(document.getElementById("farmHens").value) || 0,
+    roosters: Number(document.getElementById("farmRoosters").value) || 0,
+    eggGoal: Number(document.getElementById("farmEggGoal").value) || 0,
+    dozenPrice: Number(document.getElementById("farmDozenPrice").value) || 0,
+    packPrice: Number(document.getElementById("farmPackPrice").value) || 0
+  };
+
+  localStorage.setItem("farmSettings", JSON.stringify(farmSettings));
+
+  alert("Farm settings saved!");
+
+  showScreen("dashboard");
+}
 
 entries = entries.map(e => ({
   id: e.id || Date.now() + Math.random(),
