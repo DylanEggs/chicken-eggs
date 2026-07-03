@@ -576,16 +576,25 @@ function restoreData(event) {
 
   reader.readAsText(file);
 }
-async function cloudSave() {
-  await fetch(CLOUD_URL, {
-    method: "POST",
-    body: JSON.stringify({
-      action: "saveAll",
-      entries
-    })
-  });
+async function cloudSave(showAlert = true) {
+  try {
+    await fetch(CLOUD_URL, {
+      method: "POST",
+      body: JSON.stringify({
+        action: "saveAll",
+        entries
+      })
+    });
 
-  alert("Cloud save complete!");
+    if (showAlert) {
+      alert("Cloud save complete!");
+    }
+  } catch (error) {
+    console.error("Cloud save failed:", error);
+    if (showAlert) {
+      alert("Cloud save failed. Try again.");
+    }
+  }
 }
 
 async function cloudLoad() {
