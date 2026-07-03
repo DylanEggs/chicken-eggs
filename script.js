@@ -418,7 +418,7 @@ function updateApp() {
 
   document.getElementById("dashboardTotals").innerHTML = `
     ${statCard("🥚", "Lifetime Eggs", lifeEggs, "since day 1")}
-    ${statCard("📦", "Eggs Available", eggsAvailable, `${dozensAvailable} dozen + ${looseEggs} loose`)}
+    ${statCard("📦", "Eggs Available", eggsAvailable, "ready to use or sell")}
     ${statCard("🍳", "Used / Eaten / Hatched", eggsUsed, "subtracted from available")}
     ${statCard("💰", "Lifetime Revenue", "$" + lifeRev.toFixed(2), "all-time sales")}
     ${statCard("📅", "This Week Eggs", weekEggs, "eggs collected")}
