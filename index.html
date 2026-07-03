@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chicken Eggs</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>🥚 Chicken Eggs</h1>
+      <p id="todayText"></p>
+    </header>
+
+    <section id="dashboard" class="screen active">
+      <div id="dashboardTotals" class="grid"></div>
+
+      <button onclick="showScreen('collect')">🥚 Collect Eggs</button>
+      <button onclick="showScreen('sale')">💰 Record Sale</button>
+      <button onclick="showScreen('stats')">📊 Statistics</button>
+      <button onclick="showScreen('records')">🏆 Records</button>
+      <button onclick="showScreen('history')">📋 History</button>
+    </section>
+
+    <section id="collect" class="screen">
+      <h2>Collect Eggs</h2>
+      <label>Date</label>
+      <input type="date" id="eggDate" />
+
+      <label>Eggs Collected</label>
+      <input type="number" id="eggCount" placeholder="0" />
+
+      <button onclick="saveEggs()">Save Eggs</button>
+      <button class="secondary" onclick="showScreen('dashboard')">Back</button>
+    </section>
+
+    <section id="sale" class="screen">
+      <h2>Record Sale</h2>
+      <label>Date</label>
+      <input type="date" id="saleDate" />
+
+      <label>Dozen Sold</label>
+      <input type="number" id="dozenSold" placeholder="0" />
+
+      <label>Price Per Dozen</label>
+      <input type="number" id="dozenPrice" step="0.01" placeholder="0.00" />
+
+      <label>18-Packs Sold</label>
+      <input type="number" id="packSold" placeholder="0" />
+
+      <label>Price Per 18-Pack</label>
+      <input type="number" id="packPrice" step="0.01" placeholder="0.00" />
+
+      <button onclick="saveSale()">Save Sale</button>
+      <button class="secondary" onclick="showScreen('dashboard')">Back</button>
+    </section>
+
+    <section id="stats" class="screen">
+      <h2>Statistics</h2>
+      <div id="statsTotals" class="grid"></div>
+      <button class="secondary" onclick="showScreen('dashboard')">Back</button>
+    </section>
+
+    <section id="records" class="screen">
+      <h2>Records</h2>
+      <div id="recordsTotals" class="grid"></div>
+      <button class="secondary" onclick="showScreen('dashboard')">Back</button>
+    </section>
+
+    <section id="history" class="screen">
+      <h2>History</h2>
+
+      <input
+        type="text"
+        id="historySearch"
+        placeholder="Search by date (example: 2026-07)"
+        oninput="updateApp()"
+      />
+
+      <div style="margin:12px 0;">
+        <button onclick="setHistoryFilter('all')">All</button>
+        <button onclick="setHistoryFilter('eggs')">🥚 Eggs</button>
+        <button onclick="setHistoryFilter('sale')">💰 Sales</button>
+      </div>
+
+      <div id="historyList"></div>
+
+      <button class="secondary" onclick="showScreen('dashboard')">Back</button>
+    </section>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
