@@ -576,3 +576,36 @@ function restoreData(event) {
 
   reader.readAsText(file);
 }
+async function cloudSave() {
+  await fetch(CLOUD_URL, {
+    method: "POST",
+    body: JSON.stringify({
+      action: "saveAll",
+      entries
+    })
+  });
+
+  alert("Cloud save complete!");
+}
+
+async function cloudLoad() {
+  const response = await fetch(CLOUD_URL);
+  const data = await response.json();
+
+  if (data.entries) {
+    entries = data.entries.map(e => ({
+      id: Number(e.id),
+      type: e.type,
+      date: e.date,
+      eggs: Number(e.eggs) || 0,
+      dozenSold: Number(e.dozenSold) || 0,
+      dozenPrice: Number(e.dozenPrice) || 0,
+      packSold: Number(e.packSold) || 0,
+      packPrice: Number(e.packPrice) || 0
+    }));
+
+    saveData();
+    updateApp();
+    alert("Cloud data loaded!");
+  }
+}
