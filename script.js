@@ -601,25 +601,47 @@ async function cloudSave(showAlert = true) {
   }
 }
 
-async function cloudLoad() {
-  const response = await fetch(CLOUD_URL);
-  const data = await response.json();
+async function cloudLoad(showAlert = true) {
+  try {
+    const response = await fetch(CLOUD_URL);
+    const data = await response.json();
 
-  if (data.entries) {
-    entries = data.entries.map(e => ({
-      id: Number(e.id),
-      type: e.type,
-      date: e.date,
-      eggs: Number(e.eggs) || 0,
-      dozenSold: Number(e.dozenSold) || 0,
-      dozenPrice: Number(e.dozenPrice) || 0,
-      packSold: Number(e.packSold) || 0,
-      packPrice: Number(e.packPrice) || 0
-    }));
+    if (data.entries) {
+      entries = data.entries.map(e => ({
+        id: Number(e.id),
+        type: e.type,
+        date: e.date,
+        eggs: Number(e.eggs) || 0,
+        dozenSold: Number(e.dozenSold) || 0,
+        dozenPrice: Number(e.dozenPrice) || 0,
+        packSold: Number(e.packSold) || 0,
+        packPrice: Number(e.packPrice) || 0
+      }));
 
-    
-    saveData();
-updateApp();
-alert("Cloud data loaded!");
+      saveData();
+      updateApp();
+
+      if (showAlert) {
+        alert("Cloud data loaded!");
+      }
+    }
+  } catch (error) {
+    console.error("Cloud load failed:", error);
+
+    if (showAlert) {
+      alert("Cloud load failed. Try again.");
+    }
+
+    updateApp();
   }
 }
+
+    
+  showScreen("dashboard");
+cloudLoad(false);
+
+setInterval(() => {
+  if (!editingId) {
+    cloudLoad(false);
+  }
+}, 30000);
