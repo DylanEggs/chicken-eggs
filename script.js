@@ -118,7 +118,7 @@ const data = await res.json();
     const cloudEntries = Array.isArray(data.entries) ? data.entries : [];
     const cloudFarm = data.farmSettings || {};
 
-    entries = mergeEntries(entries, cloudEntries);
+    entries = cloudEntries.map(normalizeEntry);
 
     if ((Number(cloudFarm.updatedAt) || 0) > (Number(farmSettings.updatedAt) || 0)) {
       farmSettings = {
