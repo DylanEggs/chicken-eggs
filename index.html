@@ -21,8 +21,8 @@
       <div class="heroCard">
         <div>
           <p class="eyebrow">Today’s Farm</p>
-          <h2>Egg Production</h2>
-          <p>Track collections, sales, records, and revenue.</p>
+          <h2 id="farmHeroName">Egg Production</h2>
+          <p id="farmHeroText">Track collections, sales, records, and revenue.</p>
         </div>
         <div class="heroIcon">🐔</div>
       </div>
@@ -32,6 +32,7 @@
       <div class="mainActions">
         <button onclick="showScreen('collect')">🥚 Collect Eggs</button>
         <button onclick="showScreen('sale')">💰 Record Sale</button>
+        <button onclick="showScreen('farm')">🐔 Farm Settings</button>
       </div>
     </section>
 
@@ -73,6 +74,34 @@
       <input type="number" id="packPrice" step="0.01" placeholder="0.00" />
 
       <button onclick="saveSale()">Save Sale</button>
+      <button class="secondary" onclick="showScreen('dashboard')">Back</button>
+    </section>
+
+    <section id="farm" class="screen">
+      <div class="screenTitle">
+        <button class="backMini" onclick="showScreen('dashboard')">←</button>
+        <h2>Farm Settings</h2>
+      </div>
+
+      <label>Farm Name</label>
+      <input type="text" id="farmName" placeholder="Example: Happy Hollow Farm" />
+
+      <label>Total Hens</label>
+      <input type="number" id="farmHens" placeholder="0" />
+
+      <label>Total Roosters</label>
+      <input type="number" id="farmRoosters" placeholder="0" />
+
+      <label>Daily Egg Goal</label>
+      <input type="number" id="farmEggGoal" placeholder="0" />
+
+      <label>Default Dozen Price</label>
+      <input type="number" id="farmDozenPrice" step="0.01" placeholder="0.00" />
+
+      <label>Default 18-Pack Price</label>
+      <input type="number" id="farmPackPrice" step="0.01" placeholder="0.00" />
+
+      <button onclick="saveFarmSettings()">Save Farm Settings</button>
       <button class="secondary" onclick="showScreen('dashboard')">Back</button>
     </section>
 
@@ -125,6 +154,7 @@
       <button onclick="showScreen('stats')">📊<span>Stats</span></button>
       <button onclick="showScreen('records')">🏆<span>Records</span></button>
       <button onclick="showScreen('history')">📋<span>History</span></button>
+      <button onclick="showScreen('farm')">🐔<span>Farm</span></button>
     </nav>
   </div>
 
