@@ -104,8 +104,16 @@ async function cloudLoad() {
   try {
     setSyncStatus("Syncing...");
 
-    const res = await fetch(CLOUD_URL + "?t=" + Date.now());
-    const data = await res.json();
+    const controller = new AbortController();
+const timeout = setTimeout(() => controller.abort(), 8000);
+
+const res = await fetch(CLOUD_URL + "?t=" + Date.now(), {
+  signal: controller.signal
+});
+
+clearTimeout(timeout);
+
+const data = await res.json();
 
     const cloudEntries = Array.isArray(data.entries) ? data.entries : [];
     const cloudFarm = data.farmSettings || {};
