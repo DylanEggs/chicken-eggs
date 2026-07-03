@@ -110,27 +110,25 @@ async function cloudLoad() {
     setSyncStatus("Syncing...");
 
     const controller = new AbortController();
-const timeout = setTimeout(() => controller.abort(), 8000);
+    const timeout = setTimeout(() => controller.abort(), 8000);
 
-const res = await fetch(CLOUD_URL + "?t=" + Date.now(), {
-  signal: controller.signal
-});
+    const res = await fetch(CLOUD_URL + "?t=" + Date.now(), {
+      signal: controller.signal
+    });
 
-clearTimeout(timeout);
+    clearTimeout(timeout);
 
-const data = await res.json();
+    const data = await res.json();
 
     const cloudEntries = Array.isArray(data.entries) ? data.entries : [];
     const cloudFarm = data.farmSettings || {};
 
     entries = mergeEntries(entries, cloudEntries);
-}
 
     if ((Number(cloudFarm.updatedAt) || 0) > (Number(farmSettings.updatedAt) || 0)) {
       farmSettings = {
         ...farmSettings,
-        ...cloudFarm,
-        eggsUsed: Number(cloudFarm.eggsUsed) || 0
+        ...cloudFarm
       };
     }
 
