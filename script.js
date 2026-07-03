@@ -640,8 +640,4 @@ async function cloudLoad(showAlert = true) {
   showScreen("dashboard");
 cloudLoad(false);
 
-setInterval(() => {
-  if (!editingId) {
-    cloudLoad(false);
-  }
-}, 30000);
+
