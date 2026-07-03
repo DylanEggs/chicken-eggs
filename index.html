@@ -4,30 +4,43 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Chicken Eggs</title>
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css?v=2" />
 </head>
 <body>
   <div class="app">
     <header class="appHeader">
       <div class="logo">🥚</div>
-      <h1>Chicken Eggs</h1>
-      <p id="todayText"></p>
+      <div>
+        <p class="eyebrow">Farm Dashboard</p>
+        <h1>Chicken Eggs</h1>
+        <p id="todayText"></p>
+      </div>
     </header>
 
     <section id="dashboard" class="screen active">
+      <div class="heroCard">
+        <div>
+          <p class="eyebrow">Today’s Farm</p>
+          <h2>Egg Production</h2>
+          <p>Track collections, sales, records, and revenue.</p>
+        </div>
+        <div class="heroIcon">🐔</div>
+      </div>
+
       <div id="dashboardTotals" class="dashboardGrid"></div>
 
       <div class="mainActions">
         <button onclick="showScreen('collect')">🥚 Collect Eggs</button>
         <button onclick="showScreen('sale')">💰 Record Sale</button>
-        <button onclick="showScreen('stats')">📊 Statistics</button>
-        <button onclick="showScreen('records')">🏆 Records</button>
-        <button onclick="showScreen('history')">📋 History</button>
       </div>
     </section>
 
     <section id="collect" class="screen">
-      <h2>Collect Eggs</h2>
+      <div class="screenTitle">
+        <button class="backMini" onclick="showScreen('dashboard')">←</button>
+        <h2>Collect Eggs</h2>
+      </div>
+
       <label>Date</label>
       <input type="date" id="eggDate" />
 
@@ -39,7 +52,11 @@
     </section>
 
     <section id="sale" class="screen">
-      <h2>Record Sale</h2>
+      <div class="screenTitle">
+        <button class="backMini" onclick="showScreen('dashboard')">←</button>
+        <h2>Record Sale</h2>
+      </div>
+
       <label>Date</label>
       <input type="date" id="saleDate" />
 
@@ -60,19 +77,30 @@
     </section>
 
     <section id="stats" class="screen">
-      <h2>Statistics</h2>
+      <div class="screenTitle">
+        <button class="backMini" onclick="showScreen('dashboard')">←</button>
+        <h2>Statistics</h2>
+      </div>
+
       <div id="statsTotals" class="grid"></div>
       <button class="secondary" onclick="showScreen('dashboard')">Back</button>
     </section>
 
     <section id="records" class="screen">
-      <h2>Records</h2>
+      <div class="screenTitle">
+        <button class="backMini" onclick="showScreen('dashboard')">←</button>
+        <h2>Records</h2>
+      </div>
+
       <div id="recordsTotals" class="grid"></div>
       <button class="secondary" onclick="showScreen('dashboard')">Back</button>
     </section>
 
     <section id="history" class="screen">
-      <h2>History</h2>
+      <div class="screenTitle">
+        <button class="backMini" onclick="showScreen('dashboard')">←</button>
+        <h2>History</h2>
+      </div>
 
       <input
         type="text"
@@ -91,6 +119,13 @@
 
       <button class="secondary" onclick="showScreen('dashboard')">Back</button>
     </section>
+
+    <nav class="bottomNav">
+      <button onclick="showScreen('dashboard')">🏠<span>Home</span></button>
+      <button onclick="showScreen('stats')">📊<span>Stats</span></button>
+      <button onclick="showScreen('records')">🏆<span>Records</span></button>
+      <button onclick="showScreen('history')">📋<span>History</span></button>
+    </nav>
   </div>
 
   <script src="script.js?v=4"></script>
