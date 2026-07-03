@@ -118,7 +118,9 @@ const data = await res.json();
     const cloudEntries = Array.isArray(data.entries) ? data.entries : [];
     const cloudFarm = data.farmSettings || {};
 
-    entries = cloudEntries.map(normalizeEntry);
+    if (cloudEntries.length > 0 || entries.length === 0) {
+  entries = cloudEntries.map(normalizeEntry);
+}
 
     if ((Number(cloudFarm.updatedAt) || 0) > (Number(farmSettings.updatedAt) || 0)) {
       farmSettings = {
@@ -304,13 +306,9 @@ function editEntry(id) {
 }
 
 function deleteEntry(id) {
-  if (!confirm("Delete this entry?")) return;
+  if (!confirm("Delete this one entry?")) return;
 
-  const entry = entries.find(e => e.id === String(id));
-  if (entry) {
-    entry.deleted = true;
-    entry.updatedAt = Date.now();
-  }
+  entries = entries.filter(e => e.id !== String(id));
 
   saveAndSync();
 }
