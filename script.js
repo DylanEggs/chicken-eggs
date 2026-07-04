@@ -11,10 +11,7 @@ let isSyncing = false;
 
 function localToday() {
   const d = new Date();
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 const today = localToday();
@@ -98,46 +95,49 @@ function readJSON(key, fallback) {
   }
 }
 
-function loadLocal() {
-  entries = readJSON(ENTRIES_KEY, []).map(normalizeEntry).filter(isValidEntry);
-  farmSettings = normalizeSettings(readJSON(SETTINGS_KEY, defaultSettings()));
-}
-
 function saveLocal() {
   entries = visibleEntries();
   localStorage.setItem(ENTRIES_KEY, JSON.stringify(entries));
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(farmSettings));
 }
 
-function mergeEntries(localList, cloudList) {
-  const map = new Map();
-
-  [...cloudList, ...localList].forEach(raw => {
-    const item = normalizeEntry(raw);
-    if (!isValidEntry(item)) return;
-
-    const old = map.get(item.id);
-    if (!old || number(item.updatedAt) >= number(old.updatedAt)) {
-      map.set(item.id, item);
-    }
-  });
-
-  return [...map.values()];
+function loadLocal() {
+  entries = readJSON(ENTRIES_KEY, []).map(normalizeEntry).filter(isValidEntry);
+  farmSettings = normalizeSettings(readJSON(SETTINGS_KEY, defaultSettings()));
 }
 
 function newestEntryTime(list) {
   return list.reduce((max, e) => Math.max(max, number(e.updatedAt)), 0);
 }
 
-async function fetchWithTimeout(url, options = {}, ms = 8000) {
+function newestLocalTime() {
+  return Math.max(newestEntryTime(entries), number(farmSettings.updatedAt));
+}
+
+function newestCloudTime(cloudEntries, cloudSettings) {
+  return Math.max(newestEntryTime(cloudEntries), number(cloudSettings.updatedAt));
+}
+
+async function fetchWithTimeout(url, options = {}, ms = 12000) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), ms);
-
   try {
     return await fetch(url, { ...options, signal: controller.signal });
   } finally {
     clearTimeout(timeout);
   }
+}
+
+function extractEntries(data) {
+  if (Array.isArray(data?.entries)) return data.entries;
+  if (Array.isArray(data?.data?.entries)) return data.data.entries;
+  return [];
+}
+
+function extractSettings(data) {
+  if (data?.farmSettings) return data.farmSettings;
+  if (data?.data?.farmSettings) return data.data.farmSettings;
+  return {};
 }
 
 async function cloudSave() {
@@ -174,30 +174,21 @@ async function cloudLoad() {
 
     const data = await res.json();
 
-    const cloudEntries = Array.isArray(data.entries)
-      ? data.entries.map(normalizeEntry).filter(isValidEntry)
-      : [];
+    const cloudEntries = extractEntries(data).map(normalizeEntry).filter(isValidEntry);
+    const cloudSettings = normalizeSettings(extractSettings(data));
 
-    const cloudSettings = normalizeSettings(data.farmSettings || {});
+    const localTime = newestLocalTime();
+    const cloudTime = newestCloudTime(cloudEntries, cloudSettings);
 
-    const localEntryTime = newestEntryTime(entries);
-    const cloudEntryTime = newestEntryTime(cloudEntries);
-
-    if (cloudEntryTime > localEntryTime) {
-      entries = mergeEntries(entries, cloudEntries);
-    } else if (localEntryTime > cloudEntryTime) {
+    if (localTime > cloudTime) {
       await cloudSave();
-    }
-
-    if (number(cloudSettings.updatedAt) > number(farmSettings.updatedAt)) {
+    } else {
+      entries = cloudEntries;
       farmSettings = cloudSettings;
-    } else if (number(farmSettings.updatedAt) > number(cloudSettings.updatedAt)) {
-      await cloudSave();
+      saveLocal();
+      loadFarmSettings();
+      updateApp();
     }
-
-    saveLocal();
-    loadFarmSettings();
-    updateApp();
 
     setSyncStatus("Synced " + new Date().toLocaleTimeString());
   } catch (err) {
@@ -391,7 +382,6 @@ function editEntry(id) {
 
 function deleteEntry(id) {
   if (!confirm("Delete this one entry?")) return;
-
   entries = entries.filter(e => e.id !== String(id));
   saveAndSync();
 }
