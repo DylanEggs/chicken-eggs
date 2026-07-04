@@ -1,5 +1,4 @@
-https://script.google.com/macros/s/AKfycbxxdjOJOKtlqajQgtR5DFMcK5xfeM43lkSTmgcIoVZ31WfKaagcylH_f_3w0E046val/exec
-const ENTRIES_KEY = "chickenEggEntriesV102";
+const CLOUD_URL = "https://script.google.com/macros/s/YOUR_NEW_DEPLOYMENT_ID/exec";const ENTRIES_KEY = "chickenEggEntriesV102";
 const SETTINGS_KEY = "chickenEggSettingsV102";
 
 let entries = [];
