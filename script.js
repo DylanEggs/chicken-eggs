@@ -1,5 +1,4 @@
-const CLOUD_URL = "https://script.google.com/macros/s/AKfycby3l3hzS7hDMUZWzT23KM7hp1X0MzqfG_2mPQMY-b0YPVy6G4VfgiH-EEVDbNnGFpr6IQ/exec";
-
+https://script.google.com/macros/s/AKfycbzf03bW6Q-QObbkMAqd8USeJgLx0o2eKb3O8YMySYyPi77xhqPOU2VxV15lWsO-SnsX/exec
 const ENTRIES_KEY = "chickenEggEntriesV102";
 const SETTINGS_KEY = "chickenEggSettingsV102";
 
