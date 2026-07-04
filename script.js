@@ -1,13 +1,13 @@
 const CLOUD_URL = "https://script.google.com/macros/s/AKfycby3l3hzS7hDMUZWzT23KM7hp1X0MzqfG_2mPQMY-b0YPVy6G4VfgiH-EEVDbNnGFpr6IQ/exec";
 
-const ENTRIES_KEY = "chickenEggEntriesV101";
-const SETTINGS_KEY = "chickenEggSettingsV101";
+const ENTRIES_KEY = "chickenEggEntriesV102";
+const SETTINGS_KEY = "chickenEggSettingsV102";
 
 let entries = [];
 let farmSettings = defaultSettings();
 let editingId = null;
 let historyFilter = "all";
-let isLoadingCloud = false;
+let isSyncing = false;
 
 const today = new Date().toISOString().split("T")[0];
 
@@ -23,26 +23,38 @@ function defaultSettings() {
   };
 }
 
+function number(v) {
+  return Number(v) || 0;
+}
+
 function newId() {
   return crypto?.randomUUID ? crypto.randomUUID() : "id-" + Date.now() + "-" + Math.random().toString(36).slice(2);
 }
 
-function number(value) {
-  return Number(value) || 0;
-}
-
-function cleanDate(value) {
-  if (!value) return today;
-  const text = String(value).split("T")[0];
-  return /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : today;
+function cleanDate(v) {
+  if (!v) return today;
+  const d = String(v).split("T")[0];
+  return /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : today;
 }
 
 function setSyncStatus(text) {
-  const box = document.getElementById("syncStatus");
-  if (box) box.textContent = text;
+  const el = document.getElementById("syncStatus");
+  if (el) el.textContent = text;
 }
 
-function normalizeEntry(e) {
+function normalizeSettings(s = {}) {
+  return {
+    farmName: s.farmName || "",
+    hens: number(s.hens),
+    roosters: number(s.roosters),
+    eggGoal: number(s.eggGoal),
+    dozenPrice: number(s.dozenPrice),
+    packPrice: number(s.packPrice),
+    updatedAt: number(s.updatedAt)
+  };
+}
+
+function normalizeEntry(e = {}) {
   const type = e.type === "sale" ? "sale" : "eggs";
 
   return {
@@ -78,19 +90,6 @@ function readJSON(key, fallback) {
   }
 }
 
-function normalizeSettings(s) {
-  s = s || {};
-  return {
-    farmName: s.farmName || "",
-    hens: number(s.hens),
-    roosters: number(s.roosters),
-    eggGoal: number(s.eggGoal),
-    dozenPrice: number(s.dozenPrice),
-    packPrice: number(s.packPrice),
-    updatedAt: number(s.updatedAt)
-  };
-}
-
 function loadLocal() {
   entries = readJSON(ENTRIES_KEY, []).map(normalizeEntry).filter(isValidEntry);
   farmSettings = normalizeSettings(readJSON(SETTINGS_KEY, defaultSettings()));
@@ -102,15 +101,15 @@ function saveLocal() {
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(farmSettings));
 }
 
-function mergeEntries(a, b) {
+function mergeEntries(localList, cloudList) {
   const map = new Map();
 
-  [...a, ...b].forEach(raw => {
+  [...cloudList, ...localList].forEach(raw => {
     const item = normalizeEntry(raw);
     if (!isValidEntry(item)) return;
 
     const old = map.get(item.id);
-    if (!old || item.updatedAt >= old.updatedAt) {
+    if (!old || number(item.updatedAt) >= number(old.updatedAt)) {
       map.set(item.id, item);
     }
   });
@@ -118,9 +117,8 @@ function mergeEntries(a, b) {
   return [...map.values()];
 }
 
-function getNewestTime(list, settings) {
-  const entryTime = list.reduce((max, e) => Math.max(max, number(e.updatedAt)), 0);
-  return Math.max(entryTime, number(settings.updatedAt));
+function newestEntryTime(list) {
+  return list.reduce((max, e) => Math.max(max, number(e.updatedAt)), 0);
 }
 
 async function fetchWithTimeout(url, options = {}, ms = 8000) {
@@ -155,8 +153,8 @@ async function cloudSave() {
 }
 
 async function cloudLoad() {
-  if (isLoadingCloud) return;
-  isLoadingCloud = true;
+  if (isSyncing) return;
+  isSyncing = true;
 
   try {
     setSyncStatus("Syncing...");
@@ -168,13 +166,25 @@ async function cloudLoad() {
 
     const data = await res.json();
 
-    const cloudEntries = Array.isArray(data.entries) ? data.entries.map(normalizeEntry).filter(isValidEntry) : [];
+    const cloudEntries = Array.isArray(data.entries)
+      ? data.entries.map(normalizeEntry).filter(isValidEntry)
+      : [];
+
     const cloudSettings = normalizeSettings(data.farmSettings || {});
 
-    entries = mergeEntries(entries, cloudEntries);
+    const localEntryTime = newestEntryTime(entries);
+    const cloudEntryTime = newestEntryTime(cloudEntries);
 
-    if (getNewestTime(cloudEntries, cloudSettings) >= getNewestTime(entries, farmSettings)) {
+    if (cloudEntryTime > localEntryTime) {
+      entries = mergeEntries(entries, cloudEntries);
+    } else if (localEntryTime > cloudEntryTime) {
+      await cloudSave();
+    }
+
+    if (number(cloudSettings.updatedAt) > number(farmSettings.updatedAt)) {
       farmSettings = cloudSettings;
+    } else if (number(farmSettings.updatedAt) > number(cloudSettings.updatedAt)) {
+      await cloudSave();
     }
 
     saveLocal();
@@ -187,7 +197,7 @@ async function cloudLoad() {
     setSyncStatus("Offline/local data shown");
     updateApp();
   } finally {
-    isLoadingCloud = false;
+    isSyncing = false;
   }
 }
 
@@ -236,9 +246,7 @@ function showScreen(id) {
 
   document.querySelectorAll(".bottomNav button").forEach(btn => {
     btn.classList.remove("navActive");
-    if (btn.getAttribute("onclick")?.includes(`'${id}'`)) {
-      btn.classList.add("navActive");
-    }
+    if (btn.getAttribute("onclick")?.includes(`'${id}'`)) btn.classList.add("navActive");
   });
 
   if (id === "sale") {
@@ -429,7 +437,6 @@ function updateApp() {
 
   list.forEach(e => {
     const r = revenue(e);
-
     lifeEggs += number(e.eggs);
     lifeRev += r;
     totalEggsSold += eggsSold(e);
@@ -452,10 +459,6 @@ function updateApp() {
 
   const eggDays = new Set(list.filter(e => e.type === "eggs").map(e => e.date)).size || 1;
   const avg = lifeEggs / eggDays;
-
-  const predictedWeek = avg * 7;
-  const predictedMonth = avg * 30;
-  const predictedYear = avg * 365;
 
   const bestEggDay = list.filter(e => e.type === "eggs")
     .reduce((best, e) => number(e.eggs) > number(best.eggs) ? e : best, {});
@@ -497,9 +500,9 @@ function updateApp() {
     ${statCard("💰", "Month Revenue", "$" + monthRev.toFixed(2), "this month")}
     ${statCard("📆", "Year Eggs", yearEggs, "this year")}
     ${statCard("🏦", "Year Revenue", "$" + yearRev.toFixed(2), "this year")}
-    ${statCard("🔮", "Predicted Week", predictedWeek.toFixed(0), "estimated eggs")}
-    ${statCard("🔮", "Predicted Month", predictedMonth.toFixed(0), "estimated eggs")}
-    ${statCard("🚀", "Predicted Year", predictedYear.toFixed(0), "estimated eggs")}
+    ${statCard("🔮", "Predicted Week", (avg * 7).toFixed(0), "estimated eggs")}
+    ${statCard("🔮", "Predicted Month", (avg * 30).toFixed(0), "estimated eggs")}
+    ${statCard("🚀", "Predicted Year", (avg * 365).toFixed(0), "estimated eggs")}
     ${statCard("💰", "Lifetime Revenue", "$" + lifeRev.toFixed(2), "all-time sales")}
   `;
 
@@ -521,9 +524,7 @@ function updateApp() {
       <strong>${e.type === "eggs" ? "🥚 Egg Collection" : "💰 Egg Sale"}</strong><br>
       <span>${e.date}</span><br>
 
-      ${e.type === "eggs" ? `
-        Eggs Collected: <strong>${e.eggs}</strong>
-      ` : ""}
+      ${e.type === "eggs" ? `Eggs Collected: <strong>${e.eggs}</strong>` : ""}
 
       ${e.type === "sale" ? `
         Dozen Sold: <strong>${e.dozenSold}</strong> @ $${number(e.dozenPrice).toFixed(2)}<br>
@@ -562,7 +563,10 @@ function restoreData(event) {
     try {
       const backup = JSON.parse(e.target.result);
 
-      entries = Array.isArray(backup.entries) ? backup.entries.map(normalizeEntry).filter(isValidEntry) : [];
+      entries = Array.isArray(backup.entries)
+        ? backup.entries.map(normalizeEntry).filter(isValidEntry)
+        : [];
+
       farmSettings = normalizeSettings(backup.farmSettings);
       farmSettings.updatedAt = Date.now();
 
