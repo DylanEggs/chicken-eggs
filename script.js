@@ -1,16 +1,13 @@
 const CLOUD_URL = "https://script.google.com/macros/s/AKfycby3l3hzS7hDMUZWzT23KM7hp1X0MzqfG_2mPQMY-b0YPVy6G4VfgiH-EEVDbNnGFpr6IQ/exec";
 
-const ENTRIES_KEY = "chickenEggEntriesV100";
-const SETTINGS_KEY = "chickenEggSettingsV100";
-const DELETED_KEY = "chickenEggDeletedIdsV100";
+const ENTRIES_KEY = "chickenEggEntriesV101";
+const SETTINGS_KEY = "chickenEggSettingsV101";
 
 let entries = [];
 let farmSettings = defaultSettings();
-let deletedIds = [];
 let editingId = null;
 let historyFilter = "all";
 let isLoadingCloud = false;
-let lastSaveAt = 0;
 
 const today = new Date().toISOString().split("T")[0];
 
@@ -22,18 +19,16 @@ function defaultSettings() {
     eggGoal: 0,
     dozenPrice: 0,
     packPrice: 0,
-    eggsEaten: 0,
-    eggsHatched: 0,
-    eggsGiven: 0,
-    eggsBroken: 0,
-    updatedAt: 0,
-    resetAt: 0
+    updatedAt: 0
   };
 }
 
 function newId() {
-  if (crypto && crypto.randomUUID) return crypto.randomUUID();
-  return "id-" + Date.now() + "-" + Math.random().toString(36).slice(2);
+  return crypto?.randomUUID ? crypto.randomUUID() : "id-" + Date.now() + "-" + Math.random().toString(36).slice(2);
+}
+
+function number(value) {
+  return Number(value) || 0;
 }
 
 function cleanDate(value) {
@@ -42,31 +37,9 @@ function cleanDate(value) {
   return /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : today;
 }
 
-function number(value) {
-  return Number(value) || 0;
-}
-
 function setSyncStatus(text) {
   const box = document.getElementById("syncStatus");
   if (box) box.textContent = text;
-}
-
-function normalizeSettings(s) {
-  s = s || {};
-  return {
-    farmName: s.farmName || "",
-    hens: number(s.hens),
-    roosters: number(s.roosters),
-    eggGoal: number(s.eggGoal),
-    dozenPrice: number(s.dozenPrice),
-    packPrice: number(s.packPrice),
-    eggsEaten: number(s.eggsEaten),
-    eggsHatched: number(s.eggsHatched),
-    eggsGiven: number(s.eggsGiven),
-    eggsBroken: number(s.eggsBroken),
-    updatedAt: number(s.updatedAt),
-    resetAt: number(s.resetAt)
-  };
 }
 
 function normalizeEntry(e) {
@@ -87,7 +60,7 @@ function normalizeEntry(e) {
 }
 
 function isValidEntry(e) {
-  if (!e || deletedIds.includes(String(e.id))) return false;
+  if (!e) return false;
   if (e.type === "eggs") return number(e.eggs) > 0;
   if (e.type === "sale") return number(e.dozenSold) > 0 || number(e.packSold) > 0;
   return false;
@@ -105,60 +78,49 @@ function readJSON(key, fallback) {
   }
 }
 
-function loadLocal() {
-  const localEntries = readJSON(ENTRIES_KEY, []);
-  const localSettings = readJSON(SETTINGS_KEY, defaultSettings());
-  const localDeleted = readJSON(DELETED_KEY, []);
+function normalizeSettings(s) {
+  s = s || {};
+  return {
+    farmName: s.farmName || "",
+    hens: number(s.hens),
+    roosters: number(s.roosters),
+    eggGoal: number(s.eggGoal),
+    dozenPrice: number(s.dozenPrice),
+    packPrice: number(s.packPrice),
+    updatedAt: number(s.updatedAt)
+  };
+}
 
-  entries = Array.isArray(localEntries) ? localEntries.map(normalizeEntry).filter(isValidEntry) : [];
-  farmSettings = normalizeSettings(localSettings);
-  deletedIds = Array.isArray(localDeleted) ? localDeleted.map(String) : [];
+function loadLocal() {
+  entries = readJSON(ENTRIES_KEY, []).map(normalizeEntry).filter(isValidEntry);
+  farmSettings = normalizeSettings(readJSON(SETTINGS_KEY, defaultSettings()));
 }
 
 function saveLocal() {
   entries = visibleEntries();
   localStorage.setItem(ENTRIES_KEY, JSON.stringify(entries));
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(farmSettings));
-  localStorage.setItem(DELETED_KEY, JSON.stringify(deletedIds));
 }
 
-function getLocalUpdatedAt() {
-  const entryTime = entries.reduce((max, e) => Math.max(max, number(e.updatedAt)), 0);
-  return Math.max(entryTime, number(farmSettings.updatedAt), number(farmSettings.resetAt));
-}
-
-function getCloudUpdatedAt(cloudEntries, cloudSettings) {
-  const entryTime = cloudEntries.reduce((max, e) => Math.max(max, number(e.updatedAt)), 0);
-  return Math.max(entryTime, number(cloudSettings.updatedAt), number(cloudSettings.resetAt));
-}
-
-function extractCloudEntries(data) {
-  if (Array.isArray(data)) return data;
-  if (Array.isArray(data.entries)) return data.entries;
-  if (data.data && Array.isArray(data.data.entries)) return data.data.entries;
-  return [];
-}
-
-function extractCloudSettings(data) {
-  if (data.farmSettings) return data.farmSettings;
-  if (data.data && data.data.farmSettings) return data.data.farmSettings;
-  return {};
-}
-
-function mergeEntries(localList, cloudList) {
+function mergeEntries(a, b) {
   const map = new Map();
 
-  [...localList, ...cloudList].forEach(raw => {
+  [...a, ...b].forEach(raw => {
     const item = normalizeEntry(raw);
     if (!isValidEntry(item)) return;
 
     const old = map.get(item.id);
-    if (!old || number(item.updatedAt) >= number(old.updatedAt)) {
+    if (!old || item.updatedAt >= old.updatedAt) {
       map.set(item.id, item);
     }
   });
 
-  return [...map.values()].filter(isValidEntry);
+  return [...map.values()];
+}
+
+function getNewestTime(list, settings) {
+  const entryTime = list.reduce((max, e) => Math.max(max, number(e.updatedAt)), 0);
+  return Math.max(entryTime, number(settings.updatedAt));
 }
 
 async function fetchWithTimeout(url, options = {}, ms = 8000) {
@@ -166,10 +128,7 @@ async function fetchWithTimeout(url, options = {}, ms = 8000) {
   const timeout = setTimeout(() => controller.abort(), ms);
 
   try {
-    return await fetch(url, {
-      ...options,
-      signal: controller.signal
-    });
+    return await fetch(url, { ...options, signal: controller.signal });
   } finally {
     clearTimeout(timeout);
   }
@@ -177,7 +136,6 @@ async function fetchWithTimeout(url, options = {}, ms = 8000) {
 
 async function cloudSave() {
   try {
-    lastSaveAt = Date.now();
     setSyncStatus("Saving...");
 
     await fetchWithTimeout(CLOUD_URL, {
@@ -209,23 +167,14 @@ async function cloudLoad() {
     });
 
     const data = await res.json();
-    const cloudEntries = extractCloudEntries(data).map(normalizeEntry).filter(isValidEntry);
-    const cloudSettings = normalizeSettings(extractCloudSettings(data));
 
-    const cloudUpdatedAt = getCloudUpdatedAt(cloudEntries, cloudSettings);
-    const localUpdatedAt = getLocalUpdatedAt();
+    const cloudEntries = Array.isArray(data.entries) ? data.entries.map(normalizeEntry).filter(isValidEntry) : [];
+    const cloudSettings = normalizeSettings(data.farmSettings || {});
 
-    if (number(cloudSettings.resetAt) > number(farmSettings.resetAt)) {
-      entries = cloudEntries;
+    entries = mergeEntries(entries, cloudEntries);
+
+    if (getNewestTime(cloudEntries, cloudSettings) >= getNewestTime(entries, farmSettings)) {
       farmSettings = cloudSettings;
-      deletedIds = [];
-    } else if (cloudUpdatedAt > localUpdatedAt) {
-      entries = mergeEntries(entries, cloudEntries);
-      if (number(cloudSettings.updatedAt) >= number(farmSettings.updatedAt)) {
-        farmSettings = cloudSettings;
-      }
-    } else if (localUpdatedAt > cloudUpdatedAt && Date.now() - lastSaveAt > 3000) {
-      await cloudSave();
     }
 
     saveLocal();
@@ -255,10 +204,30 @@ function loadFarmSettings() {
   document.getElementById("farmEggGoal").value = farmSettings.eggGoal || "";
   document.getElementById("farmDozenPrice").value = farmSettings.dozenPrice || "";
   document.getElementById("farmPackPrice").value = farmSettings.packPrice || "";
-  document.getElementById("farmEggsEaten").value = farmSettings.eggsEaten || "";
-  document.getElementById("farmEggsHatched").value = farmSettings.eggsHatched || "";
-  document.getElementById("farmEggsGiven").value = farmSettings.eggsGiven || "";
-  document.getElementById("farmEggsBroken").value = farmSettings.eggsBroken || "";
+}
+
+function saveFarmSettings() {
+  farmSettings = {
+    farmName: document.getElementById("farmName").value,
+    hens: number(document.getElementById("farmHens").value),
+    roosters: number(document.getElementById("farmRoosters").value),
+    eggGoal: number(document.getElementById("farmEggGoal").value),
+    dozenPrice: number(document.getElementById("farmDozenPrice").value),
+    packPrice: number(document.getElementById("farmPackPrice").value),
+    updatedAt: Date.now()
+  };
+
+  saveAndSync();
+  showScreen("dashboard");
+}
+
+function deleteAllEntries() {
+  if (!confirm("Delete ALL entries? Farm settings will stay.")) return;
+  if (!confirm("This clears history on all synced devices. Continue?")) return;
+
+  entries = [];
+  saveAndSync();
+  showScreen("dashboard");
 }
 
 function showScreen(id) {
@@ -289,39 +258,6 @@ function setHistoryFilter(filter) {
   updateApp();
 }
 
-function saveFarmSettings() {
-  farmSettings = {
-    farmName: document.getElementById("farmName").value,
-    hens: number(document.getElementById("farmHens").value),
-    roosters: number(document.getElementById("farmRoosters").value),
-    eggGoal: number(document.getElementById("farmEggGoal").value),
-    dozenPrice: number(document.getElementById("farmDozenPrice").value),
-    packPrice: number(document.getElementById("farmPackPrice").value),
-    eggsEaten: number(document.getElementById("farmEggsEaten").value),
-    eggsHatched: number(document.getElementById("farmEggsHatched").value),
-    eggsGiven: number(document.getElementById("farmEggsGiven").value),
-    eggsBroken: number(document.getElementById("farmEggsBroken").value),
-    updatedAt: Date.now(),
-    resetAt: number(farmSettings.resetAt)
-  };
-
-  saveAndSync();
-  showScreen("dashboard");
-}
-
-function deleteAllEntries() {
-  if (!confirm("Delete ALL entries? Farm settings will stay.")) return;
-  if (!confirm("This clears history on all synced devices. Continue?")) return;
-
-  deletedIds = entries.map(e => String(e.id));
-  entries = [];
-  farmSettings.resetAt = Date.now();
-  farmSettings.updatedAt = Date.now();
-
-  saveAndSync();
-  showScreen("dashboard");
-}
-
 function saveEggs() {
   const eggs = number(document.getElementById("eggCount").value);
   const date = cleanDate(document.getElementById("eggDate").value);
@@ -334,14 +270,16 @@ function saveEggs() {
   if (editingId) {
     const entry = entries.find(e => e.id === editingId);
     if (entry) {
-      entry.type = "eggs";
-      entry.date = date;
-      entry.eggs = eggs;
-      entry.dozenSold = 0;
-      entry.dozenPrice = 0;
-      entry.packSold = 0;
-      entry.packPrice = 0;
-      entry.updatedAt = Date.now();
+      Object.assign(entry, {
+        type: "eggs",
+        date,
+        eggs,
+        dozenSold: 0,
+        dozenPrice: 0,
+        packSold: 0,
+        packPrice: 0,
+        updatedAt: Date.now()
+      });
     }
     editingId = null;
   } else {
@@ -379,14 +317,16 @@ function saveSale() {
   if (editingId) {
     const entry = entries.find(e => e.id === editingId);
     if (entry) {
-      entry.type = "sale";
-      entry.date = date;
-      entry.eggs = 0;
-      entry.dozenSold = dozenSold;
-      entry.dozenPrice = dozenPrice;
-      entry.packSold = packSold;
-      entry.packPrice = packPrice;
-      entry.updatedAt = Date.now();
+      Object.assign(entry, {
+        type: "sale",
+        date,
+        eggs: 0,
+        dozenSold,
+        dozenPrice,
+        packSold,
+        packPrice,
+        updatedAt: Date.now()
+      });
     }
     editingId = null;
   } else {
@@ -436,9 +376,7 @@ function editEntry(id) {
 function deleteEntry(id) {
   if (!confirm("Delete this one entry?")) return;
 
-  deletedIds.push(String(id));
   entries = entries.filter(e => e.id !== String(id));
-
   saveAndSync();
 }
 
@@ -512,11 +450,6 @@ function updateApp() {
     }
   });
 
-  const usedTotal = number(farmSettings.eggsEaten) + number(farmSettings.eggsHatched) + number(farmSettings.eggsGiven) + number(farmSettings.eggsBroken);
-  const eggsAvailable = lifeEggs - totalEggsSold - usedTotal;
-  const dozensAvailable = Math.floor(Math.max(eggsAvailable, 0) / 12);
-  const totalDozensProduced = Math.floor(lifeEggs / 12);
-
   const eggDays = new Set(list.filter(e => e.type === "eggs").map(e => e.date)).size || 1;
   const avg = lifeEggs / eggDays;
 
@@ -524,16 +457,13 @@ function updateApp() {
   const predictedMonth = avg * 30;
   const predictedYear = avg * 365;
 
-  const bestEggDay = list
-    .filter(e => e.type === "eggs")
+  const bestEggDay = list.filter(e => e.type === "eggs")
     .reduce((best, e) => number(e.eggs) > number(best.eggs) ? e : best, {});
 
-  const bestSaleDay = list
-    .filter(e => e.type === "sale")
+  const bestSaleDay = list.filter(e => e.type === "sale")
     .reduce((best, e) => revenue(e) > revenue(best) ? e : best, {});
 
-  const eggsToday = list
-    .filter(e => e.type === "eggs" && e.date === today)
+  const eggsToday = list.filter(e => e.type === "eggs" && e.date === today)
     .reduce((sum, e) => sum + number(e.eggs), 0);
 
   const hens = number(farmSettings.hens);
@@ -547,14 +477,12 @@ function updateApp() {
 
   document.getElementById("dashboardTotals").innerHTML = `
     ${statCard("🥚", "Lifetime Eggs", lifeEggs, "since day 1")}
-    ${statCard("📦", "Eggs Available", eggsAvailable, "ready to use or sell")}
-    ${statCard("🍳", "Eggs Used", usedTotal, "eaten, hatched, given, broken")}
-    ${statCard("💰", "Lifetime Revenue", "$" + lifeRev.toFixed(2), "all-time sales")}
     ${statCard("📅", "This Week Eggs", weekEggs, "eggs collected")}
-    ${statCard("💵", "This Week Revenue", "$" + weekRev.toFixed(2), "sales this week")}
     ${statCard("🗓️", "This Month Eggs", monthEggs, "eggs collected")}
-    ${statCard("💰", "This Month Revenue", "$" + monthRev.toFixed(2), "sales this month")}
     ${statCard("📆", "This Year Eggs", yearEggs, "eggs collected")}
+    ${statCard("💰", "Lifetime Revenue", "$" + lifeRev.toFixed(2), "all-time sales")}
+    ${statCard("💵", "This Week Revenue", "$" + weekRev.toFixed(2), "sales this week")}
+    ${statCard("💰", "This Month Revenue", "$" + monthRev.toFixed(2), "sales this month")}
     ${statCard("🏦", "This Year Revenue", "$" + yearRev.toFixed(2), "sales this year")}
     ${statCard("🏆", "Best Day", bestEggDay.eggs || 0, bestEggDay.date || "No data yet")}
     ${statCard("📊", "Avg / Day", avg.toFixed(1), "collection days")}
@@ -562,14 +490,7 @@ function updateApp() {
 
   document.getElementById("statsTotals").innerHTML = `
     ${statCard("🥚", "Lifetime Eggs", lifeEggs, "all collected eggs")}
-    ${statCard("📦", "Eggs Available", eggsAvailable, "after sales and used eggs")}
-    ${statCard("📦", "Dozens Available", dozensAvailable, "full dozens")}
     ${statCard("🛒", "Total Eggs Sold", totalEggsSold, "all sales")}
-    ${statCard("🍳", "Eggs Eaten", farmSettings.eggsEaten, "inventory adjustment")}
-    ${statCard("🐣", "Eggs Hatched", farmSettings.eggsHatched, "inventory adjustment")}
-    ${statCard("🎁", "Eggs Given Away", farmSettings.eggsGiven, "inventory adjustment")}
-    ${statCard("💔", "Broken Eggs", farmSettings.eggsBroken, "inventory adjustment")}
-    ${statCard("🥚", "Dozens Produced", totalDozensProduced, "lifetime")}
     ${statCard("📅", "Week Eggs", weekEggs, "this week")}
     ${statCard("💵", "Week Revenue", "$" + weekRev.toFixed(2), "this week")}
     ${statCard("🗓️", "Month Eggs", monthEggs, "this month")}
@@ -579,6 +500,7 @@ function updateApp() {
     ${statCard("🔮", "Predicted Week", predictedWeek.toFixed(0), "estimated eggs")}
     ${statCard("🔮", "Predicted Month", predictedMonth.toFixed(0), "estimated eggs")}
     ${statCard("🚀", "Predicted Year", predictedYear.toFixed(0), "estimated eggs")}
+    ${statCard("💰", "Lifetime Revenue", "$" + lifeRev.toFixed(2), "all-time sales")}
   `;
 
   document.getElementById("recordsTotals").innerHTML = `
@@ -620,7 +542,6 @@ function backupData() {
   const backup = {
     entries: visibleEntries(),
     farmSettings,
-    deletedIds,
     backupDate: new Date().toISOString()
   };
 
@@ -644,7 +565,6 @@ function restoreData(event) {
       entries = Array.isArray(backup.entries) ? backup.entries.map(normalizeEntry).filter(isValidEntry) : [];
       farmSettings = normalizeSettings(backup.farmSettings);
       farmSettings.updatedAt = Date.now();
-      deletedIds = Array.isArray(backup.deletedIds) ? backup.deletedIds.map(String) : [];
 
       saveAndSync();
       loadFarmSettings();
