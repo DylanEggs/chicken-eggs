@@ -203,6 +203,16 @@ function saveAndSync() {
   saveLocal();
   updateApp();
   cloudSave();
+
+  if (window.ChickenEggsDB?.saveFarmSettings) {
+    ChickenEggsDB.saveFarmSettings(farmSettings).catch(console.error);
+  }
+
+  if (window.ChickenEggsDB?.saveEntry) {
+    visibleEntries().forEach(entry => {
+      ChickenEggsDB.saveEntry(entry).catch(console.error);
+    });
+  }
 }
 
 function loadFarmSettings() {
