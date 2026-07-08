@@ -1,25 +1,11 @@
 console.log("✅ Database layer loaded");
 
 window.ChickenEggsDB = {
-  isReady() {
-    return !!window.FirestoreDB && !!window.FirebaseUser;
-  },
-
-  getStatus() {
-    return {
-      firestoreReady: !!window.FirestoreDB,
-      userReady: !!window.FirebaseUser
-    };
-  },
-
   async waitUntilReady() {
     return new Promise(resolve => {
       const check = () => {
-        if (window.FirestoreDB && window.FirebaseUser) {
-          resolve(true);
-        } else {
-          setTimeout(check, 100);
-        }
+        if (window.FirestoreDB && window.FirebaseUser) resolve(true);
+        else setTimeout(check, 100);
       };
       check();
     });
@@ -41,53 +27,32 @@ window.ChickenEggsDB = {
     console.log("✅ Farm settings saved to Firestore");
   },
 
-  async loadFarmSettings() {
-    const { doc, getDoc } = await import(
-      "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js"
-    );
-
-    await this.waitUntilReady();
-
-    const snap = await getDoc(doc(window.FirestoreDB, "farm", "settings"));
-
-    if (snap.exists()) {
-      console.log("✅ Farm settings loaded from Firestore:", snap.data());
-      return snap.data();
-    }
-
-    console.log("ℹ️ No farm settings found in Firestore yet");
-    return null;
-  },
-
-  async testFirestoreWrite() {
+  async saveEntry(entry) {
     const { doc, setDoc, serverTimestamp } = await import(
       "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js"
     );
 
     await this.waitUntilReady();
 
-    await setDoc(doc(window.FirestoreDB, "test", "connection"), {
-      message: "Hello from Chicken Eggs",
-      updatedAt: serverTimestamp()
+    await setDoc(doc(window.FirestoreDB, "entries", String(entry.id)), {
+      ...entry,
+      updatedAt: Date.now(),
+      serverUpdatedAt: serverTimestamp()
     });
 
-    console.log("✅ Firestore test write successful");
+    console.log("✅ Entry saved to Firestore:", entry.id);
   },
 
-  async testFirestoreRead() {
-    const { doc, getDoc } = await import(
+  async deleteEntry(id) {
+    const { doc, deleteDoc } = await import(
       "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js"
     );
 
     await this.waitUntilReady();
 
-    const snap = await getDoc(doc(window.FirestoreDB, "test", "connection"));
+    await deleteDoc(doc(window.FirestoreDB, "entries", String(id)));
 
-    if (snap.exists()) {
-      console.log("✅ Firestore read successful:", snap.data());
-    } else {
-      console.log("❌ Test document not found");
-    }
+    console.log("✅ Entry deleted from Firestore:", id);
   }
 };
 
