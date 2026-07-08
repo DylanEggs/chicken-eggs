@@ -28,6 +28,27 @@ window.ChickenEggsDB = {
     });
 
     console.log("✅ Firestore test write successful");
+  },
+
+  async testFirestoreRead() {
+    const { doc, getDoc } = await import(
+      "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js"
+    );
+
+    if (!window.FirestoreDB) {
+      console.error("❌ Firestore is not ready");
+      return;
+    }
+
+    const snap = await getDoc(
+      doc(window.FirestoreDB, "test", "connection")
+    );
+
+    if (snap.exists()) {
+      console.log("✅ Firestore read successful:", snap.data());
+    } else {
+      console.log("❌ Test document not found");
+    }
   }
 };
 
