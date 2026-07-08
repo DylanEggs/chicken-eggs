@@ -226,6 +226,14 @@ function saveFarmSettings() {
   };
 
   saveAndSync();
+
+  if (window.ChickenEggsDB?.saveFarmSettings) {
+    ChickenEggsDB.saveFarmSettings(farmSettings).catch(err => {
+      console.error("Firestore farm settings save failed:", err);
+      setSyncStatus("Saved locally, Firestore failed");
+    });
+  }
+
   showScreen("dashboard");
 }
 
