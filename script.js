@@ -591,11 +591,8 @@ document.addEventListener("DOMContentLoaded", () => {
   showScreen("dashboard");
 
   cloudLoad();
-  setInterval(cloudLoad, 15000);
 
-  document.addEventListener("visibilitychange", () => {
-    if (!document.hidden) cloudLoad();
-  });
-
-  window.addEventListener("focus", cloudLoad);
+// No automatic polling.
+// The app now saves/syncs only when you add, edit, delete, restore,
+// or save farm settings.
 });
