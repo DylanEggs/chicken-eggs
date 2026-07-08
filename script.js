@@ -338,6 +338,55 @@ function saveSale() {
     return;
   }
 
+  let savedEntry;
+
+  if (editingId) {
+    const entry = entries.find(e => e.id === editingId);
+    if (entry) {
+      Object.assign(entry, {
+        type: "sale",
+        date,
+        eggs: 0,
+        dozenSold,
+        dozenPrice,
+        packSold,
+        packPrice,
+        updatedAt: Date.now()
+      });
+      savedEntry = entry;
+    }
+    editingId = null;
+  } else {
+    savedEntry = {
+      id: newId(),
+      type: "sale",
+      date,
+      eggs: 0,
+      dozenSold,
+      dozenPrice,
+      packSold,
+      packPrice,
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+
+    entries.push(savedEntry);
+  }
+
+  document.getElementById("dozenSold").value = "";
+  document.getElementById("packSold").value = "";
+  document.getElementById("dozenPrice").value = farmSettings.dozenPrice || "";
+  document.getElementById("packPrice").value = farmSettings.packPrice || "";
+
+  saveAndSync();
+
+  if (savedEntry && window.ChickenEggsDB?.saveEntry) {
+    ChickenEggsDB.saveEntry(savedEntry).catch(console.error);
+  }
+
+  showScreen("dashboard");
+}
+
   if (editingId) {
     const entry = entries.find(e => e.id === editingId);
     if (entry) {
