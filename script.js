@@ -2,6 +2,7 @@ const CLOUD_URL = "https://script.google.com/macros/s/AKfycbxxdjOJOKtlqajQgtR5DF
 
 const ENTRIES_KEY = "chickenEggEntriesV102";
 const SETTINGS_KEY = "chickenEggSettingsV102";
+
 let entries = [];
 let farmSettings = defaultSettings();
 let editingId = null;
@@ -105,18 +106,6 @@ function loadLocal() {
   farmSettings = normalizeSettings(readJSON(SETTINGS_KEY, defaultSettings()));
 }
 
-function newestEntryTime(list) {
-  return list.reduce((max, e) => Math.max(max, number(e.updatedAt)), 0);
-}
-
-function newestLocalTime() {
-  return Math.max(newestEntryTime(entries), number(farmSettings.updatedAt));
-}
-
-function newestCloudTime(cloudEntries, cloudSettings) {
-  return Math.max(newestEntryTime(cloudEntries), number(cloudSettings.updatedAt));
-}
-
 async function fetchWithTimeout(url, options = {}, ms = 12000) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), ms);
@@ -173,21 +162,12 @@ async function cloudLoad() {
 
     const data = await res.json();
 
-    const cloudEntries = extractEntries(data).map(normalizeEntry).filter(isValidEntry);
-    const cloudSettings = normalizeSettings(extractSettings(data));
+    entries = extractEntries(data).map(normalizeEntry).filter(isValidEntry);
+    farmSettings = normalizeSettings(extractSettings(data));
 
-    const localTime = newestLocalTime();
-    const cloudTime = newestCloudTime(cloudEntries, cloudSettings);
-
-    if (localTime > cloudTime) {
-      await cloudSave();
-    } else {
-      entries = cloudEntries;
-      farmSettings = cloudSettings;
-      saveLocal();
-      loadFarmSettings();
-      updateApp();
-    }
+    saveLocal();
+    loadFarmSettings();
+    updateApp();
 
     setSyncStatus("Synced " + new Date().toLocaleTimeString());
   } catch (err) {
@@ -236,14 +216,6 @@ function saveFarmSettings() {
   };
 
   saveAndSync();
-
-  if (window.ChickenEggsDB?.saveFarmSettings) {
-    ChickenEggsDB.saveFarmSettings(farmSettings).catch(err => {
-      console.error("Firestore farm settings save failed:", err);
-      setSyncStatus("Saved locally, Firestore failed");
-    });
-  }
-
   showScreen("dashboard");
 }
 
@@ -376,6 +348,8 @@ function saveSale() {
   saveAndSync();
   showScreen("dashboard");
 }
+
+function editEntry(id) {
   const entry = entries.find(e => e.id === String(id));
   if (!entry) return;
 
@@ -607,8 +581,4 @@ document.addEventListener("DOMContentLoaded", () => {
   showScreen("dashboard");
 
   cloudLoad();
-
-// No automatic polling.
-// The app now saves/syncs only when you add, edit, delete, restore,
-// or save farm settings.
 });
