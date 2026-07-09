@@ -1,2 +1,2 @@
 # chicken-eggs
-Chicken Egg App.
+Chicken Egg App
