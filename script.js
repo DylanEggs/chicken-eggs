@@ -187,6 +187,10 @@ function saveAndSync() {
   if (window.ChickenEggsDB?.saveFarmSettings) {
     ChickenEggsDB.saveFarmSettings(farmSettings).catch(console.error);
   }
+}
+  if (window.ChickenEggsDB?.saveFarmSettings) {
+    ChickenEggsDB.saveFarmSettings(farmSettings).catch(console.error);
+  }
 
   if (window.ChickenEggsDB?.saveEntry) {
     visibleEntries().forEach(entry => {
