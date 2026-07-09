@@ -22,6 +22,7 @@ function defaultSettings() {
     eggGoal: 0,
     dozenPrice: 0,
     packPrice: 0,
+    eggsUsed: 0,
     updatedAt: 0
   };
 }
@@ -55,6 +56,7 @@ function normalizeSettings(s = {}) {
     eggGoal: number(s.eggGoal),
     dozenPrice: number(s.dozenPrice),
     packPrice: number(s.packPrice),
+    eggsUsed: number(s.eggsUsed),
     updatedAt: number(s.updatedAt)
   };
 }
@@ -185,6 +187,9 @@ function loadFarmSettings() {
   document.getElementById("farmEggGoal").value = farmSettings.eggGoal || "";
   document.getElementById("farmDozenPrice").value = farmSettings.dozenPrice || "";
   document.getElementById("farmPackPrice").value = farmSettings.packPrice || "";
+
+  const eggsUsedInput = document.getElementById("farmEggsUsed");
+  if (eggsUsedInput) eggsUsedInput.value = farmSettings.eggsUsed || "";
 }
 
 function saveFarmSettings() {
@@ -195,6 +200,7 @@ function saveFarmSettings() {
     eggGoal: number(document.getElementById("farmEggGoal").value),
     dozenPrice: number(document.getElementById("farmDozenPrice").value),
     packPrice: number(document.getElementById("farmPackPrice").value),
+    eggsUsed: number(document.getElementById("farmEggsUsed")?.value),
     updatedAt: Date.now()
   };
 
@@ -480,14 +486,23 @@ function updateApp() {
   const hens = number(farmSettings.hens);
   const productionPercent = hens > 0 ? (eggsToday / hens) * 100 : 0;
 
+  const inventory = Math.max(0, lifeEggs - totalEggsSold - number(farmSettings.eggsUsed));
+  const availableDozens = Math.floor(inventory / 12);
+  const looseAfterDozens = inventory % 12;
+  const availablePacks = Math.floor(inventory / 18);
+  const inventoryNote = inventory <= 12 ? "low stock" : "available now";
+
   document.getElementById("farmHeroName").textContent = farmSettings.farmName || "Egg Production";
   document.getElementById("farmHeroText").textContent =
     hens > 0
-      ? `${hens} hens • ${eggsToday} eggs today • ${productionPercent.toFixed(0)}% production`
-      : "Track collections, sales, records, and revenue.";
+      ? `${hens} hens • ${eggsToday} eggs today • ${productionPercent.toFixed(0)}% production • ${inventory} in stock`
+      : `Track collections, sales, records, and revenue. ${inventory} eggs in stock.`;
 
   document.getElementById("dashboardTotals").innerHTML = `
     ${statCard("🥚", "Lifetime Eggs", lifeEggs, "since day 1")}
+    ${statCard("🧺", "Eggs In Stock", inventory, inventoryNote)}
+    ${statCard("📦", "Available Dozens", availableDozens, `${looseAfterDozens} loose eggs`)}
+    ${statCard("🥚", "Available 18-Packs", availablePacks, "based on current stock")}
     ${statCard("📅", "This Week Eggs", weekEggs, "eggs collected")}
     ${statCard("🗓️", "This Month Eggs", monthEggs, "eggs collected")}
     ${statCard("📆", "This Year Eggs", yearEggs, "eggs collected")}
@@ -501,7 +516,9 @@ function updateApp() {
 
   document.getElementById("statsTotals").innerHTML = `
     ${statCard("🥚", "Lifetime Eggs", lifeEggs, "all collected eggs")}
+    ${statCard("🧺", "Eggs In Stock", inventory, "collected minus sold/used")}
     ${statCard("🛒", "Total Eggs Sold", totalEggsSold, "all sales")}
+    ${statCard("🍳", "Eggs Used / Eaten", number(farmSettings.eggsUsed), "from farm settings")}
     ${statCard("📅", "Week Eggs", weekEggs, "this week")}
     ${statCard("💵", "Week Revenue", "$" + weekRev.toFixed(2), "this week")}
     ${statCard("🗓️", "Month Eggs", monthEggs, "this month")}
