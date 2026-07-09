@@ -188,14 +188,10 @@ function saveAndSync() {
     ChickenEggsDB.saveFarmSettings(farmSettings).catch(console.error);
   }
 }
-  if (window.ChickenEggsDB?.saveFarmSettings) {
-    ChickenEggsDB.saveFarmSettings(farmSettings).catch(console.error);
-  }
 
-  if (window.ChickenEggsDB?.saveEntry) {
-    visibleEntries().forEach(entry => {
-      ChickenEggsDB.saveEntry(entry).catch(console.error);
-    });
+function saveEntryToFirestore(entry) {
+  if (entry && window.ChickenEggsDB?.saveEntry) {
+    ChickenEggsDB.saveEntry(normalizeEntry(entry)).catch(console.error);
   }
 }
 
@@ -258,15 +254,56 @@ function setHistoryFilter(filter) {
   updateApp();
 }
 
-document.getElementById("eggCount").value = "";
-saveAndSync();
+function saveEggs() {
+  const eggs = number(document.getElementById("eggCount").value);
+  const date = cleanDate(document.getElementById("eggDate").value);
 
-const latestEntry = entries[entries.length - 1];
-if (latestEntry && window.ChickenEggsDB?.saveEntry) {
-  ChickenEggsDB.saveEntry(latestEntry).catch(console.error);
-}
+  if (eggs <= 0) {
+    alert("Enter how many eggs you collected.");
+    return;
+  }
 
-showScreen("dashboard");
+  let savedEntry = null;
+
+  if (editingId) {
+    const entry = entries.find(e => e.id === editingId);
+    if (entry) {
+      Object.assign(entry, {
+        type: "eggs",
+        date,
+        eggs,
+        dozenSold: 0,
+        dozenPrice: 0,
+        packSold: 0,
+        packPrice: 0,
+        updatedAt: Date.now()
+      });
+      savedEntry = entry;
+    }
+    editingId = null;
+  } else {
+    savedEntry = {
+      id: newId(),
+      type: "eggs",
+      date,
+      eggs,
+      dozenSold: 0,
+      dozenPrice: 0,
+      packSold: 0,
+      packPrice: 0,
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+
+    entries.push(savedEntry);
+  }
+
+  document.getElementById("eggCount").value = "";
+
+  saveAndSync();
+  saveEntryToFirestore(savedEntry);
+
+  showScreen("dashboard");
 }
 
 function saveSale() {
@@ -281,6 +318,8 @@ function saveSale() {
     return;
   }
 
+  let savedEntry = null;
+
   if (editingId) {
     const entry = entries.find(e => e.id === editingId);
     if (entry) {
@@ -294,10 +333,11 @@ function saveSale() {
         packPrice,
         updatedAt: Date.now()
       });
+      savedEntry = entry;
     }
     editingId = null;
   } else {
-    entries.push({
+    savedEntry = {
       id: newId(),
       type: "sale",
       date,
@@ -308,7 +348,9 @@ function saveSale() {
       packPrice,
       createdAt: Date.now(),
       updatedAt: Date.now()
-    });
+    };
+
+    entries.push(savedEntry);
   }
 
   document.getElementById("dozenSold").value = "";
@@ -317,6 +359,8 @@ function saveSale() {
   document.getElementById("packPrice").value = farmSettings.packPrice || "";
 
   saveAndSync();
+  saveEntryToFirestore(savedEntry);
+
   showScreen("dashboard");
 }
 
@@ -343,6 +387,11 @@ function editEntry(id) {
 function deleteEntry(id) {
   if (!confirm("Delete this one entry?")) return;
   entries = entries.filter(e => e.id !== String(id));
+
+  if (window.ChickenEggsDB?.deleteEntry) {
+    ChickenEggsDB.deleteEntry(id).catch(console.error);
+  }
+
   saveAndSync();
 }
 
@@ -529,6 +578,8 @@ function restoreData(event) {
       farmSettings.updatedAt = Date.now();
 
       saveAndSync();
+      visibleEntries().forEach(saveEntryToFirestore);
+
       loadFarmSettings();
       showScreen("dashboard");
 
