@@ -31,7 +31,9 @@ function number(v) {
 }
 
 function newId() {
-  return crypto?.randomUUID ? crypto.randomUUID() : "id-" + Date.now() + "-" + Math.random().toString(36).slice(2);
+  return crypto?.randomUUID
+    ? crypto.randomUUID()
+    : "id-" + Date.now() + "-" + Math.random().toString(36).slice(2);
 }
 
 function cleanDate(v) {
@@ -104,8 +106,34 @@ function loadLocal() {
   farmSettings = normalizeSettings(readJSON(SETTINGS_KEY, defaultSettings()));
 }
 
-async function cloudSave() {
-  setSyncStatus("Saved to Firebase " + new Date().toLocaleTimeString());
+async function cloudSave(options = {}) {
+  try {
+    if (!window.ChickenEggsDB) {
+      setSyncStatus("Saved locally");
+      return;
+    }
+
+    const { entry = null, syncAllEntries = false, saveSettings = true } = options;
+
+    if (saveSettings && ChickenEggsDB.saveFarmSettings) {
+      await ChickenEggsDB.saveFarmSettings(farmSettings);
+    }
+
+    if (entry && ChickenEggsDB.saveEntry) {
+      await ChickenEggsDB.saveEntry(normalizeEntry(entry));
+    }
+
+    if (syncAllEntries && ChickenEggsDB.saveEntry) {
+      for (const item of visibleEntries()) {
+        await ChickenEggsDB.saveEntry(item);
+      }
+    }
+
+    setSyncStatus("Saved to Firebase " + new Date().toLocaleTimeString());
+  } catch (err) {
+    console.error(err);
+    setSyncStatus("Saved locally, Firebase sync failed");
+  }
 }
 
 async function cloudLoad() {
@@ -144,20 +172,10 @@ async function cloudLoad() {
   }
 }
 
-function saveAndSync() {
+function saveAndSync(options = {}) {
   saveLocal();
   updateApp();
-  cloudSave();
-
-  if (window.ChickenEggsDB?.saveFarmSettings) {
-    ChickenEggsDB.saveFarmSettings(farmSettings).catch(console.error);
-  }
-}
-
-function saveEntryToFirestore(entry) {
-  if (entry && window.ChickenEggsDB?.saveEntry) {
-    ChickenEggsDB.saveEntry(normalizeEntry(entry)).catch(console.error);
-  }
+  cloudSave(options);
 }
 
 function loadFarmSettings() {
@@ -180,18 +198,32 @@ function saveFarmSettings() {
     updatedAt: Date.now()
   };
 
-  saveAndSync();
+  saveAndSync({ saveSettings: true });
   showScreen("dashboard");
 }
 
-function deleteAllEntries() {
+async function deleteAllEntries() {
   if (!confirm("Delete ALL entries? Farm settings will stay.")) return;
   if (!confirm("This clears history on all synced devices. Continue?")) return;
+
+  const oldEntries = visibleEntries();
 
   entries = [];
   saveLocal();
   updateApp();
   showScreen("dashboard");
+
+  if (window.ChickenEggsDB?.deleteEntry) {
+    try {
+      for (const entry of oldEntries) {
+        await ChickenEggsDB.deleteEntry(entry.id);
+      }
+      setSyncStatus("All entries deleted from Firebase");
+    } catch (err) {
+      console.error(err);
+      setSyncStatus("Deleted locally, Firebase delete failed");
+    }
+  }
 }
 
 function showScreen(id) {
@@ -266,9 +298,7 @@ function saveEggs() {
 
   document.getElementById("eggCount").value = "";
 
-  saveAndSync();
-  saveEntryToFirestore(savedEntry);
-
+  saveAndSync({ entry: savedEntry, saveSettings: true });
   showScreen("dashboard");
 }
 
@@ -324,9 +354,7 @@ function saveSale() {
   document.getElementById("dozenPrice").value = farmSettings.dozenPrice || "";
   document.getElementById("packPrice").value = farmSettings.packPrice || "";
 
-  saveAndSync();
-  saveEntryToFirestore(savedEntry);
-
+  saveAndSync({ entry: savedEntry, saveSettings: true });
   showScreen("dashboard");
 }
 
@@ -355,12 +383,17 @@ function deleteEntry(id) {
 
   entries = entries.filter(e => e.id !== String(id));
 
-  if (window.ChickenEggsDB?.deleteEntry) {
-    ChickenEggsDB.deleteEntry(id).catch(console.error);
-  }
-
   saveLocal();
   updateApp();
+
+  if (window.ChickenEggsDB?.deleteEntry) {
+    ChickenEggsDB.deleteEntry(id)
+      .then(() => setSyncStatus("Entry deleted from Firebase"))
+      .catch(err => {
+        console.error(err);
+        setSyncStatus("Deleted locally, Firebase delete failed");
+      });
+  }
 }
 
 function revenue(e) {
@@ -545,8 +578,7 @@ function restoreData(event) {
       farmSettings = normalizeSettings(backup.farmSettings);
       farmSettings.updatedAt = Date.now();
 
-      saveAndSync();
-      visibleEntries().forEach(saveEntryToFirestore);
+      saveAndSync({ syncAllEntries: true, saveSettings: true });
 
       loadFarmSettings();
       showScreen("dashboard");
