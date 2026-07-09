@@ -128,17 +128,41 @@ function extractSettings(data) {
   return {};
 }
 
-async function cloudSave() {
-  try {
-    setSyncStatus("Saving...");
+async function cloudLoad() {
+  if (isSyncing) return;
+  isSyncing = true;
 
-    await fetchWithTimeout(CLOUD_URL, {
-      method: "POST",
-      body: JSON.stringify({
-        action: "saveAll",
-        entries: visibleEntries(),
-        farmSettings
-      })
+  try {
+    setSyncStatus("Loading Firebase...");
+
+    if (!window.ChickenEggsDB) {
+      throw new Error("Firebase database layer not ready");
+    }
+
+    const firebaseSettings = await ChickenEggsDB.loadFarmSettings();
+    const firebaseEntries = await ChickenEggsDB.loadEntries();
+
+    if (firebaseSettings) {
+      farmSettings = normalizeSettings(firebaseSettings);
+    }
+
+    if (Array.isArray(firebaseEntries) && firebaseEntries.length > 0) {
+      entries = firebaseEntries.map(normalizeEntry).filter(isValidEntry);
+    }
+
+    saveLocal();
+    loadFarmSettings();
+    updateApp();
+
+    setSyncStatus("Firebase loaded " + new Date().toLocaleTimeString());
+  } catch (err) {
+    console.error(err);
+    setSyncStatus("Offline/local data shown");
+    updateApp();
+  } finally {
+    isSyncing = false;
+  }
+}
     });
 
     setSyncStatus("Saved " + new Date().toLocaleTimeString());
