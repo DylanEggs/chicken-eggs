@@ -6,7 +6,12 @@ let farmSettings = defaultSettings();
 let editingId = null;
 let historyFilter = "all";
 let isSyncing = false;
+
 let eggChart = null;
+let dailyEggChart = null;
+let weeklyEggChart = null;
+let monthlyEggChart = null;
+let revenueChart = null;
 
 function localToday() {
   const d = new Date();
@@ -151,9 +156,7 @@ async function cloudLoad() {
     const firebaseSettings = await ChickenEggsDB.loadFarmSettings();
     const firebaseEntries = await ChickenEggsDB.loadEntries();
 
-    if (firebaseSettings) {
-      farmSettings = normalizeSettings(firebaseSettings);
-    }
+    if (firebaseSettings) farmSettings = normalizeSettings(firebaseSettings);
 
     if (Array.isArray(firebaseEntries) && firebaseEntries.length > 0) {
       entries = firebaseEntries.map(normalizeEntry).filter(isValidEntry);
@@ -208,7 +211,6 @@ async function deleteAllEntries() {
   if (!confirm("This clears history on all synced devices. Continue?")) return;
 
   const oldEntries = visibleEntries();
-
   entries = [];
   saveLocal();
   updateApp();
@@ -216,9 +218,7 @@ async function deleteAllEntries() {
 
   if (window.ChickenEggsDB?.deleteEntry) {
     try {
-      for (const entry of oldEntries) {
-        await ChickenEggsDB.deleteEntry(entry.id);
-      }
+      for (const entry of oldEntries) await ChickenEggsDB.deleteEntry(entry.id);
       setSyncStatus("All entries deleted from Firebase");
     } catch (err) {
       console.error(err);
@@ -293,12 +293,10 @@ function saveEggs() {
       createdAt: Date.now(),
       updatedAt: Date.now()
     };
-
     entries.push(savedEntry);
   }
 
   document.getElementById("eggCount").value = "";
-
   saveAndSync({ entry: savedEntry, saveSettings: true });
   showScreen("dashboard");
 }
@@ -346,7 +344,6 @@ function saveSale() {
       createdAt: Date.now(),
       updatedAt: Date.now()
     };
-
     entries.push(savedEntry);
   }
 
@@ -383,7 +380,6 @@ function deleteEntry(id) {
   if (!confirm("Delete this one entry?")) return;
 
   entries = entries.filter(e => e.id !== String(id));
-
   saveLocal();
   updateApp();
 
@@ -437,35 +433,33 @@ function isYear(date) {
   return d.getFullYear() === new Date().getFullYear();
 }
 
-function renderEggChart(list) {
-  const canvas = document.getElementById("eggChart");
-  if (!canvas || typeof Chart === "undefined") return;
+function weekKey(date) {
+  const d = new Date(cleanDate(date) + "T00:00:00");
+  const start = new Date(d);
+  start.setDate(d.getDate() - d.getDay());
+  return cleanDate(start.toISOString());
+}
 
-  const eggTotalsByDate = {};
+function monthKey(date) {
+  return cleanDate(date).slice(0, 7);
+}
 
-  list
-    .filter(e => e.type === "eggs")
-    .forEach(e => {
-      eggTotalsByDate[e.date] = (eggTotalsByDate[e.date] || 0) + number(e.eggs);
-    });
+function makeChart(canvasId, oldChart, type, labels, data, label, color, money = false) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas || typeof Chart === "undefined") return oldChart;
 
-  const labels = Object.keys(eggTotalsByDate).sort().slice(-14);
-  const data = labels.map(date => eggTotalsByDate[date]);
+  if (oldChart) oldChart.destroy();
 
-  if (eggChart) {
-    eggChart.destroy();
-  }
-
-  eggChart = new Chart(canvas, {
-    type: "line",
+  return new Chart(canvas, {
+    type,
     data: {
       labels,
       datasets: [{
-        label: "Eggs Collected",
+        label,
         data,
-        borderColor: "#f59e0b",
-        backgroundColor: "rgba(245, 158, 11, 0.2)",
-        fill: true,
+        borderColor: color,
+        backgroundColor: color.replace("1)", "0.25)"),
+        fill: type === "line",
         tension: 0.35,
         pointRadius: 4,
         pointHoverRadius: 6
@@ -474,20 +468,113 @@ function renderEggChart(list) {
     options: {
       responsive: true,
       plugins: {
-        legend: {
-          display: true
+        legend: { display: true },
+        tooltip: {
+          callbacks: {
+            label: ctx => money
+              ? `${label}: $${number(ctx.raw).toFixed(2)}`
+              : `${label}: ${ctx.raw}`
+          }
         }
       },
       scales: {
         y: {
           beginAtZero: true,
           ticks: {
-            precision: 0
+            precision: money ? undefined : 0,
+            callback: value => money ? "$" + value : value
           }
         }
       }
     }
   });
+}
+
+function renderCharts(list) {
+  if (typeof Chart === "undefined") return;
+
+  const eggTotalsByDate = {};
+  const revenueByDate = {};
+  const eggTotalsByWeek = {};
+  const eggTotalsByMonth = {};
+
+  list.forEach(e => {
+    if (e.type === "eggs") {
+      eggTotalsByDate[e.date] = (eggTotalsByDate[e.date] || 0) + number(e.eggs);
+      eggTotalsByWeek[weekKey(e.date)] = (eggTotalsByWeek[weekKey(e.date)] || 0) + number(e.eggs);
+      eggTotalsByMonth[monthKey(e.date)] = (eggTotalsByMonth[monthKey(e.date)] || 0) + number(e.eggs);
+    }
+
+    if (e.type === "sale") {
+      revenueByDate[e.date] = (revenueByDate[e.date] || 0) + revenue(e);
+    }
+  });
+
+  const dashboardLabels = Object.keys(eggTotalsByDate).sort().slice(-14);
+  const dashboardData = dashboardLabels.map(d => eggTotalsByDate[d]);
+
+  eggChart = makeChart(
+    "eggChart",
+    eggChart,
+    "line",
+    dashboardLabels,
+    dashboardData,
+    "Eggs Collected",
+    "rgba(245, 158, 11, 1)"
+  );
+
+  const dailyLabels = Object.keys(eggTotalsByDate).sort().slice(-30);
+  const dailyData = dailyLabels.map(d => eggTotalsByDate[d]);
+
+  dailyEggChart = makeChart(
+    "dailyEggChart",
+    dailyEggChart,
+    "line",
+    dailyLabels,
+    dailyData,
+    "Daily Eggs",
+    "rgba(245, 158, 11, 1)"
+  );
+
+  const weeklyLabels = Object.keys(eggTotalsByWeek).sort().slice(-12);
+  const weeklyData = weeklyLabels.map(d => eggTotalsByWeek[d]);
+
+  weeklyEggChart = makeChart(
+    "weeklyEggChart",
+    weeklyEggChart,
+    "bar",
+    weeklyLabels,
+    weeklyData,
+    "Weekly Eggs",
+    "rgba(34, 197, 94, 1)"
+  );
+
+  const monthlyLabels = Object.keys(eggTotalsByMonth).sort().slice(-12);
+  const monthlyData = monthlyLabels.map(d => eggTotalsByMonth[d]);
+
+  monthlyEggChart = makeChart(
+    "monthlyEggChart",
+    monthlyEggChart,
+    "bar",
+    monthlyLabels,
+    monthlyData,
+    "Monthly Eggs",
+    "rgba(59, 130, 246, 1)"
+  );
+
+  const revenueLabels = Object.keys(revenueByDate).sort().slice(-30);
+  const revenueData = revenueLabels.map(d => revenueByDate[d]);
+
+  revenueChart = makeChart(
+    "revenueChart",
+    revenueChart,
+    "line",
+    revenueLabels,
+    revenueData,
+    "Revenue",
+    "rgba(16, 185, 129, 1)",
+    true
+  );
 }
 
 function updateApp() {
@@ -600,7 +687,7 @@ function updateApp() {
     </div>
   `).join("") : `<div class="entry"><strong>No entries yet.</strong></div>`;
 
-  renderEggChart(list);
+  renderCharts(list);
 }
 
 function backupData() {
