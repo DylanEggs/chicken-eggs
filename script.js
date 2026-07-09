@@ -1,5 +1,3 @@
-const CLOUD_URL = "https://script.google.com/macros/s/AKfycbxxdjOJOKtlqajQgtR5DFMcK5xfeM43lkSTmgcIoVZ31WfKaagcylH_f_3w0E046val/exec";
-
 const ENTRIES_KEY = "chickenEggEntriesV102";
 const SETTINGS_KEY = "chickenEggSettingsV102";
 
@@ -106,26 +104,8 @@ function loadLocal() {
   farmSettings = normalizeSettings(readJSON(SETTINGS_KEY, defaultSettings()));
 }
 
-async function fetchWithTimeout(url, options = {}, ms = 12000) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), ms);
-  try {
-    return await fetch(url, { ...options, signal: controller.signal });
-  } finally {
-    clearTimeout(timeout);
-  }
-}
-
-function extractEntries(data) {
-  if (Array.isArray(data?.entries)) return data.entries;
-  if (Array.isArray(data?.data?.entries)) return data.data.entries;
-  return [];
-}
-
-function extractSettings(data) {
-  if (data?.farmSettings) return data.farmSettings;
-  if (data?.data?.farmSettings) return data.data.farmSettings;
-  return {};
+async function cloudSave() {
+  setSyncStatus("Saved to Firebase " + new Date().toLocaleTimeString());
 }
 
 async function cloudLoad() {
@@ -155,45 +135,6 @@ async function cloudLoad() {
     updateApp();
 
     setSyncStatus("Firebase loaded " + new Date().toLocaleTimeString());
-  } catch (err) {
-    console.error(err);
-    setSyncStatus("Offline/local data shown");
-    updateApp();
-  } finally {
-    isSyncing = false;
-  }
-}
-    });
-
-    setSyncStatus("Saved " + new Date().toLocaleTimeString());
-  } catch (err) {
-    console.error(err);
-    setSyncStatus("Offline - saved on this device");
-  }
-}
-
-async function cloudLoad() {
-  if (isSyncing) return;
-  isSyncing = true;
-
-  try {
-    setSyncStatus("Syncing...");
-
-    const res = await fetchWithTimeout(CLOUD_URL + "?t=" + Date.now(), {
-      method: "GET",
-      cache: "no-store"
-    });
-
-    const data = await res.json();
-
-    entries = extractEntries(data).map(normalizeEntry).filter(isValidEntry);
-    farmSettings = normalizeSettings(extractSettings(data));
-
-    saveLocal();
-    loadFarmSettings();
-    updateApp();
-
-    setSyncStatus("Synced " + new Date().toLocaleTimeString());
   } catch (err) {
     console.error(err);
     setSyncStatus("Offline/local data shown");
@@ -248,7 +189,8 @@ function deleteAllEntries() {
   if (!confirm("This clears history on all synced devices. Continue?")) return;
 
   entries = [];
-  saveAndSync();
+  saveLocal();
+  updateApp();
   showScreen("dashboard");
 }
 
@@ -410,13 +352,15 @@ function editEntry(id) {
 
 function deleteEntry(id) {
   if (!confirm("Delete this one entry?")) return;
+
   entries = entries.filter(e => e.id !== String(id));
 
   if (window.ChickenEggsDB?.deleteEntry) {
     ChickenEggsDB.deleteEntry(id).catch(console.error);
   }
 
-  saveAndSync();
+  saveLocal();
+  updateApp();
 }
 
 function revenue(e) {
