@@ -258,48 +258,15 @@ function setHistoryFilter(filter) {
   updateApp();
 }
 
-function saveEggs() {
-  const eggs = number(document.getElementById("eggCount").value);
-  const date = cleanDate(document.getElementById("eggDate").value);
+document.getElementById("eggCount").value = "";
+saveAndSync();
 
-  if (eggs <= 0) {
-    alert("Enter how many eggs you collected.");
-    return;
-  }
+const latestEntry = entries[entries.length - 1];
+if (latestEntry && window.ChickenEggsDB?.saveEntry) {
+  ChickenEggsDB.saveEntry(latestEntry).catch(console.error);
+}
 
-  if (editingId) {
-    const entry = entries.find(e => e.id === editingId);
-    if (entry) {
-      Object.assign(entry, {
-        type: "eggs",
-        date,
-        eggs,
-        dozenSold: 0,
-        dozenPrice: 0,
-        packSold: 0,
-        packPrice: 0,
-        updatedAt: Date.now()
-      });
-    }
-    editingId = null;
-  } else {
-    entries.push({
-      id: newId(),
-      type: "eggs",
-      date,
-      eggs,
-      dozenSold: 0,
-      dozenPrice: 0,
-      packSold: 0,
-      packPrice: 0,
-      createdAt: Date.now(),
-      updatedAt: Date.now()
-    });
-  }
-
-  document.getElementById("eggCount").value = "";
-  saveAndSync();
-  showScreen("dashboard");
+showScreen("dashboard");
 }
 
 function saveSale() {
