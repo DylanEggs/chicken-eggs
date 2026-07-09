@@ -30,6 +30,11 @@
 
       <div id="dashboardTotals" class="dashboardGrid"></div>
 
+      <div class="chartCard">
+        <h3>🥚 Daily Egg Production</h3>
+        <canvas id="eggChart" height="160"></canvas>
+      </div>
+
       <div class="mainActions">
         <button onclick="showScreen('collect')">🥚 Collect Eggs</button>
         <button onclick="showScreen('sale')">💰 Record Sale</button>
@@ -102,10 +107,6 @@
       <label>Default 18-Pack Price</label>
       <input type="number" id="farmPackPrice" step="0.01" placeholder="0.00" />
 
-      <label>Eggs Used / Eaten</label>
-<input type="number" id="farmEggsUsed" placeholder="0" />
-     
-
       <button onclick="saveFarmSettings()">Save Farm Settings</button>
       <button class="danger" onclick="deleteAllEntries()">🗑️ Delete All Entries</button>
       <button onclick="backupData()">💾 Backup Data</button>
@@ -159,6 +160,9 @@
     </nav>
   </div>
 
- <script type="module" src="firebase.js"></script>
-<script src="database.js?v=6"></script>
-<script src="script.js?v=216"></script>
+  <script type="module" src="firebase.js"></script>
+  <script src="database.js?v=6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="script.js?v=217"></script>
+</body>
+</html>
