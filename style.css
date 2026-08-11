@@ -422,3 +422,21 @@ input:focus{
     grid-template-columns:1fr;
   }
 }
+/* Keep iPhone date field inside the card */
+input[type="date"]{
+  width:100%;
+  max-width:100%;
+  min-width:0;
+  box-sizing:border-box;
+  display:block;
+}
+
+@media(max-width:700px){
+  input[type="date"]{
+    width:100%;
+    max-width:100%;
+    min-width:0;
+    -webkit-appearance:none;
+    appearance:none;
+  }
+}
