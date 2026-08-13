@@ -36,4 +36,4 @@ signInAnonymously(auth).catch(error => {
 
 console.log("✅ Firebase initialized");
 
-import("./calculator-fix.js?v=3");
+import("./calculator-fix.js?v=4");
