@@ -2,6 +2,21 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/fireba
 import { getFirestore, doc, getDoc, setDoc, serverTimestamp, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
 
+if(!window.__eggAppLegacyIntervalGuard){
+  window.__eggAppLegacyIntervalGuard=true;
+  const nativeSetInterval=window.setInterval.bind(window);
+  window.setInterval=function(fn,delay,...args){
+    const ms=Number(delay)||0;
+    let source="";
+    try{source=typeof fn==="function"?Function.prototype.toString.call(fn):String(fn||"");}catch{}
+    const legacyFun=ms===3000&&source.includes("hook();renderFun()");
+    const legacyInsights=ms===3500&&source.includes("hook();render()");
+    const legacyBusiness=ms===3500&&source.includes("hookScreen();render()");
+    if(legacyFun||legacyInsights||legacyBusiness){console.log("✅ Blocked legacy background redraw timer");return 0;}
+    return nativeSetInterval(fn,delay,...args);
+  };
+}
+
 const firebaseConfig = {
   apiKey: "AIzaSyCSruU8Sae0mFI16N2tcIh2GRLartzYhHE",
   authDomain: "chicken-eggs-53358.firebaseapp.com",
