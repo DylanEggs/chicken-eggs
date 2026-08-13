@@ -26,7 +26,8 @@ window.FirebaseAuth = auth;
 const DATASETS = [
   { key: "chickenEggApp2V1", id: "farm_app_2_v1", field: "farmApp2", kind: "app2" },
   { key: "chickenEggInventoryV2", id: "farm_inventory_v2", field: "inventory", kind: "inventory" },
-  { key: "chickenEggDeluxeV1", id: "farm_deluxe_v1", field: "deluxe", kind: "plain" }
+  { key: "chickenEggDeluxeV1", id: "farm_deluxe_v1", field: "deluxe", kind: "plain" },
+  { key: "chickenEggBusinessV1", id: "farm_business_v1", field: "business", kind: "business" }
 ];
 
 let syncing = false;
@@ -116,9 +117,23 @@ function mergeInventory(local = {}, remote = {}) {
   };
 }
 
+function mergeBusiness(local = {}, remote = {}) {
+  const remoteIsNewer = stamp(remote) > stamp(local);
+  const newer = remoteIsNewer ? remote : local;
+  const older = remoteIsNewer ? local : remote;
+  return {
+    ...older,
+    ...newer,
+    chickenSales: mergeArray(local?.chickenSales, remote?.chickenSales),
+    calc: { ...(older?.calc || {}), ...(newer?.calc || {}) },
+    updatedAt: Math.max(stamp(local), stamp(remote))
+  };
+}
+
 function mergeDataset(ds, local, remote) {
   if (ds.kind === "app2") return mergeApp2(local || {}, remote || {});
   if (ds.kind === "inventory") return mergeInventory(local || {}, remote || {});
+  if (ds.kind === "business") return mergeBusiness(local || {}, remote || {});
   return stamp(remote) > stamp(local) ? remote : local;
 }
 
