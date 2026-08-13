@@ -31,6 +31,8 @@ const DATASETS = [
 
 let syncing = false;
 let entryListenerStarted = false;
+let suppressLocalHook = false;
+const datasetTimers = new Map();
 
 function readLocal(key) {
   try { return JSON.parse(localStorage.getItem(key) || "null"); }
@@ -38,7 +40,12 @@ function readLocal(key) {
 }
 
 function writeLocal(key, value) {
-  localStorage.setItem(key, JSON.stringify(value));
+  suppressLocalHook = true;
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } finally {
+    suppressLocalHook = false;
+  }
 }
 
 function stamp(value) {
@@ -60,15 +67,39 @@ function mergeArray(a, b) {
   return [...map.values()].sort((x, y) => String(x.id || "").localeCompare(String(y.id || "")));
 }
 
+function mergeRecordMap(localObj = {}, remoteObj = {}, preferRemote = false) {
+  const out = {};
+  const keys = new Set([...Object.keys(localObj || {}), ...Object.keys(remoteObj || {})]);
+
+  for (const key of keys) {
+    const local = localObj?.[key];
+    const remote = remoteObj?.[key];
+
+    if (local === undefined) { out[key] = remote; continue; }
+    if (remote === undefined) { out[key] = local; continue; }
+
+    const lt = recTime(local);
+    const rt = recTime(remote);
+    if (lt > rt) out[key] = local;
+    else if (rt > lt) out[key] = remote;
+    else out[key] = preferRemote ? remote : local;
+  }
+
+  return out;
+}
+
 function mergeApp2(local = {}, remote = {}) {
-  const newer = stamp(remote) > stamp(local) ? remote : local;
-  const older = newer === remote ? local : remote;
+  const remoteIsNewer = stamp(remote) > stamp(local);
+  const newer = remoteIsNewer ? remote : local;
+  const older = remoteIsNewer ? local : remote;
   const out = { ...older, ...newer };
+
   ["customers", "orders", "expenses", "flock", "chores", "activity"].forEach(key => {
     out[key] = mergeArray(local?.[key], remote?.[key]);
   });
-  out.saleMeta = { ...(local?.saleMeta || {}), ...(remote?.saleMeta || {}) };
-  out.achievements = { ...(local?.achievements || {}), ...(remote?.achievements || {}) };
+
+  out.saleMeta = mergeRecordMap(local?.saleMeta || {}, remote?.saleMeta || {}, remoteIsNewer);
+  out.achievements = mergeRecordMap(local?.achievements || {}, remote?.achievements || {}, remoteIsNewer);
   out.goals = { ...(older?.goals || {}), ...(newer?.goals || {}) };
   out.preferences = { ...(older?.preferences || {}), ...(newer?.preferences || {}) };
   out.updatedAt = Math.max(stamp(local), stamp(remote));
@@ -143,8 +174,7 @@ async function syncDataset(ds) {
 
   if (cloudNeedsUpdate) {
     const saved = await writeCloud(ds, merged);
-    if (localNeedsUpdate) writeLocal(ds.key, saved);
-    else if (stamp(saved) !== stamp(local)) writeLocal(ds.key, saved);
+    if (localNeedsUpdate || stamp(saved) !== stamp(local)) writeLocal(ds.key, saved);
     return;
   }
 
@@ -166,28 +196,61 @@ async function syncAllFarmData() {
   }
 }
 
-function startCoreEntryListener() {
+function scheduleDatasetSync(ds) {
+  clearTimeout(datasetTimers.get(ds.key));
+  const timer = setTimeout(async () => {
+    datasetTimers.delete(ds.key);
+    if (!auth.currentUser) return;
+    try {
+      await syncDataset(ds);
+      console.log(`✅ ${ds.kind} change synced to Firebase`);
+    } catch (error) {
+      console.warn(`${ds.kind} immediate sync error:`, error);
+    }
+  }, 300);
+  datasetTimers.set(ds.key, timer);
+}
+
+const nativeSetItem = Storage.prototype.setItem;
+Storage.prototype.setItem = function(key, value) {
+  nativeSetItem.call(this, key, value);
+
+  if (suppressLocalHook || this !== window.localStorage) return;
+  const ds = DATASETS.find(item => item.key === String(key));
+  if (ds) scheduleDatasetSync(ds);
+};
+
+function startEntryListener() {
   if (entryListenerStarted) return;
   entryListenerStarted = true;
+  let firstSnapshot = true;
 
   onSnapshot(collection(db, "entries"), snapshot => {
-    const coreChanged = snapshot.docChanges().some(change => {
+    const changes = snapshot.docChanges();
+
+    const coreChanged = changes.some(change => {
       const data = change.doc.data() || {};
       return data.type === "eggs" || data.type === "sale";
     });
 
-    if (!coreChanged) return;
+    if (coreChanged) {
+      const tryRefresh = () => {
+        if (typeof window.cloudLoad === "function") window.cloudLoad();
+        else setTimeout(tryRefresh, 250);
+      };
+      tryRefresh();
+    }
 
-    const tryRefresh = () => {
-      if (typeof window.cloudLoad === "function") {
-        window.cloudLoad();
-      } else {
-        setTimeout(tryRefresh, 250);
+    if (!firstSnapshot) {
+      for (const change of changes) {
+        const ds = DATASETS.find(item => item.id === change.doc.id);
+        if (ds) scheduleDatasetSync(ds);
       }
-    };
-    tryRefresh();
+    }
+
+    firstSnapshot = false;
   }, error => {
-    console.warn("Egg/sale change listener error:", error);
+    console.warn("Firebase change listener error:", error);
   });
 }
 
@@ -196,7 +259,7 @@ onAuthStateChanged(auth, user => {
   window.FirebaseUser = user;
   console.log("✅ Firebase signed in:", user.uid);
   setTimeout(syncAllFarmData, 1200);
-  startCoreEntryListener();
+  startEntryListener();
 });
 
 signInAnonymously(auth).catch(error => {
@@ -204,4 +267,4 @@ signInAnonymously(auth).catch(error => {
 });
 
 window.syncFarmNow = syncAllFarmData;
-console.log("✅ Firebase initialized with change-driven sync only");
+console.log("✅ Firebase initialized with save-on-change sync");
