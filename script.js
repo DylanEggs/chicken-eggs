@@ -147,7 +147,7 @@ async function cloudLoad() {
   isSyncing = true;
 
   try {
-    setSyncStatus("Loading Firebase...");
+    setSyncStatus("Checking Firebase...");
 
     if (!window.ChickenEggsDB) {
       throw new Error("Firebase database layer not ready");
@@ -158,15 +158,25 @@ async function cloudLoad() {
 
     if (firebaseSettings) farmSettings = normalizeSettings(firebaseSettings);
 
-    if (Array.isArray(firebaseEntries) && firebaseEntries.length > 0) {
-      entries = firebaseEntries.map(normalizeEntry).filter(isValidEntry);
+    if (Array.isArray(firebaseEntries)) {
+      const remoteEntries = firebaseEntries.map(normalizeEntry).filter(isValidEntry);
+      const localById = new Map(entries.map(e => [String(e.id), normalizeEntry(e)]));
+      const remoteById = new Map(remoteEntries.map(e => [String(e.id), e]));
+      const merged = new Map(localById);
+
+      for (const [id, remote] of remoteById) {
+        const local = merged.get(id);
+        if (!local || number(remote.updatedAt) >= number(local.updatedAt)) merged.set(id, remote);
+      }
+
+      entries = [...merged.values()].map(normalizeEntry).filter(isValidEntry);
     }
 
     saveLocal();
     loadFarmSettings();
     updateApp();
 
-    setSyncStatus("Firebase loaded " + new Date().toLocaleTimeString());
+    setSyncStatus("Firebase synced " + new Date().toLocaleTimeString());
   } catch (err) {
     console.error(err);
     setSyncStatus("Offline/local data shown");
@@ -491,12 +501,10 @@ function makeChart(canvasId, oldChart, type, labels, data, label, color, money =
 }
 
 function renderCharts(list) {
-  if (typeof Chart === "undefined") return;
-
   const eggTotalsByDate = {};
-  const revenueByDate = {};
   const eggTotalsByWeek = {};
   const eggTotalsByMonth = {};
+  const revenueByDate = {};
 
   list.forEach(e => {
     if (e.type === "eggs") {
@@ -513,68 +521,23 @@ function renderCharts(list) {
   const dashboardLabels = Object.keys(eggTotalsByDate).sort().slice(-14);
   const dashboardData = dashboardLabels.map(d => eggTotalsByDate[d]);
 
-  eggChart = makeChart(
-    "eggChart",
-    eggChart,
-    "line",
-    dashboardLabels,
-    dashboardData,
-    "Eggs Collected",
-    "rgba(245, 158, 11, 1)"
-  );
+  eggChart = makeChart("eggChart", eggChart, "line", dashboardLabels, dashboardData, "Eggs Collected", "rgba(245, 158, 11, 1)");
 
   const dailyLabels = Object.keys(eggTotalsByDate).sort().slice(-30);
   const dailyData = dailyLabels.map(d => eggTotalsByDate[d]);
-
-  dailyEggChart = makeChart(
-    "dailyEggChart",
-    dailyEggChart,
-    "line",
-    dailyLabels,
-    dailyData,
-    "Daily Eggs",
-    "rgba(245, 158, 11, 1)"
-  );
+  dailyEggChart = makeChart("dailyEggChart", dailyEggChart, "line", dailyLabels, dailyData, "Daily Eggs", "rgba(245, 158, 11, 1)");
 
   const weeklyLabels = Object.keys(eggTotalsByWeek).sort().slice(-12);
   const weeklyData = weeklyLabels.map(d => eggTotalsByWeek[d]);
-
-  weeklyEggChart = makeChart(
-    "weeklyEggChart",
-    weeklyEggChart,
-    "bar",
-    weeklyLabels,
-    weeklyData,
-    "Weekly Eggs",
-    "rgba(34, 197, 94, 1)"
-  );
+  weeklyEggChart = makeChart("weeklyEggChart", weeklyEggChart, "bar", weeklyLabels, weeklyData, "Weekly Eggs", "rgba(34, 197, 94, 1)");
 
   const monthlyLabels = Object.keys(eggTotalsByMonth).sort().slice(-12);
   const monthlyData = monthlyLabels.map(d => eggTotalsByMonth[d]);
-
-  monthlyEggChart = makeChart(
-    "monthlyEggChart",
-    monthlyEggChart,
-    "bar",
-    monthlyLabels,
-    monthlyData,
-    "Monthly Eggs",
-    "rgba(59, 130, 246, 1)"
-  );
+  monthlyEggChart = makeChart("monthlyEggChart", monthlyEggChart, "bar", monthlyLabels, monthlyData, "Monthly Eggs", "rgba(59, 130, 246, 1)");
 
   const revenueLabels = Object.keys(revenueByDate).sort().slice(-30);
   const revenueData = revenueLabels.map(d => revenueByDate[d]);
-
-  revenueChart = makeChart(
-    "revenueChart",
-    revenueChart,
-    "line",
-    revenueLabels,
-    revenueData,
-    "Revenue",
-    "rgba(16, 185, 129, 1)",
-    true
-  );
+  revenueChart = makeChart("revenueChart", revenueChart, "line", revenueLabels, revenueData, "Revenue", "rgba(16, 185, 129, 1)", true);
 }
 
 function updateApp() {
@@ -590,42 +553,23 @@ function updateApp() {
     lifeRev += r;
     totalEggsSold += eggsSold(e);
 
-    if (isWeek(e.date)) {
-      weekEggs += number(e.eggs);
-      weekRev += r;
-    }
-
-    if (isMonth(e.date)) {
-      monthEggs += number(e.eggs);
-      monthRev += r;
-    }
-
-    if (isYear(e.date)) {
-      yearEggs += number(e.eggs);
-      yearRev += r;
-    }
+    if (isWeek(e.date)) { weekEggs += number(e.eggs); weekRev += r; }
+    if (isMonth(e.date)) { monthEggs += number(e.eggs); monthRev += r; }
+    if (isYear(e.date)) { yearEggs += number(e.eggs); yearRev += r; }
   });
 
   const eggDays = new Set(list.filter(e => e.type === "eggs").map(e => e.date)).size || 1;
   const avg = lifeEggs / eggDays;
 
-  const bestEggDay = list.filter(e => e.type === "eggs")
-    .reduce((best, e) => number(e.eggs) > number(best.eggs) ? e : best, {});
-
-  const bestSaleDay = list.filter(e => e.type === "sale")
-    .reduce((best, e) => revenue(e) > revenue(best) ? e : best, {});
-
-  const eggsToday = list.filter(e => e.type === "eggs" && e.date === today)
-    .reduce((sum, e) => sum + number(e.eggs), 0);
+  const bestEggDay = list.filter(e => e.type === "eggs").reduce((best, e) => number(e.eggs) > number(best.eggs) ? e : best, {});
+  const bestSaleDay = list.filter(e => e.type === "sale").reduce((best, e) => revenue(e) > revenue(best) ? e : best, {});
+  const eggsToday = list.filter(e => e.type === "eggs" && e.date === today).reduce((sum, e) => sum + number(e.eggs), 0);
 
   const hens = number(farmSettings.hens);
   const productionPercent = hens > 0 ? (eggsToday / hens) * 100 : 0;
 
   document.getElementById("farmHeroName").textContent = farmSettings.farmName || "Egg Production";
-  document.getElementById("farmHeroText").textContent =
-    hens > 0
-      ? `${hens} hens • ${eggsToday} eggs today • ${productionPercent.toFixed(0)}% production`
-      : "Track collections, sales, records, and revenue.";
+  document.getElementById("farmHeroText").textContent = hens > 0 ? `${hens} hens • ${eggsToday} eggs today • ${productionPercent.toFixed(0)}% production` : "Track collections, sales, records, and revenue.";
 
   document.getElementById("dashboardTotals").innerHTML = `
     ${statCard("🥚", "Lifetime Eggs", lifeEggs, "since day 1")}
@@ -662,26 +606,14 @@ function updateApp() {
   `;
 
   const search = (document.getElementById("historySearch")?.value || "").toLowerCase();
-
-  const sorted = [...list]
-    .filter(e => historyFilter === "all" || e.type === historyFilter)
-    .filter(e => e.date.toLowerCase().includes(search))
-    .sort((a, b) => new Date(b.date) - new Date(a.date));
+  const sorted = [...list].filter(e => historyFilter === "all" || e.type === historyFilter).filter(e => e.date.toLowerCase().includes(search)).sort((a, b) => new Date(b.date) - new Date(a.date));
 
   document.getElementById("historyList").innerHTML = sorted.length ? sorted.map(e => `
     <div class="entry">
       <strong>${e.type === "eggs" ? "🥚 Egg Collection" : "💰 Egg Sale"}</strong><br>
       <span>${e.date}</span><br>
-
       ${e.type === "eggs" ? `Eggs Collected: <strong>${e.eggs}</strong>` : ""}
-
-      ${e.type === "sale" ? `
-        Dozen Sold: <strong>${e.dozenSold}</strong> @ $${number(e.dozenPrice).toFixed(2)}<br>
-        18-Packs Sold: <strong>${e.packSold}</strong> @ $${number(e.packPrice).toFixed(2)}<br>
-        Eggs Sold: <strong>${eggsSold(e)}</strong><br>
-        Revenue: <strong>$${revenue(e).toFixed(2)}</strong>
-      ` : ""}
-
+      ${e.type === "sale" ? `Dozen Sold: <strong>${e.dozenSold}</strong> @ $${number(e.dozenPrice).toFixed(2)}<br>18-Packs Sold: <strong>${e.packSold}</strong> @ $${number(e.packPrice).toFixed(2)}<br>Eggs Sold: <strong>${eggsSold(e)}</strong><br>Revenue: <strong>$${revenue(e).toFixed(2)}</strong>` : ""}
       <button onclick="editEntry('${e.id}')">Edit Entry</button>
       <button onclick="deleteEntry('${e.id}')">Delete This Entry</button>
     </div>
@@ -691,12 +623,7 @@ function updateApp() {
 }
 
 function backupData() {
-  const backup = {
-    entries: visibleEntries(),
-    farmSettings,
-    backupDate: new Date().toISOString()
-  };
-
+  const backup = { entries: visibleEntries(), farmSettings, backupDate: new Date().toISOString() };
   const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);
@@ -707,31 +634,21 @@ function backupData() {
 function restoreData(event) {
   const file = event.target.files[0];
   if (!file) return;
-
   const reader = new FileReader();
-
   reader.onload = function(e) {
     try {
       const backup = JSON.parse(e.target.result);
-
-      entries = Array.isArray(backup.entries)
-        ? backup.entries.map(normalizeEntry).filter(isValidEntry)
-        : [];
-
+      entries = Array.isArray(backup.entries) ? backup.entries.map(normalizeEntry).filter(isValidEntry) : [];
       farmSettings = normalizeSettings(backup.farmSettings);
       farmSettings.updatedAt = Date.now();
-
       saveAndSync({ syncAllEntries: true, saveSettings: true });
-
       loadFarmSettings();
       showScreen("dashboard");
-
       alert("Backup restored.");
     } catch {
       alert("That backup file could not be restored.");
     }
   };
-
   reader.readAsText(file);
 }
 
@@ -746,4 +663,15 @@ document.addEventListener("DOMContentLoaded", () => {
   showScreen("dashboard");
 
   cloudLoad();
+
+  // Keep the original egg/sale history current on every open device.
+  // This updates the screen in place and never reloads the page.
+  setInterval(() => {
+    if (!document.hidden) cloudLoad();
+  }, 8000);
+
+  window.addEventListener("focus", () => cloudLoad());
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) cloudLoad();
+  });
 });
