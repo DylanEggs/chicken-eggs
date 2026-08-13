@@ -1,5 +1,25 @@
 (() => {
   "use strict";
+  if (window.__eggAppLegacyIntervalGuard) return;
+  window.__eggAppLegacyIntervalGuard = true;
+  const nativeSetInterval = window.setInterval.bind(window);
+  window.setInterval = function(fn, delay, ...args) {
+    const ms = Number(delay) || 0;
+    let source = "";
+    try { source = typeof fn === "function" ? Function.prototype.toString.call(fn) : String(fn || ""); } catch {}
+    const legacyFun = ms === 3000 && source.includes("hook();renderFun()");
+    const legacyInsights = ms === 3500 && source.includes("hook();render()");
+    const legacyBusiness = ms === 3500 && source.includes("hookScreen();render()");
+    if (legacyFun || legacyInsights || legacyBusiness) {
+      console.log("✅ Blocked legacy background redraw timer");
+      return 0;
+    }
+    return nativeSetInterval(fn, delay, ...args);
+  };
+})();
+
+(() => {
+  "use strict";
   const KEY="chickenEggInventoryV2", APP2_KEY="chickenEggApp2V1";
   const ENTRIES_KEY="chickenEggEntriesV102", SETTINGS_KEY="chickenEggSettingsV102", BUSINESS_KEY="chickenEggBusinessV1", DELUXE_KEY="chickenEggDeluxeV1";
 
