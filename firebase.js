@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
-import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+import { getFirestore, doc, getDoc, setDoc, serverTimestamp, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
 import {
   getAuth,
   signInAnonymously,
@@ -30,6 +30,7 @@ const DATASETS = [
 ];
 
 let syncing = false;
+let entryListenerStarted = false;
 
 function readLocal(key) {
   try { return JSON.parse(localStorage.getItem(key) || "null"); }
@@ -105,10 +106,6 @@ function sameContent(a, b) {
   catch { return false; }
 }
 
-function scheduleSingleReload() {
-  return;
-}
-
 async function writeCloud(ds, value) {
   const version = Math.max(Date.now(), stamp(value));
   const payload = { ...value, updatedAt: version };
@@ -169,11 +166,37 @@ async function syncAllFarmData() {
   }
 }
 
+function startCoreEntryListener() {
+  if (entryListenerStarted) return;
+  entryListenerStarted = true;
+
+  onSnapshot(collection(db, "entries"), snapshot => {
+    const coreChanged = snapshot.docChanges().some(change => {
+      const data = change.doc.data() || {};
+      return data.type === "eggs" || data.type === "sale";
+    });
+
+    if (!coreChanged) return;
+
+    const tryRefresh = () => {
+      if (typeof window.cloudLoad === "function") {
+        window.cloudLoad();
+      } else {
+        setTimeout(tryRefresh, 250);
+      }
+    };
+    tryRefresh();
+  }, error => {
+    console.warn("Egg/sale change listener error:", error);
+  });
+}
+
 onAuthStateChanged(auth, user => {
   if (!user) return;
   window.FirebaseUser = user;
   console.log("✅ Firebase signed in:", user.uid);
-  setTimeout(syncAllFarmData, 1500);
+  setTimeout(syncAllFarmData, 1200);
+  startCoreEntryListener();
 });
 
 signInAnonymously(auth).catch(error => {
@@ -181,4 +204,4 @@ signInAnonymously(auth).catch(error => {
 });
 
 window.syncFarmNow = syncAllFarmData;
-console.log("✅ Firebase initialized with open/change sync only");
+console.log("✅ Firebase initialized with change-driven sync only");
