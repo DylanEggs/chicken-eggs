@@ -75,7 +75,6 @@ async function syncDataset(ds){
   if(lt>rt){await writeCloud(ds,local);return;}
   if(rt>lt){writeLocal(ds.key,remote);return;}
   if(!same(local,remote)){
-    // Equal timestamps but different content: cloud wins so all devices converge.
     writeLocal(ds.key,remote);
   }
 }
@@ -129,8 +128,6 @@ async function loadCoreFromCloud(){
 function installCoreAuthority(){
   if(typeof window.cloudLoad==="function")window.cloudLoad=loadCoreFromCloud;
   if(typeof window.startEntryListener==="function")window.startEntryListener=async()=>null;
-  // The Firebase module owns the realtime listener now. This prevents the old merge-only
-  // listener from resurrecting entries that were deleted on another device.
   if(window.ChickenEggsDB?.subscribeEntries){window.ChickenEggsDB.subscribeEntries=async()=>()=>{};}
 }
 installCoreAuthority();
@@ -183,7 +180,7 @@ if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",
 
 window.syncFarmNow=syncAllFarmData;
 window.refreshCoreFromFirebase=loadCoreFromCloud;
-import("./farm-consistency-v2.js?v=4")
+import("./farm-consistency-v2.js?v=5")
   .then(()=>import("./app-audit-v1.js?v=1"))
   .then(()=>import("./audit-finish-v1.js?v=1"))
   .catch(e=>console.warn("Farm audit layer failed to load:",e));
