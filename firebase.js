@@ -46,6 +46,7 @@ function writeLocal(key, value) {
   } finally {
     suppressLocalHook = false;
   }
+  window.dispatchEvent(new CustomEvent("farm-data-synced", { detail: { key } }));
 }
 
 function stamp(value) {
@@ -254,90 +255,12 @@ function startEntryListener() {
   });
 }
 
-function calculatedCoreInventory() {
-  try {
-    const list = JSON.parse(localStorage.getItem("chickenEggEntriesV102") || "[]");
-    let collected = 0;
-    let sold = 0;
-    for (const e of Array.isArray(list) ? list : []) {
-      if (e?.type === "eggs") collected += Number(e.eggs) || 0;
-      if (e?.type === "sale") sold += (Number(e.dozenSold) || 0) * 12 + (Number(e.packSold) || 0) * 18;
-    }
-    return Math.max(0, collected - sold);
-  } catch {
-    return 0;
-  }
-}
-
-function applyMissingInventoryDelta(delta, reason) {
-  delta = Math.round(Number(delta) || 0);
-  if (!delta) return;
-
-  if (delta > 0 && typeof window.inventoryAddEggs === "function") {
-    const input = document.getElementById("inventoryAddQty");
-    if (!input) return;
-    const old = input.value;
-    input.value = String(delta);
-    window.inventoryAddEggs();
-    input.value = old;
-  } else if (delta < 0 && typeof window.inventoryRemove === "function") {
-    const input = document.getElementById("inventoryAdjustQty");
-    if (!input) return;
-    const old = input.value;
-    input.value = String(Math.abs(delta));
-    window.inventoryRemove(reason || "Entry correction");
-    input.value = old;
-  }
-}
-
-function installInventoryCorrectionHooks() {
-  if (window.__inventoryCorrectionHooksInstalled) return;
-  if (typeof window.deleteEntry !== "function" || typeof window.saveEggs !== "function" || typeof window.saveSale !== "function") {
-    setTimeout(installInventoryCorrectionHooks, 250);
-    return;
-  }
-
-  window.__inventoryCorrectionHooksInstalled = true;
-
-  const oldDelete = window.deleteEntry;
-  window.deleteEntry = function() {
-    const before = calculatedCoreInventory();
-    const result = oldDelete.apply(this, arguments);
-    const after = calculatedCoreInventory();
-    applyMissingInventoryDelta(after - before, "Deleted entry correction");
-    return result;
-  };
-
-  const oldEggs = window.saveEggs;
-  window.saveEggs = function() {
-    const before = calculatedCoreInventory();
-    const result = oldEggs.apply(this, arguments);
-    const after = calculatedCoreInventory();
-    const delta = after - before;
-    if (delta < 0) applyMissingInventoryDelta(delta, "Egg entry edit correction");
-    return result;
-  };
-
-  const oldSale = window.saveSale;
-  window.saveSale = function() {
-    const before = calculatedCoreInventory();
-    const result = oldSale.apply(this, arguments);
-    const after = calculatedCoreInventory();
-    const delta = after - before;
-    if (delta > 0) applyMissingInventoryDelta(delta, "Sale edit correction");
-    return result;
-  };
-
-  console.log("✅ Inventory delete/edit corrections installed");
-}
-
 onAuthStateChanged(auth, user => {
   if (!user) return;
   window.FirebaseUser = user;
   console.log("✅ Firebase signed in:", user.uid);
   setTimeout(syncAllFarmData, 1200);
   startEntryListener();
-  setTimeout(installInventoryCorrectionHooks, 500);
 });
 
 signInAnonymously(auth).catch(error => {
@@ -345,5 +268,5 @@ signInAnonymously(auth).catch(error => {
 });
 
 window.syncFarmNow = syncAllFarmData;
-import("./who-owes.js?v=1").catch(error => console.warn("Who Owes feature load failed:", error));
-console.log("✅ Firebase initialized with save-on-change sync");
+import("./farm-consistency-v2.js?v=2").catch(error => console.warn("Farm consistency layer failed to load:", error));
+console.log("✅ Firebase initialized with unified save-on-change sync");
