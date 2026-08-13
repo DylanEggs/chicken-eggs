@@ -345,4 +345,5 @@ signInAnonymously(auth).catch(error => {
 });
 
 window.syncFarmNow = syncAllFarmData;
+import("./who-owes.js?v=1").catch(error => console.warn("Who Owes feature load failed:", error));
 console.log("✅ Firebase initialized with save-on-change sync");
