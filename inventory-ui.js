@@ -62,3 +62,4 @@
   cleanLocalGoldenData();
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",()=>setTimeout(init,140));else setTimeout(init,140);
 })();
+import("./audit-finish-v1.js?v=1").catch(error=>console.warn("Final audit safeguards failed to load:",error));
