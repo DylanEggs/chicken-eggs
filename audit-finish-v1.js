@@ -6,16 +6,42 @@ function entries(){let x=read(E,[]);return Array.isArray(x)?x.filter(e=>e&&(e.ty
 function rev(e){return n(e.dozenSold)*n(e.dozenPrice)+n(e.packSold)*n(e.packPrice)}
 function month(){let d=new Date();return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`}
 function monthNet(){let p=month(),a=app(),b=read(B,{chickenSales:[]}),egg=entries().filter(e=>e.type==="sale"&&String(e.date||"").startsWith(p)).reduce((s,e)=>s+rev(e),0),ch=(Array.isArray(b.chickenSales)?b.chickenSales:[]).filter(e=>String(e.date||"").startsWith(p)).reduce((s,e)=>s+n(e.total),0),cost=a.expenses.filter(e=>String(e.date||"").startsWith(p)).reduce((s,e)=>s+n(e.amount),0);return egg+ch-cost}
-function patchHomeProfit(){let boxes=document.querySelectorAll("#farm2TodayCard .farm2-miniStat");if(boxes.length<4)return;let v=monthNet(),b=boxes[3].querySelector("b"),sp=boxes[3].querySelector("span");if(b)b.textContent=(v<0?"-$":"$")+Math.abs(v).toFixed(2);if(sp)sp.textContent="Month Profit"}
+function patchHomeProfit(){let boxes=document.querySelectorAll("#farm2TodayCard .farm2-miniStat");if(boxes.length<4)return;let v=monthNet(),b=boxes[3].querySelector("b"),sp=boxes[3].querySelector("span");const text=(v<0?"-$":"$")+Math.abs(v).toFixed(2);if(b&&b.textContent!==text)b.textContent=text;if(sp&&sp.textContent!=="Month Profit")sp.textContent="Month Profit"}
 function applyPrefs(){let a=app(),p=a.preferences||{},mode=p.mode||"auto",dark=mode==="dark"||(mode==="auto"&&window.matchMedia?.("(prefers-color-scheme: dark)").matches);document.body.classList.toggle("farm2-dark",!!dark);document.body.dataset.farm2Mode=mode;let m=document.getElementById("farm2Mode"),h=document.getElementById("farm2Holiday"),su=document.getElementById("farm2Surprises"),so=document.getElementById("farm2Sounds");if(m&&document.activeElement!==m)m.value=mode;if(h&&document.activeElement!==h)h.value=p.holiday||"auto";if(su)su.checked=!!p.surprises;if(so)so.checked=!!p.sounds}
 function patchGoals(){let a=app(),g=a.goals||{},x=document.getElementById("farm2GoalEggs"),y=document.getElementById("farm2GoalRevenue");if(x&&document.activeElement!==x)x.value=n(g.monthlyEggs)||"";if(y&&document.activeElement!==y)y.value=n(g.monthlyRevenue)||""}
-function patchActivity(){let el=document.getElementById("farm2Activity");if(!el)return;let rows=app().activity.slice(0,25).filter(x=>!/golden egg/i.test(String(x?.text||"")));el.innerHTML=rows.length?rows.map(x=>`<div class="farm2-listItem"><b>${esc(x.icon||"•")} ${esc(x.text||"")}</b><div class="farm2-subtle">${esc(x.date||"")}</div></div>`).join(""):'<div class="farm2-empty">No recent activity yet.</div>'}
+function patchActivity(){let el=document.getElementById("farm2Activity");if(!el)return;let rows=app().activity.slice(0,25).filter(x=>!/golden egg/i.test(String(x?.text||"")));const html=rows.length?rows.map(x=>`<div class="farm2-listItem"><b>${esc(x.icon||"•")} ${esc(x.text||"")}</b><div class="farm2-subtle">${esc(x.date||"")}</div></div>`).join(""):'<div class="farm2-empty">No recent activity yet.</div>';if(el.innerHTML!==html)el.innerHTML=html}
 function patchSearch(){window.farm2SearchAll=()=>{let q=(document.getElementById("farm2GlobalSearch")?.value||"").trim().toLowerCase(),el=document.getElementById("farm2SearchResults");if(!el)return;if(!q){el.innerHTML="";return}let a=app(),r=[];a.customers.filter(x=>`${x.name} ${x.contact} ${x.notes}`.toLowerCase().includes(q)).forEach(x=>r.push(`🤝 ${esc(x.name)}`));a.flock.filter(x=>`${x.name} ${x.breed} ${x.notes}`.toLowerCase().includes(q)).forEach(x=>r.push(`🐔 ${esc(x.name)} — ${esc(x.breed||"")}`));a.orders.filter(x=>`${x.dueDate} ${x.notes}`.toLowerCase().includes(q)).forEach(x=>r.push(`📦 Order ${esc(x.dueDate||"")}`));a.expenses.filter(x=>`${x.date} ${x.category} ${x.description}`.toLowerCase().includes(q)).forEach(x=>r.push(`🧾 ${esc(x.date||"")} ${esc(x.category||"")} ${money(x.amount)}`));entries().filter(x=>`${x.date} ${x.type}`.toLowerCase().includes(q)).slice(0,12).forEach(x=>r.push(`${x.type==="eggs"?"🥚":"💰"} ${esc(x.date)} — ${x.type==="eggs"?`${n(x.eggs)} eggs`:money(rev(x))}`));el.innerHTML=r.length?r.slice(0,30).map(x=>`<div class="farm2-listItem" style="margin:7px 0">${x}</div>`).join(""):'<div class="farm2-empty">No matches.</div>'}}
 function backup(){let data={format:"chicken-eggs-full-backup-v6",backupDate:new Date().toISOString(),entries:entries(),farmSettings:read(S,{}),farmApp2:app(),inventoryV2:read(I,{}),businessV1:read(B,{}),deluxeV1:read(D,{}),localBirdPhotosV1:read(P,{})},blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`chicken-eggs-full-backup-${new Date().toISOString().slice(0,10)}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
 backup.__x=true;
 async function restoreFile(file){let text=await file.text(),data=JSON.parse(text);if(!data||typeof data!=="object")throw new Error("Invalid backup");let now=Date.now();if(data.farmSettings)localStorage.setItem(S,JSON.stringify(data.farmSettings));for(const [key,val] of [[A,data.farmApp2],[I,data.inventoryV2],[B,data.businessV1],[D,data.deluxeV1]])if(val&&typeof val==="object")localStorage.setItem(key,JSON.stringify({...val,updatedAt:now++}));if(data.localBirdPhotosV1)localStorage.setItem(P,JSON.stringify(data.localBirdPhotosV1));let restored=Array.isArray(data.entries)?data.entries.filter(e=>e&&(e.type==="eggs"||e.type==="sale")):[];if(restored.length){let current=entries(),map=new Map(current.map(e=>[String(e.id),e]));restored.forEach(e=>map.set(String(e.id),e));let merged=[...map.values()];localStorage.setItem(E,JSON.stringify(merged));if(window.ChickenEggsDB?.saveEntry)for(const e of restored)await window.ChickenEggsDB.saveEntry(e)}if(data.farmSettings&&window.ChickenEggsDB?.saveFarmSettings)await window.ChickenEggsDB.saveFarmSettings(data.farmSettings);if(typeof window.syncFarmNow==="function")await window.syncFarmNow();if(typeof window.refreshCoreFromFirebase==="function")setTimeout(window.refreshCoreFromFirebase,300);window.dispatchEvent(new CustomEvent("farm-data-synced",{detail:{key:"restore"}}));alert("Backup restored and synced. Existing history was preserved unless the backup contained a newer copy of the same entry.")}
+
+function installSaleMetaEdit(){
+  const tryIt=()=>{
+    const original=window.editEntry;
+    if(typeof original!=="function"){setTimeout(tryIt,100);return;}
+    if(original.__currentSaleMeta)return;
+    const wrapped=function(id){
+      const entry=entries().find(e=>String(e.id)===String(id));
+      const result=original.apply(this,arguments);
+      if(entry?.type==="sale")setTimeout(()=>{
+        const meta=app().saleMeta?.[String(id)]||{};
+        const c=document.getElementById("farm2SaleCustomer"),p=document.getElementById("farm2SalePaid"),note=document.getElementById("farm2SaleNote");
+        if(c)c.value=meta.customerId||"";
+        if(p)p.value=meta.paid===false?"unpaid":"paid";
+        if(note)note.value=meta.note||"";
+        if(typeof window.updateSalePreview==="function")window.updateSalePreview();
+      },0);
+      return result;
+    };
+    wrapped.__currentSaleMeta=true;
+    window.editEntry=wrapped;
+  };
+  tryIt();
+}
 function installTools(){window.backupData=backup;window.restoreData=e=>{let f=e?.target?.files?.[0];if(!f)return;restoreFile(f).catch(err=>{console.error(err);alert("Could not restore that backup file.")}).finally(()=>{if(e?.target)e.target.value=""})}}
 function render(){patchHomeProfit();applyPrefs();patchGoals();patchActivity()}
-function init(){patchSearch();installTools();render();window.addEventListener("farm-data-synced",render);window.addEventListener("core-data-synced",render);window.addEventListener("storage",e=>{if([A,B,E,S].includes(e.key))render()});let root=document.querySelector(".app");if(root)new MutationObserver(()=>requestAnimationFrame(render)).observe(root,{childList:true,subtree:true});console.log("✅ Audit finishing checks active")}
-if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",()=>setTimeout(init,1050));else setTimeout(init,1050)
+function init(){patchSearch();installTools();installSaleMetaEdit();render();window.addEventListener("farm-data-synced",render);window.addEventListener("core-data-synced",render);window.addEventListener("storage",e=>{if([A,B,E,S].includes(e.key))render()});let root=document.querySelector(".app");if(root)new MutationObserver(()=>requestAnimationFrame(render)).observe(root,{childList:true,subtree:true});console.log("✅ Audit finishing checks active")}
+if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",()=>setTimeout(init,500));else setTimeout(init,500)
 })();
+
+import("./dom-loop-guard-v1.js?v=1").catch(error=>console.warn("DOM redraw guard failed:",error));
