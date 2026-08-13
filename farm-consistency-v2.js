@@ -59,7 +59,6 @@
   function saveInventoryState(state) {
     state.updatedAt = Date.now();
     localStorage.setItem(INVENTORY_KEY, JSON.stringify(state));
-    if (typeof window.syncFarmNow === "function") setTimeout(() => window.syncFarmNow(), 0);
     scheduleRender();
   }
 
@@ -79,6 +78,8 @@
     if (el && el.textContent !== String(value)) el.textContent = String(value);
   }
 
+  // inventory.js alone owns #inventoryDashboardCard and #inventorySummary.
+  // This layer only keeps other screens consistent with that shared inventory value.
   function patchHome() {
     const s = inventory(), av = available(), r = reserved();
     const minis = document.querySelectorAll("#farm2TodayCard .farm2-miniStat");
@@ -92,48 +93,15 @@
     }
     document.querySelectorAll("#farm2TodayCard .farm2-subtle").forEach(el => {
       if ((el.textContent || "").trim().startsWith("Inventory:")) {
-        const t = `Inventory: ${n(s.dozens)} dozen + ${n(s.packs18)} 18-pack${n(s.packs18)===1?"":"s"} + ${n(s.loose)} loose`;
-        patchText(el, t);
+        patchText(el, `Inventory: ${n(s.dozens)} dozen + ${n(s.packs18)} 18-pack${n(s.packs18)===1?"":"s"} + ${n(s.loose)} loose`);
       }
     });
-
     const snap = document.getElementById("xSnapshot");
     if (snap) {
       [...snap.querySelectorAll(".xstat")].forEach(box => {
         const label = box.querySelector("span");
         if ((label?.textContent || "").trim() === "Available") patchText(box.querySelector("b"), av);
       });
-    }
-
-    const hub = document.getElementById("farm2HubSummary");
-    const firstHub = hub?.querySelector(".farm2-grid2 .farm2-card");
-    if (firstHub && /Inventory/i.test(firstHub.textContent || "")) {
-      const html = `<div class="farm2-kicker">Sellable Physical Inventory</div><div class="farm2-moneyBig">${av} 🥚</div><div class="farm2-subtle">${n(s.packs18)} 18-pack${n(s.packs18)===1?"":"s"} • ${n(s.dozens)} dozen carton${n(s.dozens)===1?"":"s"} • ${n(s.loose)} loose • ${r} reserved</div>`;
-      if (firstHub.innerHTML !== html) firstHub.innerHTML = html;
-    }
-  }
-
-  function patchInventoryCards() {
-    const s = inventory(), total = physical(), r = reserved(), av = available();
-    const card = document.getElementById("inventoryDashboardCard");
-    if (card) {
-      const html = `<div class="farm2-sectionHeader"><div><div class="farm2-kicker">Physical Egg Inventory</div><h3>${av} eggs available</h3></div><span class="farm2-badge gold">${n(s.packs18)} × 18-pack</span></div>
-        <div class="inventory-grid"><div class="inventory-box"><b>${total}</b><span>On Hand</span></div><div class="inventory-box"><b>${r}</b><span>Reserved</span></div><div class="inventory-box"><b>${av}</b><span>Sell / Use</span></div></div>
-        <div class="farm2-subtle">${n(s.dozens)} dozen cartons • ${n(s.packs18)} 18-packs • ${n(s.loose)} loose eggs</div>
-        <button onclick="showScreen('farm2Inventory')">✏️ Edit Inventory</button>`;
-      if (card.innerHTML !== html) card.innerHTML = html;
-    }
-
-    const summary = document.getElementById("inventorySummary");
-    if (summary) {
-      const boxes = summary.querySelectorAll(".inventory-box");
-      if (boxes.length >= 3) {
-        patchText(boxes[0].querySelector("b"), total);
-        patchText(boxes[1].querySelector("b"), r);
-        patchText(boxes[2].querySelector("b"), av);
-      }
-      const pack = summary.querySelector(".farm2-moneyBig");
-      patchText(pack, `${n(s.dozens)} dozen • ${n(s.packs18)} × 18-pack • ${n(s.loose)} loose`);
     }
   }
 
@@ -187,22 +155,16 @@
       card.className = "biz-card";
       monthly.insertAdjacentElement("afterend", card);
     }
-
-    const b = business();
-    const a = app2();
+    const b = business(), a = app2();
     const eggSales = entries().filter(e=>e.type==="sale").reduce((sum,e)=>sum+saleAmount(e),0);
     const chickenSales = (Array.isArray(b.chickenSales)?b.chickenSales:[]).reduce((sum,e)=>sum+(Number(e.total)||0),0);
     const expenses = Array.isArray(a.expenses)?a.expenses:[];
     const feed = expenses.filter(e=>String(e.category||"").toLowerCase()==="feed").reduce((sum,e)=>sum+(Number(e.amount)||0),0);
     const supplies = expenses.filter(e=>String(e.category||"").toLowerCase()!=="feed").reduce((sum,e)=>sum+(Number(e.amount)||0),0);
-    const income = eggSales + chickenSales;
-    const costs = feed + supplies;
-    const net = income - costs;
-    const cls = net >= 0 ? "biz-good" : "biz-bad";
-
+    const income = eggSales + chickenSales, costs = feed + supplies, net = income - costs;
     const html = `<div class="farm2-sectionHeader"><div><div class="farm2-kicker">Lifetime • Farm Business</div><h3>All-Time Gains & Losses</h3></div><span class="farm2-badge ${net<0?"red":"gold"}">${net>=0?"PROFIT":"LOSS"}</span></div>
       <div class="biz-grid"><div class="biz-stat"><b>${money(eggSales)}</b><span>Lifetime Egg Sales</span></div><div class="biz-stat"><b>${money(chickenSales)}</b><span>Lifetime Chicken Sales</span></div><div class="biz-stat"><b>${money(feed)}</b><span>Lifetime Feed Cost</span></div><div class="biz-stat"><b>${money(supplies)}</b><span>Lifetime Other Supplies</span></div><div class="biz-stat"><b>${money(income)}</b><span>Total Lifetime Income</span></div><div class="biz-stat"><b>${money(costs)}</b><span>Total Lifetime Costs</span></div></div>
-      <div class="${cls}" style="margin-top:13px"><div class="farm2-kicker">Lifetime Net Profit / Loss</div><div class="biz-net">${net>=0?"+":""}${money(net)}</div></div>`;
+      <div class="${net>=0?"biz-good":"biz-bad"}" style="margin-top:13px"><div class="farm2-kicker">Lifetime Net Profit / Loss</div><div class="biz-net">${net>=0?"+":""}${money(net)}</div></div>`;
     if (card.innerHTML !== html) card.innerHTML = html;
   }
 
@@ -213,14 +175,12 @@
     a.saleMeta[String(id)] = { ...old, paid:true, updatedAt:Date.now() };
     a.updatedAt = Date.now();
     localStorage.setItem(APP2_KEY, JSON.stringify(a));
-    if (typeof window.syncFarmNow === "function") window.syncFarmNow();
     scheduleRender();
   };
 
   function renderAll() {
     renderQueued = false;
     patchHome();
-    patchInventoryCards();
     patchReservations();
     ensureWhoOwes();
     patchLifetimeProfit();
@@ -231,38 +191,6 @@
     requestAnimationFrame(renderAll);
   }
 
-  function installManualInventoryFunctions() {
-    window.inventorySetExact = () => {
-      const old = physical();
-      const state = inventory();
-      state.dozens = n(document.getElementById("inventoryDozens")?.value);
-      state.packs18 = n(document.getElementById("inventoryPacks18")?.value);
-      state.loose = n(document.getElementById("inventoryLoose")?.value);
-      const now = Math.round(state.dozens*12+state.packs18*18+state.loose);
-      addAdjustment(state, now-old, "Exact inventory count");
-      saveInventoryState(state);
-    };
-    window.inventoryRemove = reason => {
-      const q = Math.round(n(document.getElementById("inventoryAdjustQty")?.value));
-      if (q <= 0) { alert("Enter how many eggs left inventory."); return; }
-      const old = physical(), removed = Math.min(q, old), total = old-removed;
-      const state = inventory();
-      state.dozens=0; state.packs18=Math.floor(total/18); state.loose=total%18;
-      addAdjustment(state,-removed,reason||"Inventory removal");
-      saveInventoryState(state);
-      const input=document.getElementById("inventoryAdjustQty"); if(input)input.value="";
-    };
-    window.inventoryAddEggs = () => {
-      const q = Math.round(n(document.getElementById("inventoryAddQty")?.value));
-      if (q <= 0) { alert("Enter how many eggs to add."); return; }
-      const total = physical()+q, state=inventory();
-      state.dozens=0; state.packs18=Math.floor(total/18); state.loose=total%18;
-      addAdjustment(state,q,"Manual inventory add");
-      saveInventoryState(state);
-      const input=document.getElementById("inventoryAddQty"); if(input)input.value="";
-    };
-  }
-
   function installCoreCorrectionHooks() {
     if (hooksInstalled) return;
     if (typeof window.saveEggs !== "function" || typeof window.saveSale !== "function" || typeof window.deleteEntry !== "function") {
@@ -271,7 +199,6 @@
     }
     hooksInstalled = true;
     window.__inventoryCorrectionHooksInstalled = true;
-
     ["saveEggs","saveSale","deleteEntry"].forEach(name => {
       const original = window[name];
       if (typeof original !== "function") return;
@@ -332,24 +259,16 @@
     if ([INVENTORY_KEY,APP2_KEY,ENTRIES_KEY,BUSINESS_KEY].includes(e.key)) scheduleRender();
   });
   window.addEventListener("farm-data-synced", scheduleRender);
+  window.addEventListener("core-data-synced", scheduleRender);
 
   function init() {
-    installManualInventoryFunctions();
     installCoreCorrectionHooks();
     installReservationGuard();
     installShowScreenHook();
     renderAll();
-    setTimeout(renderAll,500);
-    setTimeout(renderAll,1600);
-
-    const app = document.querySelector(".app");
-    if (app) {
-      const observer = new MutationObserver(() => scheduleRender());
-      observer.observe(app,{childList:true,subtree:true,characterData:true});
-    }
-    console.log("✅ Farm consistency layer v3 active");
+    console.log("✅ Farm consistency active without inventory redraw loop");
   }
 
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded",()=>setTimeout(init,450));
-  else setTimeout(init,450);
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded",()=>setTimeout(init,250));
+  else setTimeout(init,250);
 })();
