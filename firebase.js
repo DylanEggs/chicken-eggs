@@ -127,19 +127,12 @@ async function syncDataset(ds) {
 }
 
 let syncing = false;
-async function syncAllFarmData({ allowReload = false } = {}) {
+async function syncAllFarmData() {
   if (syncing || !auth.currentUser) return;
   syncing = true;
   try {
-    let receivedCloudData = false;
     for (const ds of DATASETS) {
-      if (await syncDataset(ds)) receivedCloudData = true;
-    }
-
-    if (receivedCloudData && allowReload) {
-      const token = String(Date.now());
-      sessionStorage.setItem("farmSyncReloadToken", token);
-      setTimeout(() => location.reload(), 300);
+      await syncDataset(ds);
     }
   } catch (error) {
     console.warn("Farm cloud sync error:", error);
@@ -152,8 +145,8 @@ onAuthStateChanged(auth, user => {
   if (user) {
     window.FirebaseUser = user;
     console.log("✅ Firebase signed in:", user.uid);
-    setTimeout(() => syncAllFarmData({ allowReload: true }), 1200);
-    setInterval(() => syncAllFarmData({ allowReload: false }), 5000);
+    setTimeout(syncAllFarmData, 1200);
+    setInterval(syncAllFarmData, 5000);
   }
 });
 
@@ -161,5 +154,5 @@ signInAnonymously(auth).catch(error => {
   console.error("❌ Firebase anonymous sign-in failed:", error);
 });
 
-window.syncFarmNow = () => syncAllFarmData({ allowReload: true });
-console.log("✅ Firebase initialized");
+window.syncFarmNow = syncAllFarmData;
+console.log("✅ Firebase initialized — sync runs without automatic page reloads");
