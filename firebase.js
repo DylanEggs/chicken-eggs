@@ -270,6 +270,72 @@ function startEntryListener() {
   });
 }
 
+function installDailyRecordsFix() {
+  let queued = false;
+
+  function numberValue(v) { return Number(v) || 0; }
+  function saleRevenue(e) {
+    return numberValue(e.dozenSold) * numberValue(e.dozenPrice) + numberValue(e.packSold) * numberValue(e.packPrice);
+  }
+  function getEntries() {
+    try {
+      const list = JSON.parse(localStorage.getItem("chickenEggEntriesV102") || "[]");
+      return Array.isArray(list) ? list : [];
+    } catch {
+      return [];
+    }
+  }
+  function bestDay(map) {
+    let date = "", value = 0;
+    for (const [d, v] of Object.entries(map)) {
+      if (!date || v > value) { date = d; value = v; }
+    }
+    return { date, value };
+  }
+  function patchCard(title, value, note) {
+    const root = document.getElementById("recordsTotals");
+    if (!root) return;
+    const card = [...root.querySelectorAll(".totalBox")].find(box => (box.querySelector("h3")?.textContent || "").includes(title));
+    if (!card) return;
+    const valueEl = card.querySelector(".totalValue");
+    const noteEl = card.querySelector("p");
+    if (valueEl && valueEl.textContent !== value) valueEl.textContent = value;
+    if (noteEl && noteEl.textContent !== note) noteEl.textContent = note;
+  }
+  function render() {
+    queued = false;
+    const eggsByDay = {};
+    const revenueByDay = {};
+    for (const e of getEntries()) {
+      const date = String(e?.date || "").slice(0, 10);
+      if (!date) continue;
+      if (e.type === "eggs") eggsByDay[date] = (eggsByDay[date] || 0) + numberValue(e.eggs);
+      if (e.type === "sale") revenueByDay[date] = (revenueByDay[date] || 0) + saleRevenue(e);
+    }
+    const egg = bestDay(eggsByDay);
+    const revenue = bestDay(revenueByDay);
+    patchCard("Highest Egg Day", String(Math.round(egg.value || 0)), egg.date || "No data yet");
+    patchCard("Highest Revenue Day", "$" + (revenue.value || 0).toFixed(2), revenue.date || "No data yet");
+  }
+  function schedule() {
+    if (queued) return;
+    queued = true;
+    requestAnimationFrame(render);
+  }
+  function startObserver() {
+    const root = document.getElementById("recordsTotals");
+    if (!root) { setTimeout(startObserver, 300); return; }
+    const observer = new MutationObserver(schedule);
+    observer.observe(root, { childList: true, subtree: true, characterData: true });
+    render();
+  }
+
+  window.addEventListener("farm-data-synced", schedule);
+  window.addEventListener("storage", e => { if (e.key === "chickenEggEntriesV102") schedule(); });
+  startObserver();
+  setTimeout(render, 1000);
+}
+
 onAuthStateChanged(auth, user => {
   if (!user) return;
   window.FirebaseUser = user;
@@ -282,7 +348,9 @@ signInAnonymously(auth).catch(error => {
   console.error("❌ Firebase anonymous sign-in failed:", error);
 });
 
+if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", installDailyRecordsFix);
+else installDailyRecordsFix();
+
 window.syncFarmNow = syncAllFarmData;
 import("./farm-consistency-v2.js?v=3").catch(error => console.warn("Farm consistency layer failed to load:", error));
-import("./records-daily-fix-v1.js?v=1").catch(error => console.warn("Records daily totals fix failed to load:", error));
 console.log("✅ Firebase initialized with unified save-on-change sync");
