@@ -2,7 +2,7 @@
 function installCalcGuard(){const e=document.getElementById("bizHome");if(!e||e.__calcFix)return false;const d=Object.getOwnPropertyDescriptor(Element.prototype,"innerHTML");if(!d?.get||!d?.set)return false;Object.defineProperty(e,"innerHTML",{configurable:true,get(){return d.get.call(e)},set(v){const details=e.querySelector("details"),active=document.activeElement,usingCalc=!!details?.open||!!active?.closest?.("#bizHome details");if(usingCalc)return;d.set.call(e,v)}});e.__calcFix=true;return true}
 function initCalcGuard(){if(!installCalcGuard()){const o=new MutationObserver(()=>{if(installCalcGuard())o.disconnect()});o.observe(document.body,{childList:true,subtree:true})}setInterval(installCalcGuard,1500)}
 
-const KEY="chickenEggApp2V1",DOC_ID="__farm_app_2__",ARRAYS=["customers","orders","expenses","flock","chores","activity"];let writing=false,unsub=null,syncTimer=null,pendingRemote=null,lastCloudStamp=0;let diag={auth:false,doc:false,error:"",cloud:null,last:"Not checked"};
+const KEY="chickenEggApp2V1",DOC_ID="farm_app_2_v1",ARRAYS=["customers","orders","expenses","flock","chores","activity"];let writing=false,unsub=null,syncTimer=null,pendingRemote=null,lastCloudStamp=0;let diag={auth:false,doc:false,error:"",cloud:null,last:"Not checked"};
 const readLocal=()=>{try{return JSON.parse(localStorage.getItem(KEY)||"{}")||{}}catch{return{}}};
 const stamp=x=>Number(x?.updatedAt)||0;
 const clone=x=>JSON.parse(JSON.stringify(x||{}));
