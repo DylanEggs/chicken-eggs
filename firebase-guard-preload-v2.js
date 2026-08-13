@@ -1,0 +1,1 @@
+import("./dom-loop-guard-v1.js?v=2").catch(error=>console.warn("Physical inventory redraw guard preload failed:",error));
