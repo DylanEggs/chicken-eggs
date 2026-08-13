@@ -284,4 +284,5 @@ signInAnonymously(auth).catch(error => {
 
 window.syncFarmNow = syncAllFarmData;
 import("./farm-consistency-v2.js?v=3").catch(error => console.warn("Farm consistency layer failed to load:", error));
+import("./records-daily-fix-v1.js?v=1").catch(error => console.warn("Records daily totals fix failed to load:", error));
 console.log("✅ Firebase initialized with unified save-on-change sync");
