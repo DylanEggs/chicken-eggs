@@ -30,8 +30,6 @@ const DATASETS = [
 ];
 
 let syncing = false;
-let syncTimer = null;
-let pendingReloadStamp = 0;
 
 function readLocal(key) {
   try { return JSON.parse(localStorage.getItem(key) || "null"); }
@@ -107,19 +105,8 @@ function sameContent(a, b) {
   catch { return false; }
 }
 
-function userIsTyping() {
-  const el = document.activeElement;
-  return !!(el && /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName));
-}
-
-function scheduleSingleReload(version) {
-  if (!version || userIsTyping()) return;
-  const key = "farmSyncAppliedVersion";
-  const applied = Number(sessionStorage.getItem(key)) || 0;
-  if (version <= applied || version <= pendingReloadStamp) return;
-  pendingReloadStamp = version;
-  sessionStorage.setItem(key, String(version));
-  setTimeout(() => window.location.reload(), 700);
+function scheduleSingleReload() {
+  return;
 }
 
 async function writeCloud(ds, value) {
@@ -150,7 +137,6 @@ async function syncDataset(ds) {
 
   if (!local && remote) {
     writeLocal(ds.key, remote);
-    scheduleSingleReload(stamp(remote));
     return;
   }
 
@@ -160,19 +146,14 @@ async function syncDataset(ds) {
 
   if (cloudNeedsUpdate) {
     const saved = await writeCloud(ds, merged);
-    if (localNeedsUpdate) {
-      writeLocal(ds.key, saved);
-      scheduleSingleReload(stamp(saved));
-    } else if (stamp(saved) !== stamp(local)) {
-      writeLocal(ds.key, saved);
-    }
+    if (localNeedsUpdate) writeLocal(ds.key, saved);
+    else if (stamp(saved) !== stamp(local)) writeLocal(ds.key, saved);
     return;
   }
 
   if (localNeedsUpdate) {
     const incoming = { ...merged, updatedAt: stamp(remote) || stamp(merged) };
     writeLocal(ds.key, incoming);
-    scheduleSingleReload(stamp(incoming));
   }
 }
 
@@ -193,8 +174,6 @@ onAuthStateChanged(auth, user => {
   window.FirebaseUser = user;
   console.log("✅ Firebase signed in:", user.uid);
   setTimeout(syncAllFarmData, 1500);
-  clearInterval(syncTimer);
-  syncTimer = setInterval(syncAllFarmData, 7000);
 });
 
 signInAnonymously(auth).catch(error => {
@@ -202,4 +181,4 @@ signInAnonymously(auth).catch(error => {
 });
 
 window.syncFarmNow = syncAllFarmData;
-console.log("✅ Firebase initialized with guarded cross-device sync");
+console.log("✅ Firebase initialized with open/change sync only");
