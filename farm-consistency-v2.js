@@ -4,6 +4,7 @@
   const INVENTORY_KEY = "chickenEggInventoryV2";
   const APP2_KEY = "chickenEggApp2V1";
   const ENTRIES_KEY = "chickenEggEntriesV102";
+  const BUSINESS_KEY = "chickenEggBusinessV1";
   let renderQueued = false;
   let hooksInstalled = false;
 
@@ -16,7 +17,8 @@
   function esc(v) { return String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c])); }
 
   function inventory() { return read(INVENTORY_KEY, { dozens:0, packs18:0, loose:0, adjustments:[], updatedAt:0 }); }
-  function app2() { return read(APP2_KEY, { orders:[], customers:[], saleMeta:{} }); }
+  function app2() { return read(APP2_KEY, { orders:[], customers:[], saleMeta:{}, expenses:[] }); }
+  function business() { return read(BUSINESS_KEY, { chickenSales:[] }); }
   function entries() { return read(ENTRIES_KEY, []).filter(e => e && (e.type === "eggs" || e.type === "sale")); }
 
   function physical() {
@@ -78,7 +80,7 @@
   }
 
   function patchHome() {
-    const s = inventory(), av = available(), r = reserved(), total = physical();
+    const s = inventory(), av = available(), r = reserved();
     const minis = document.querySelectorAll("#farm2TodayCard .farm2-miniStat");
     if (minis.length >= 3) {
       patchText(minis[0].querySelector("b"), av);
@@ -175,6 +177,35 @@
     if (card.innerHTML !== html) card.innerHTML = html;
   }
 
+  function patchLifetimeProfit() {
+    const monthly = document.getElementById("bizHome");
+    if (!monthly) return;
+    let card = document.getElementById("bizLifetimeHome");
+    if (!card) {
+      card = document.createElement("div");
+      card.id = "bizLifetimeHome";
+      card.className = "biz-card";
+      monthly.insertAdjacentElement("afterend", card);
+    }
+
+    const b = business();
+    const a = app2();
+    const eggSales = entries().filter(e=>e.type==="sale").reduce((sum,e)=>sum+saleAmount(e),0);
+    const chickenSales = (Array.isArray(b.chickenSales)?b.chickenSales:[]).reduce((sum,e)=>sum+(Number(e.total)||0),0);
+    const expenses = Array.isArray(a.expenses)?a.expenses:[];
+    const feed = expenses.filter(e=>String(e.category||"").toLowerCase()==="feed").reduce((sum,e)=>sum+(Number(e.amount)||0),0);
+    const supplies = expenses.filter(e=>String(e.category||"").toLowerCase()!=="feed").reduce((sum,e)=>sum+(Number(e.amount)||0),0);
+    const income = eggSales + chickenSales;
+    const costs = feed + supplies;
+    const net = income - costs;
+    const cls = net >= 0 ? "biz-good" : "biz-bad";
+
+    const html = `<div class="farm2-sectionHeader"><div><div class="farm2-kicker">Lifetime • Farm Business</div><h3>All-Time Gains & Losses</h3></div><span class="farm2-badge ${net<0?"red":"gold"}">${net>=0?"PROFIT":"LOSS"}</span></div>
+      <div class="biz-grid"><div class="biz-stat"><b>${money(eggSales)}</b><span>Lifetime Egg Sales</span></div><div class="biz-stat"><b>${money(chickenSales)}</b><span>Lifetime Chicken Sales</span></div><div class="biz-stat"><b>${money(feed)}</b><span>Lifetime Feed Cost</span></div><div class="biz-stat"><b>${money(supplies)}</b><span>Lifetime Other Supplies</span></div><div class="biz-stat"><b>${money(income)}</b><span>Total Lifetime Income</span></div><div class="biz-stat"><b>${money(costs)}</b><span>Total Lifetime Costs</span></div></div>
+      <div class="${cls}" style="margin-top:13px"><div class="farm2-kicker">Lifetime Net Profit / Loss</div><div class="biz-net">${net>=0?"+":""}${money(net)}</div></div>`;
+    if (card.innerHTML !== html) card.innerHTML = html;
+  }
+
   window.farmConsistencyMarkPaid = id => {
     const a = app2();
     if (!a.saleMeta || typeof a.saleMeta !== "object") a.saleMeta = {};
@@ -192,6 +223,7 @@
     patchInventoryCards();
     patchReservations();
     ensureWhoOwes();
+    patchLifetimeProfit();
   }
   function scheduleRender() {
     if (renderQueued) return;
@@ -293,11 +325,11 @@
   const priorSetItem = Storage.prototype.setItem;
   Storage.prototype.setItem = function(key,value) {
     priorSetItem.call(this,key,value);
-    if (this === window.localStorage && [INVENTORY_KEY,APP2_KEY,ENTRIES_KEY].includes(String(key))) scheduleRender();
+    if (this === window.localStorage && [INVENTORY_KEY,APP2_KEY,ENTRIES_KEY,BUSINESS_KEY].includes(String(key))) scheduleRender();
   };
 
   window.addEventListener("storage", e => {
-    if ([INVENTORY_KEY,APP2_KEY,ENTRIES_KEY].includes(e.key)) scheduleRender();
+    if ([INVENTORY_KEY,APP2_KEY,ENTRIES_KEY,BUSINESS_KEY].includes(e.key)) scheduleRender();
   });
   window.addEventListener("farm-data-synced", scheduleRender);
 
@@ -315,7 +347,7 @@
       const observer = new MutationObserver(() => scheduleRender());
       observer.observe(app,{childList:true,subtree:true,characterData:true});
     }
-    console.log("✅ Farm consistency layer v2 active");
+    console.log("✅ Farm consistency layer v3 active");
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded",()=>setTimeout(init,450));
