@@ -160,7 +160,7 @@ function installDailyRecordsFix(){
   const rev=e=>value(e.dozenSold)*value(e.dozenPrice)+value(e.packSold)*value(e.packPrice);
   function readEntries(){try{const x=JSON.parse(localStorage.getItem(CORE_ENTRIES_KEY)||"[]");return Array.isArray(x)?x:[];}catch{return[];}}
   function best(map){let date="",v=0;for(const[d,x]of Object.entries(map))if(!date||x>v){date=d;v=x;}return{date,v};}
-  function patch(title,text,note){const root=document.getElementById("recordsTotals");if(!root)return;const card=[...root.querySelectorAll(".totalBox")].find(x=>(x.querySelector("h3")?.textContent||"").includes(title));if(!card)return;const a=card.querySelector(".totalValue"),b=card.querySelector("p");if(a)a.textContent=text;if(b)b.textContent=note;}
+  function patch(title,text,note){const root=document.getElementById("recordsTotals");if(!root)return;const card=[...root.querySelectorAll(".totalBox")].find(x=>(x.querySelector("h3")?.textContent||"").includes(title));if(!card)return;const a=card.querySelector(".totalValue"),b=card.querySelector("p");if(a&&a.textContent!==text)a.textContent=text;if(b&&b.textContent!==note)b.textContent=note;}
   function render(){queued=false;const eggs={},moneyByDay={};for(const e of readEntries()){const d=String(e?.date||"").slice(0,10);if(!d)continue;if(e.type==="eggs")eggs[d]=(eggs[d]||0)+value(e.eggs);if(e.type==="sale")moneyByDay[d]=(moneyByDay[d]||0)+rev(e);}const a=best(eggs),b=best(moneyByDay);patch("Highest Egg Day",String(Math.round(a.v||0)),a.date||"No data yet");patch("Highest Revenue Day","$"+(b.v||0).toFixed(2),b.date||"No data yet");}
   function schedule(){if(queued)return;queued=true;requestAnimationFrame(render);}
   const attach=()=>{const root=document.getElementById("recordsTotals");if(!root){setTimeout(attach,300);return;}new MutationObserver(schedule).observe(root,{childList:true,subtree:true,characterData:true});render();};
@@ -185,5 +185,6 @@ window.syncFarmNow=syncAllFarmData;
 window.refreshCoreFromFirebase=loadCoreFromCloud;
 import("./farm-consistency-v2.js?v=4")
   .then(()=>import("./app-audit-v1.js?v=1"))
+  .then(()=>import("./audit-finish-v1.js?v=1"))
   .catch(e=>console.warn("Farm audit layer failed to load:",e));
 console.log("✅ Firebase initialized with authoritative cross-device sync");
