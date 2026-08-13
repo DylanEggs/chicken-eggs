@@ -1,0 +1,1 @@
+Physical inventory guard must load before farm-consistency-v2 to prevent competing inventoryDashboardCard redraws.
