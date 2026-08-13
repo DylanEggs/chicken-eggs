@@ -6,6 +6,7 @@ let farmSettings = defaultSettings();
 let editingId = null;
 let historyFilter = "all";
 let isSyncing = false;
+let unsubscribeEntries = null;
 
 let eggChart = null;
 let dailyEggChart = null;
@@ -112,10 +113,24 @@ function loadLocal() {
   farmSettings = normalizeSettings(readJSON(SETTINGS_KEY, defaultSettings()));
 }
 
+function mergeRemoteEntries(firebaseEntries) {
+  if (!Array.isArray(firebaseEntries)) return;
+  const remoteEntries = firebaseEntries.map(normalizeEntry).filter(isValidEntry);
+  const merged = new Map(entries.map(e => [String(e.id), normalizeEntry(e)]));
+
+  for (const remote of remoteEntries) {
+    const id = String(remote.id);
+    const local = merged.get(id);
+    if (!local || number(remote.updatedAt) >= number(local.updatedAt)) merged.set(id, remote);
+  }
+
+  entries = [...merged.values()].map(normalizeEntry).filter(isValidEntry);
+}
+
 async function cloudSave(options = {}) {
   try {
     if (!window.ChickenEggsDB) {
-      setSyncStatus("Saved locally");
+      setSyncStatus("Saved locally; Firebase not ready");
       return;
     }
 
@@ -157,20 +172,7 @@ async function cloudLoad() {
     const firebaseEntries = await ChickenEggsDB.loadEntries();
 
     if (firebaseSettings) farmSettings = normalizeSettings(firebaseSettings);
-
-    if (Array.isArray(firebaseEntries)) {
-      const remoteEntries = firebaseEntries.map(normalizeEntry).filter(isValidEntry);
-      const localById = new Map(entries.map(e => [String(e.id), normalizeEntry(e)]));
-      const remoteById = new Map(remoteEntries.map(e => [String(e.id), e]));
-      const merged = new Map(localById);
-
-      for (const [id, remote] of remoteById) {
-        const local = merged.get(id);
-        if (!local || number(remote.updatedAt) >= number(local.updatedAt)) merged.set(id, remote);
-      }
-
-      entries = [...merged.values()].map(normalizeEntry).filter(isValidEntry);
-    }
+    mergeRemoteEntries(firebaseEntries);
 
     saveLocal();
     loadFarmSettings();
@@ -183,6 +185,20 @@ async function cloudLoad() {
     updateApp();
   } finally {
     isSyncing = false;
+  }
+}
+
+async function startEntryListener() {
+  try {
+    if (!window.ChickenEggsDB?.subscribeEntries || unsubscribeEntries) return;
+    unsubscribeEntries = await ChickenEggsDB.subscribeEntries(firebaseEntries => {
+      mergeRemoteEntries(firebaseEntries);
+      saveLocal();
+      updateApp();
+      setSyncStatus("Firebase updated " + new Date().toLocaleTimeString());
+    });
+  } catch (err) {
+    console.error("Could not start Firebase entry listener:", err);
   }
 }
 
@@ -663,15 +679,5 @@ document.addEventListener("DOMContentLoaded", () => {
   showScreen("dashboard");
 
   cloudLoad();
-
-  // Keep the original egg/sale history current on every open device.
-  // This updates the screen in place and never reloads the page.
-  setInterval(() => {
-    if (!document.hidden) cloudLoad();
-  }, 8000);
-
-  window.addEventListener("focus", () => cloudLoad());
-  document.addEventListener("visibilitychange", () => {
-    if (!document.hidden) cloudLoad();
-  });
+  startEntryListener();
 });
