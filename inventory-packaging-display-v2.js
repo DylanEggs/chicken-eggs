@@ -1,28 +1,26 @@
 (() => {
   "use strict";
-  if (window.__inventoryPackagingDisplayV2) return;
-  window.__inventoryPackagingDisplayV2 = true;
+  if (window.__inventoryHubAuthorityV3) return;
+  window.__inventoryHubAuthorityV3 = true;
 
   const INVENTORY_KEY = "chickenEggInventoryV2";
   const APP2_KEY = "chickenEggApp2V1";
   let queued = false;
-  let applying = false;
+  let showHookInstalled = false;
 
   function read(key, fallback) {
     try { return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback)); }
     catch { return fallback; }
   }
   function n(v) { return Math.max(0, Number(v) || 0); }
-  function inventory() {
+  function state() {
     const s = read(INVENTORY_KEY, {});
     return { dozens: n(s.dozens), packs18: n(s.packs18), loose: n(s.loose) };
   }
-  function orders() {
+  function held() {
     const a = read(APP2_KEY, {});
-    return Array.isArray(a.orders) ? a.orders : [];
-  }
-  function reservedEggs() {
-    return orders().filter(o => o?.status === "pending")
+    return (Array.isArray(a.orders) ? a.orders : [])
+      .filter(o => o?.status === "pending")
       .reduce((sum, o) => sum + n(o.dozen) * 12 + n(o.packs18) * 18, 0);
   }
   function total(s) { return Math.round(s.dozens * 12 + s.packs18 * 18 + s.loose); }
@@ -33,102 +31,79 @@
     if (s.loose || !parts.length) parts.push(`${s.loose} loose`);
     return parts.join(" • ");
   }
+  function setText(el, text) {
+    text = String(text);
+    if (el && el.textContent !== text) el.textContent = text;
+  }
 
-  function correctHub(s, available, held) {
+  function renderHub() {
+    queued = false;
     const summary = document.getElementById("farm2HubSummary");
     if (!summary) return;
-    const cards = [...summary.querySelectorAll(".farm2-card")];
-    const card = cards.find(c => /sellable inventory/i.test(c.textContent || ""));
+    const card = [...summary.querySelectorAll(".farm2-card")]
+      .find(c => /sellable inventory/i.test(c.querySelector(".farm2-kicker")?.textContent || c.textContent || ""));
     if (!card) return;
-    const value = card.querySelector(".farm2-moneyBig");
-    if (value) value.textContent = `${available} 🥚`;
-    const note = card.querySelector(".farm2-subtle");
-    if (note) note.textContent = held > 0
-      ? `On hand: ${packageText(s)} • ${held} eggs reserved • ${available} available`
+
+    const s = state();
+    const reserved = held();
+    const available = Math.max(0, total(s) - reserved);
+    setText(card.querySelector(".farm2-kicker"), "Sellable Inventory");
+    setText(card.querySelector(".farm2-moneyBig"), `${available} 🥚`);
+    const note = reserved > 0
+      ? `On hand: ${packageText(s)} • ${reserved} eggs reserved • ${available} available`
       : packageText(s);
-  }
-
-  function correctTodayCard(s, available, held) {
-    const card = document.getElementById("farm2TodayCard");
-    if (!card) return;
-    const stats = [...card.querySelectorAll(".farm2-miniStat")];
-    const availStat = stats.find(x => /eggs available/i.test(x.textContent || ""));
-    if (availStat) {
-      const b = availStat.querySelector("b");
-      if (b) b.textContent = String(available);
-    }
-    const dozenStat = stats.find(x => /full dozens/i.test(x.textContent || ""));
-    if (dozenStat) {
-      const b = dozenStat.querySelector("b");
-      const label = dozenStat.querySelector("span");
-      if (b) b.textContent = String(s.dozens);
-      if (label) label.textContent = "Dozen cartons";
-    }
-    const reservedStat = stats.find(x => /reserved eggs/i.test(x.textContent || ""));
-    if (reservedStat) {
-      const b = reservedStat.querySelector("b");
-      if (b) b.textContent = String(held);
-    }
-    const notes = [...card.querySelectorAll(".farm2-subtle")];
-    const invNote = notes.find(x => /^Inventory:/i.test((x.textContent || "").trim()));
-    if (invNote) invNote.textContent = `Inventory: ${packageText(s)}${held ? ` • ${held} reserved` : ""}`;
-  }
-
-  function correctOrders(available, held) {
-    const summary = document.getElementById("farm2OrderSummary");
-    if (!summary) return;
-    const cards = [...summary.querySelectorAll(".farm2-card")];
-    for (const card of cards) {
-      const label = card.querySelector(".farm2-kicker")?.textContent || "";
-      const value = card.querySelector(".farm2-moneyBig");
-      if (!value) continue;
-      if (/eggs reserved/i.test(label)) value.textContent = String(held);
-      if (/still available/i.test(label)) value.textContent = String(available);
-    }
-  }
-
-  function apply() {
-    queued = false;
-    if (applying) return;
-    applying = true;
-    try {
-      const s = inventory();
-      const onHand = total(s);
-      const held = reservedEggs();
-      const available = Math.max(0, onHand - held);
-      correctHub(s, available, held);
-      correctTodayCard(s, available, held);
-      correctOrders(available, held);
-    } finally {
-      applying = false;
-    }
+    setText(card.querySelector(".farm2-subtle"), note);
   }
 
   function schedule() {
-    if (queued || applying) return;
+    if (queued) return;
     queued = true;
-    requestAnimationFrame(apply);
+    requestAnimationFrame(renderHub);
   }
 
-  window.InventoryPackagingDisplay = { render: apply, version: 2 };
+  function installShowHook() {
+    if (showHookInstalled) return;
+    if (typeof window.showScreen !== "function") {
+      setTimeout(installShowHook, 100);
+      return;
+    }
+    showHookInstalled = true;
+    const original = window.showScreen;
+    if (original.__inventoryHubAuthorityV3) return;
+    const wrapped = function(id) {
+      const result = original.apply(this, arguments);
+      if (id === "farm2Hub") setTimeout(schedule, 0);
+      return result;
+    };
+    wrapped.__inventoryHubAuthorityV3 = true;
+    window.showScreen = wrapped;
+  }
+
+  if (!window.__inventoryHubStorageHookV3) {
+    window.__inventoryHubStorageHookV3 = true;
+    const priorSetItem = Storage.prototype.setItem;
+    Storage.prototype.setItem = function(key, value) {
+      priorSetItem.call(this, key, value);
+      if (this === window.localStorage && [INVENTORY_KEY, APP2_KEY].includes(String(key))) schedule();
+    };
+  }
+
   window.addEventListener("farm-data-synced", schedule);
-  window.addEventListener("core-data-synced", schedule);
   window.addEventListener("storage", e => {
     if ([INVENTORY_KEY, APP2_KEY].includes(e.key)) schedule();
   });
-  document.addEventListener("visibilitychange", () => { if (!document.hidden) schedule(); });
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) schedule();
+  });
 
   function init() {
-    apply();
-    const targets = ["farm2HubSummary", "farm2TodayCard", "farm2OrderSummary"]
-      .map(id => document.getElementById(id)).filter(Boolean);
-    if (targets.length) {
-      const observer = new MutationObserver(() => schedule());
-      targets.forEach(el => observer.observe(el, { childList: true, subtree: true, characterData: true }));
-    }
-    console.log("✅ Exact physical inventory packaging display v2 active");
+    installShowHook();
+    schedule();
+    setTimeout(schedule, 300);
+    setTimeout(schedule, 1200);
+    console.log("✅ Exact inventory hub display active without redraw loops");
   }
 
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => setTimeout(init, 120));
-  else setTimeout(init, 120);
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
+  else init();
 })();
