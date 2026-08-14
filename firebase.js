@@ -200,5 +200,5 @@ import("./farm-consistency-v2.js?v=5")
   .then(()=>import("./audit-finish-v1.js?v=1"))
   .catch(e=>console.warn("Farm audit layer failed to load:",e));
 import("./dom-loop-guard-v3.js?v=1").catch(e=>console.warn("Current redraw guard failed to load:",e));
-import("./flock-photo-fix-v2.js?v=3").catch(e=>console.warn("Shared flock photo system failed to load:",e));
+import("./flock-photo-fix-v2.js?v=4").catch(e=>console.warn("Shared flock photo system failed to load:",e));
 console.log("✅ Firebase initialized with authoritative cross-device sync");
