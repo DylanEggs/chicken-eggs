@@ -16,6 +16,15 @@
   const nativeSetItem = Storage.prototype.setItem;
   let locked = true;
   let bypass = false;
+  let reconnectReloaded = false;
+
+  // Disable write/navigation buttons immediately, before the deferred Firebase
+  // module has even had a chance to start. This closes the startup race.
+  const style = document.createElement("style");
+  style.id = "farmBootstrapSafetyCss";
+  style.textContent = `.farm-sync-loading .screen button,.farm-sync-loading .bottomNav button{pointer-events:none!important;opacity:.72}.farm-sync-loading #syncStatus{opacity:.9}`;
+  (document.head || document.documentElement).appendChild(style);
+  document.documentElement.classList.add("farm-sync-loading");
 
   function readObject(value) {
     try { const x = JSON.parse(value); return x && typeof x === "object" ? x : null; }
@@ -57,9 +66,23 @@
   window.FarmBootstrapSafety = {
     nativeSetItem,
     isLocked: () => locked,
-    unlock() { locked = false; console.log("✅ Startup write lock released after cloud bootstrap"); },
+    unlock() {
+      locked = false;
+      document.documentElement.classList.remove("farm-sync-loading");
+      console.log("✅ Startup write lock released after cloud bootstrap");
+    },
     runBypass(fn) { bypass = true; try { return fn(); } finally { bypass = false; } }
   };
-  document.documentElement.classList.add("farm-sync-loading");
+
+  // If this phone started while offline or only half-loaded, never resume that
+  // same startup session. Reconnect gets a clean page load and fresh cloud-first
+  // bootstrap instead of allowing stale cached state to continue.
+  window.addEventListener("online", () => {
+    if (!locked || reconnectReloaded) return;
+    reconnectReloaded = true;
+    console.log("🔄 Network returned before safe bootstrap; reloading cleanly");
+    setTimeout(() => location.reload(), 120);
+  });
+
   console.log("🔒 Farm startup write lock active");
 })();
