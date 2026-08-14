@@ -4,7 +4,7 @@
   // math never paints to the screen and cached correction helpers stay disabled.
   document.write('<script src="app2-stable-runtime-v1.js?v=20260814-2"><\/script>');
   document.write('<script src="app2-legacy-v1.js?v=20260814-1"><\/script>');
-  document.write('<script src="insights-calendar-v1.js?v=20260814-1"><\/script>');
+  document.write('<script src="insights-calendar-v2.js?v=20260814-1"><\/script>');
 
   // One navigation authority for screens opened from the Farm hub.
   // This avoids hard-coded legacy Back buttons sending users to Home/Sale.
