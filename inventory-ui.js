@@ -88,4 +88,4 @@ import("./app-polish-v1.js?v=1").catch(error=>console.warn("App polish failed to
 import("./weather-trend-v1.js?v=1").catch(error=>console.warn("Weather trend detector failed to load:",error));
 import("./data-integrity-v1.js?v=1").catch(error=>console.warn("Farm data integrity guard failed to load:",error));
 import("./prediction-fix-v1.js?v=1").catch(error=>console.warn("Adaptive egg forecast failed to load:",error));
-import("./inventory-packaging-display-v1.js?v=1").catch(error=>console.warn("Exact inventory packaging display failed to load:",error));
+import("./inventory-packaging-display-v1.js?v=2").catch(error=>console.warn("Exact inventory packaging display failed to load:",error));
