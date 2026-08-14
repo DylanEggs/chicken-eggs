@@ -1,14 +1,12 @@
 (() => {
   "use strict";
-  if (window.__eggSyncAuthorityV2) return;
-  window.__eggSyncAuthorityV2 = true;
+  if (window.__eggSyncAuthorityV3) return;
+  window.__eggSyncAuthorityV3 = true;
 
   const APP2_KEY = "chickenEggApp2V1";
   const SETTINGS_KEY = "chickenEggSettingsV102";
   const APP2_DOC = "farm_app_2_v1";
-  const startedAt = Date.now();
   let api = null;
-  let app2Unsub = null;
   let settingsUnsub = null;
   let initPromise = null;
 
@@ -30,18 +28,22 @@
     return api;
   }
 
-  function applyApp2(remote, forceStartup = false) {
+  function applyApp2IfNewer(remote) {
     if (!remote || typeof remote !== "object") return false;
     const local = read(APP2_KEY, null);
     const localStamp = stamp(local);
     const remoteStamp = stamp(remote);
-    const changedThisSession = localStamp > startedAt;
-    if (forceStartup) {
-      if (changedThisSession && localStamp > remoteStamp) return false;
-    } else if (local && localStamp > remoteStamp) return false;
+
+    // Never destroy a legitimately newer offline edit just because the app restarted.
+    // If Firebase is newer (or this device has no state), Firebase becomes local truth.
+    if (local && localStamp > remoteStamp) return false;
+    if (local && localStamp === remoteStamp) return true;
+
     try {
       localStorage.setItem(APP2_KEY, JSON.stringify(remote));
-      window.dispatchEvent(new CustomEvent("farm-data-synced", { detail:{ key:APP2_KEY, authoritative:true } }));
+      window.dispatchEvent(new CustomEvent("farm-data-synced", {
+        detail: { key: APP2_KEY, authoritative: true }
+      }));
       return true;
     } catch (error) {
       console.warn("Authoritative App 2 apply failed:", error);
@@ -58,7 +60,7 @@
       if (typeof window.loadLocal === "function") window.loadLocal();
       if (typeof window.loadFarmSettings === "function") window.loadFarmSettings();
       if (typeof window.updateApp === "function") window.updateApp();
-      window.dispatchEvent(new CustomEvent("core-data-synced", { detail:{ settingsOnly:true } }));
+      window.dispatchEvent(new CustomEvent("core-data-synced", { detail: { settingsOnly: true } }));
       return true;
     } catch (error) {
       console.warn("Farm settings live apply failed:", error);
@@ -66,46 +68,62 @@
     }
   }
 
-  async function pullAuthoritativeApp2() {
+  async function bootstrapApp2() {
     const f = await firebaseApi();
     if (!f) return false;
     try {
       const snap = await f.getDoc(f.doc(window.FirestoreDB, "entries", APP2_DOC));
       const remote = snap.exists() ? snap.data()?.farmApp2 : null;
-      if (remote) applyApp2(remote, true);
+      if (remote) applyApp2IfNewer(remote);
+
+      // The main Firebase layer owns all farm dataset uploads/downloads. Calling it
+      // here makes sure inventory/business/deluxe join the same startup pass too.
+      if (typeof window.syncFarmNow === "function") await window.syncFarmNow();
       return !!remote;
     } catch (error) {
-      console.warn("Authoritative App 2 startup pull failed:", error);
+      console.warn("Authoritative farm startup sync failed:", error);
       return false;
     }
   }
 
-  async function startListeners() {
+  async function startSettingsListener() {
     const f = await firebaseApi();
     if (!f) return false;
-    app2Unsub?.(); settingsUnsub?.();
-    app2Unsub = f.onSnapshot(f.doc(window.FirestoreDB, "entries", APP2_DOC), snap => {
-      const remote = snap.exists() ? snap.data()?.farmApp2 : null;
-      if (remote) applyApp2(remote, false);
-    }, error => console.warn("Authoritative App 2 listener failed:", error));
-    settingsUnsub = f.onSnapshot(f.doc(window.FirestoreDB, "farm", "settings"), snap => {
-      if (snap.exists()) applySettings(snap.data());
-    }, error => console.warn("Farm settings listener failed:", error));
+    settingsUnsub?.();
+    settingsUnsub = f.onSnapshot(
+      f.doc(window.FirestoreDB, "farm", "settings"),
+      snap => { if (snap.exists()) applySettings(snap.data()); },
+      error => console.warn("Farm settings listener failed:", error)
+    );
     return true;
   }
 
   async function initWork() {
-    await pullAuthoritativeApp2();
-    await startListeners();
-    setTimeout(pullAuthoritativeApp2, 1800);
+    await bootstrapApp2();
+    await startSettingsListener();
+
+    // A second pass catches slow authentication/network startup without creating
+    // a competing App 2 listener. firebase.js remains the only live farm-data owner.
+    setTimeout(() => {
+      bootstrapApp2();
+      if (typeof window.refreshCoreFromFirebase === "function") window.refreshCoreFromFirebase();
+    }, 1800);
+
     window.addEventListener("online", async () => {
-      await pullAuthoritativeApp2();
-      await startListeners();
+      await bootstrapApp2();
+      await startSettingsListener();
+      if (typeof window.refreshCoreFromFirebase === "function") await window.refreshCoreFromFirebase();
     });
-    console.log("✅ Firebase source-of-truth authority v2 active");
+
+    console.log("✅ Firebase source-of-truth authority v3 active");
     return true;
   }
-  function ready() { if (!initPromise) initPromise = initWork(); return initPromise; }
+
+  function ready() {
+    if (!initPromise) initPromise = initWork();
+    return initPromise;
+  }
+
   window.EggSyncAuthorityReady = ready;
   ready();
 })();
