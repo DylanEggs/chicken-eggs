@@ -11,7 +11,7 @@
   // reader/writer. The protected Firebase authority is the only cloud owner.
   document.write('<script src="app2-legacy-safe-loader-v1.js?v=20260814-2"><\/script>');
   document.write('<script src="insights-calendar-v2.js?v=20260814-1"><\/script>');
-  document.write('<script src="flock-photo-viewer-v1.js?v=20260814-1"><\/script>');
+  document.write('<script src="flock-photo-viewer-v1.js?v=20260814-2"><\/script>');
 
   // One navigation authority for screens opened from the Farm hub.
   // This avoids hard-coded legacy Back buttons sending users to Home/Sale.
