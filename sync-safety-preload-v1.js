@@ -2,6 +2,11 @@
   "use strict";
   if (window.FarmBootstrapSafety) return;
 
+  // Old cached copies of sync-authority-v2 must become inert before they load.
+  // The protected Firebase authority will provide the compatibility API later.
+  window.__eggSyncAuthorityV3 = true;
+  window.__eggSyncAuthorityV2 = true;
+
   const PROTECTED = new Set([
     "chickenEggApp2V1",
     "chickenEggInventoryV2",
