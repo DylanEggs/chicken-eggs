@@ -37,6 +37,10 @@
     return parts.join(" • ");
   }
 
+  function setText(el, text) {
+    if (el && el.textContent !== text) el.textContent = text;
+  }
+
   function fixHubCard() {
     queued = false;
     const hub = document.getElementById("farm2Hub");
@@ -52,7 +56,7 @@
     if (!card) return;
 
     const value = card.querySelector(".farm2-moneyBig, .farm2-numberBig, .farm2-bigNumber, strong");
-    if (value) value.textContent = String(available);
+    setText(value, String(available));
 
     let note = card.querySelector(".farm2-subtle");
     if (!note) {
@@ -61,10 +65,13 @@
       card.appendChild(note);
     }
 
-    note.textContent = held > 0
+    const exactText = held > 0
       ? `On hand: ${packageText(s)} • ${held} eggs reserved`
       : packageText(s);
-    note.setAttribute("data-inventory-packaging-source", "exact");
+    setText(note, exactText);
+    if (note.getAttribute("data-inventory-packaging-source") !== "exact") {
+      note.setAttribute("data-inventory-packaging-source", "exact");
+    }
   }
 
   function schedule() {
