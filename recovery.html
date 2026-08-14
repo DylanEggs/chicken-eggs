@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#1f7a3a">
+  <title>Chicken Eggs — Safe Recovery</title>
+  <style>
+    *{box-sizing:border-box}body{margin:0;padding:calc(24px + env(safe-area-inset-top)) 18px calc(30px + env(safe-area-inset-bottom));font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif;background:#eef7ee;color:#17351f}main{max-width:620px;margin:auto}.card{background:#fff;border:1px solid #dbeadc;border-radius:24px;padding:20px;margin:14px 0;box-shadow:0 12px 35px #183f2414}h1{margin:0 0 8px;font-size:30px}h2{margin:0 0 8px;font-size:20px}.muted{color:#6c7f70;font-weight:650;line-height:1.45}.status{font-weight:850;font-size:17px;line-height:1.4}.good{color:#147433}.warn{color:#a86200}.bad{color:#b42d2d}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:12px}.stat{background:#f1f8f1;border-radius:17px;padding:14px}.stat b{font-size:25px;display:block}.stat span{font-size:12px;color:#6c7f70;font-weight:800}button{width:100%;border:0;border-radius:17px;padding:15px;margin-top:12px;background:#1f8c45;color:white;font-size:17px;font-weight:850}button.secondary{background:#e9f2e9;color:#17351f}button:disabled{opacity:.45}#manual{display:none}.tiny{font-size:12px;color:#778879;line-height:1.45;margin-top:10px}
+  </style>
+  <script src="sync-safety-preload-v1.js?v=20260814-recovery1"></script>
+</head>
+<body>
+<main>
+  <div class="card">
+    <h1>🛟 Farm Safe Recovery</h1>
+    <div class="muted">This page loads Firebase first and does not let an old phone publish stale farm data during startup.</div>
+  </div>
+  <div class="card">
+    <h2>Recovery status</h2>
+    <div id="status" class="status warn">Connecting to Firebase safely…</div>
+    <div id="detail" class="muted" style="margin-top:8px">Leave this page open while it checks the cloud and this phone's safety snapshots.</div>
+  </div>
+  <div class="card">
+    <h2>Farm data found</h2>
+    <div class="grid">
+      <div class="stat"><b id="flock">—</b><span>Flock profiles</span></div>
+      <div class="stat"><b id="expenses">—</b><span>Expenses</span></div>
+      <div class="stat"><b id="customers">—</b><span>Customers</span></div>
+      <div class="stat"><b id="snapshots">—</b><span>Local safety snapshots</span></div>
+    </div>
+    <div id="snapshotNote" class="tiny"></div>
+    <button id="manual">Restore Richest Safety Snapshot</button>
+  </div>
+  <div class="card">
+    <div class="muted"><b>Do not open the normal app on the other phones yet.</b> First make sure this page reports your flock and expenses are back.</div>
+  </div>
+</main>
+<script>
+  // Small stubs stop old audit helpers from retrying UI hooks on this recovery-only page.
+  window.saveEggs=()=>{}; window.saveSale=()=>{}; window.deleteEntry=()=>{}; window.showScreen=()=>{};
+  window.setSyncStatus=text=>{const e=document.getElementById('status');if(e)e.textContent=text};
+</script>
+<script src="database.js?v=20260814-recovery1"></script>
+<script type="module" src="firebase.js?v=20260814-recovery1"></script>
+<script>
+(() => {
+  const APP='chickenEggApp2V1', SHOTS='chickenEggApp2SnapshotsV1';
+  const el=id=>document.getElementById(id);
+  const read=(k,f)=>{try{return JSON.parse(localStorage.getItem(k)||JSON.stringify(f))}catch{return f}};
+  const clean=a=>a&&typeof a==='object'?a:{};
+  function counts(v){const a=clean(v);return{flock:Array.isArray(a.flock)?a.flock.length:0,expenses:Array.isArray(a.expenses)?a.expenses.length:0,customers:Array.isArray(a.customers)?a.customers.length:0,orders:Array.isArray(a.orders)?a.orders.length:0,chores:Array.isArray(a.chores)?a.chores.length:0}}
+  function score(v){const c=counts(v);return c.flock*10+c.expenses*5+c.customers*4+c.orders*3+c.chores*2}
+  function shots(){const x=read(SHOTS,[]);return Array.isArray(x)?x.filter(s=>s&&s.farmApp2):[]}
+  function bestShot(){return shots().slice().sort((a,b)=>score(b.farmApp2)-score(a.farmApp2))[0]||null}
+  function paint(ready=false){
+    const current=read(APP,{}), c=counts(current), all=shots(), best=bestShot(), bc=counts(best?.farmApp2);
+    el('flock').textContent=c.flock;el('expenses').textContent=c.expenses;el('customers').textContent=c.customers;el('snapshots').textContent=all.length;
+    el('snapshotNote').textContent=best?`Best local snapshot (${best.date||'saved copy'}): ${bc.flock} flock profiles, ${bc.expenses} expenses, ${bc.customers} customers.`:'No local Farm App 2 safety snapshot was found on this phone.';
+    const manual=el('manual');
+    const richer=best&&score(best.farmApp2)>score(current)+5&&(c.flock===0||bc.flock>c.flock||bc.expenses>c.expenses);
+    manual.style.display=ready&&richer?'block':'none';manual.disabled=!ready;
+    return {current:c,best:bc,richer};
+  }
+  async function manualRestore(){
+    const best=bestShot();if(!best)return;
+    if(!window.FarmSyncSafety?.isReady?.()){el('status').textContent='Firebase is not ready yet. Keep this page open.';return;}
+    el('manual').disabled=true;el('status').className='status warn';el('status').textContent='Restoring the safety snapshot and syncing it…';
+    const restored={...best.farmApp2,updatedAt:Date.now()};
+    localStorage.setItem(APP,JSON.stringify(restored));
+    await new Promise(r=>setTimeout(r,700));
+    await window.FarmSyncSafety.refresh();
+    await new Promise(r=>setTimeout(r,700));
+    const p=paint(true);
+    el('status').className=p.current.flock>0?'status good':'status bad';
+    el('status').textContent=p.current.flock>0?'✅ Safety snapshot restored and synced.':'⚠️ Recovery needs another step.';
+    el('detail').textContent=p.current.flock>0?'Your restored Farm App 2 data is now the synced cloud copy.':'Leave the other phones closed and report the counts shown here.';
+  }
+  el('manual').addEventListener('click',manualRestore);
+  paint(false);
+  window.addEventListener('farm-data-recovered',e=>{el('status').className='status good';el('status').textContent='✅ Farm data automatically recovered.';el('detail').textContent=`Recovered from ${e.detail?.source||'a safety copy'} and synchronized back to Firebase.`;paint(true)});
+  window.addEventListener('farm-sync-protected',()=>{el('status').className='status good';el('status').textContent='✅ A stale-device overwrite was blocked.';el('detail').textContent='Firebase kept the authoritative farm copy instead of accepting destructive cached data.';paint(true)});
+  window.addEventListener('farm-sync-ready',()=>{
+    const p=paint(true);
+    if(!/recovered|blocked/i.test(el('status').textContent)){
+      if(p.current.flock>0){el('status').className='status good';el('status').textContent='✅ Safe Firebase load completed.';el('detail').textContent='The farm copy shown below is the protected synchronized copy.'}
+      else if(p.richer){el('status').className='status warn';el('status').textContent='A richer local safety snapshot is available.';el('detail').textContent='Tap Restore Richest Safety Snapshot below. The other phones should remain closed.'}
+      else{el('status').className='status bad';el('status').textContent='⚠️ Farm profiles are still missing.';el('detail').textContent='Do not open the other phones. Report the counts below so recovery can continue without overwriting anything.'}
+    }
+  });
+  setTimeout(()=>paint(!!window.FarmSyncSafety?.isReady?.()),4000);
+})();
+</script>
+</body>
+</html>
