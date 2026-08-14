@@ -1,1 +1,1 @@
-import("./flock-photo-profile-v4.js?v=1").catch(error => console.warn("Unified flock photo/profile controls failed to load:", error));
+import("./flock-manager-v5.js?v=1").catch(error => console.warn("Flock Manager v5 failed to load:", error));
