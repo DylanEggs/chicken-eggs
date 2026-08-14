@@ -8,9 +8,7 @@
   let syncTimer = null;
   let syncing = false;
 
-  // Disable every older inventory-correction generation before Farm App 2 renders.
-  // Some older iPhone/Safari caches can still request those files; these flags make
-  // them exit immediately instead of competing with the current renderer.
+  // Disable older cached correction generations before they can attach observers.
   window.__inventoryPackagingDisplayV1 = true;
   window.__inventoryPackagingDisplayV2 = true;
   window.__inventoryHubAuthorityV3 = true;
@@ -27,7 +25,11 @@
   }
   function app2() {
     const a = read(APP2_KEY, {});
-    return { ...a, orders:Array.isArray(a.orders) ? a.orders : [] };
+    return {
+      ...a,
+      orders:Array.isArray(a.orders) ? a.orders : [],
+      achievements:a.achievements && typeof a.achievements === "object" ? a.achievements : {}
+    };
   }
   function onHand(s = inventory()) {
     return Math.round(s.dozens * 12 + s.packs18 * 18 + s.loose);
@@ -78,12 +80,16 @@
     const s = inventory(), held = reserved(), av = available();
     const card = [...root.querySelectorAll(".farm2-card")]
       .find(c => /sellable inventory/i.test(c.querySelector(".farm2-kicker")?.textContent || c.textContent || ""));
-    if (!card) return;
-    setText(card.querySelector(".farm2-kicker"), "Sellable Inventory");
-    setText(card.querySelector(".farm2-moneyBig"), `${av} 🥚`);
-    setText(card.querySelector(".farm2-subtle"), held > 0
-      ? `On hand: ${packaging(s)} • ${held} eggs reserved • ${av} available`
-      : packaging(s));
+    if (card) {
+      setText(card.querySelector(".farm2-kicker"), "Sellable Inventory");
+      setText(card.querySelector(".farm2-moneyBig"), `${av} 🥚`);
+      setText(card.querySelector(".farm2-subtle"), held > 0
+        ? `On hand: ${packaging(s)} • ${held} eggs reserved • ${av} available`
+        : packaging(s));
+    }
+    [...root.querySelectorAll(".farm2-badge")].forEach(el => {
+      if (/Golden Eggs?/i.test(el.textContent || "")) el.remove();
+    });
   }
 
   function correctOrders(root) {
@@ -96,15 +102,37 @@
     });
   }
 
+  function correctFunSummary(root) {
+    if (!root) return;
+    [...root.querySelectorAll(".farm2-card")].forEach(card => {
+      if (/Golden Eggs?/i.test(card.textContent || "")) card.remove();
+    });
+    const unlocked = Object.keys(app2().achievements).filter(k => k !== "gold1").length;
+    [...root.querySelectorAll(".farm2-card")].forEach(card => {
+      if (/Unlocked/i.test(card.querySelector(".farm2-kicker")?.textContent || "")) {
+        setText(card.querySelector(".farm2-moneyBig"), `${Math.min(unlocked, 8)}/8`);
+      }
+    });
+  }
+
+  function correctAchievements(root) {
+    if (!root) return;
+    [...root.children].forEach(card => {
+      if (/Golden!|Golden Egg/i.test(card.textContent || "")) card.remove();
+    });
+  }
+
   function correctTarget(el) {
     if (!el) return;
     if (el.id === "farm2TodayCard") correctToday(el);
     else if (el.id === "farm2HubSummary") correctHub(el);
     else if (el.id === "farm2OrderSummary") correctOrders(el);
+    else if (el.id === "farm2FunSummary") correctFunSummary(el);
+    else if (el.id === "farm2AchievementList") correctAchievements(el);
   }
 
-  // Correct the legacy HTML BEFORE it reaches the screen. This prevents a visible
-  // wrong-frame/correct-frame cycle and therefore eliminates the inventory twitch.
+  // Correct legacy HTML BEFORE it reaches the screen. No wrong-frame/correct-frame
+  // cycle, no polling, and no MutationObserver watching its own changes.
   const proto = Element.prototype;
   if (!proto.__farmAppStableInventorySetter) {
     const desc = Object.getOwnPropertyDescriptor(proto, "innerHTML");
@@ -115,7 +143,8 @@
         get: desc.get,
         set(value) {
           const id = this?.id || "";
-          if (!["farm2TodayCard","farm2HubSummary","farm2OrderSummary"].includes(id)) {
+          const targets = ["farm2TodayCard","farm2HubSummary","farm2OrderSummary","farm2FunSummary","farm2AchievementList"];
+          if (!targets.includes(id)) {
             desc.set.call(this, value);
             return;
           }
@@ -132,10 +161,26 @@
     }
   }
 
+  function cleanStaticLegacyText() {
+    document.querySelectorAll("#farm2Hub small").forEach(el => {
+      if (/Achievements\s*&\s*Golden Eggs/i.test(el.textContent || "")) el.textContent = "Achievements & monthly goals";
+    });
+    document.querySelectorAll("#farm2Settings .farm2-subtle").forEach(el => {
+      if (/Golden Eggs, rare events & celebrations/i.test(el.textContent || "")) el.textContent = "Rare events & celebrations";
+    });
+    const activity = document.getElementById("farm2Activity");
+    if (activity) [...activity.children].forEach(row => {
+      if (/Golden Egg/i.test(row.textContent || "")) row.remove();
+    });
+  }
+
   function refreshVisible() {
     correctToday(document.getElementById("farm2TodayCard"));
     correctHub(document.getElementById("farm2HubSummary"));
     correctOrders(document.getElementById("farm2OrderSummary"));
+    correctFunSummary(document.getElementById("farm2FunSummary"));
+    correctAchievements(document.getElementById("farm2AchievementList"));
+    cleanStaticLegacyText();
     window.dispatchEvent(new CustomEvent("farm-integrity-synced", {
       detail:{ physical:onHand(), reserved:reserved(), available:available(), at:Date.now() }
     }));
@@ -181,16 +226,17 @@
     refresh:catchUp
   };
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", () => {
-      refreshVisible();
-      scheduleCatchUp(900);
-      setTimeout(() => scheduleCatchUp(0), 3500);
-    });
-  } else {
+  function start() {
     refreshVisible();
+    // One-time retries cover screen injection and slow authentication. These are not
+    // repeating redraw timers.
+    setTimeout(refreshVisible, 0);
+    setTimeout(refreshVisible, 300);
     scheduleCatchUp(900);
     setTimeout(() => scheduleCatchUp(0), 3500);
   }
-  console.log("✅ Stable Farm App runtime active: one inventory display path, no polling, no DOM observer");
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
+  else start();
+  console.log("✅ Stable Farm App runtime active: one pre-render path, no polling, no DOM observer");
 })();
