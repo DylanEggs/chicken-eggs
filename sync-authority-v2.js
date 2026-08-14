@@ -2,6 +2,7 @@
   "use strict";
   if (window.__eggSyncAuthorityV3) return;
   window.__eggSyncAuthorityV3 = true;
+  window.__eggSyncAuthorityV2 = true;
 
   const APP2_KEY = "chickenEggApp2V1";
   const SETTINGS_KEY = "chickenEggSettingsV102";
@@ -33,9 +34,6 @@
     const local = read(APP2_KEY, null);
     const localStamp = stamp(local);
     const remoteStamp = stamp(remote);
-
-    // Never destroy a legitimately newer offline edit just because the app restarted.
-    // If Firebase is newer (or this device has no state), Firebase becomes local truth.
     if (local && localStamp > remoteStamp) return false;
     if (local && localStamp === remoteStamp) return true;
 
@@ -75,9 +73,6 @@
       const snap = await f.getDoc(f.doc(window.FirestoreDB, "entries", APP2_DOC));
       const remote = snap.exists() ? snap.data()?.farmApp2 : null;
       if (remote) applyApp2IfNewer(remote);
-
-      // The main Firebase layer owns all farm dataset uploads/downloads. Calling it
-      // here makes sure inventory/business/deluxe join the same startup pass too.
       if (typeof window.syncFarmNow === "function") await window.syncFarmNow();
       return !!remote;
     } catch (error) {
@@ -102,8 +97,6 @@
     await bootstrapApp2();
     await startSettingsListener();
 
-    // A second pass catches slow authentication/network startup without creating
-    // a competing App 2 listener. firebase.js remains the only live farm-data owner.
     setTimeout(() => {
       bootstrapApp2();
       if (typeof window.refreshCoreFromFirebase === "function") window.refreshCoreFromFirebase();
