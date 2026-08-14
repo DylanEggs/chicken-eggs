@@ -115,6 +115,19 @@
     requestAnimationFrame(patchAll);
   }
 
+  function announceSynced() {
+    const detail = {
+      physical: physical(),
+      reserved: reserved(),
+      available: available(),
+      at: Date.now()
+    };
+    window.dispatchEvent(new CustomEvent("farm-integrity-synced", { detail }));
+    if (typeof window.setSyncStatus === "function") {
+      window.setSyncStatus("Firebase synced " + new Date().toLocaleTimeString());
+    }
+  }
+
   async function catchUpWithFirebase() {
     if (syncing || !navigator.onLine) return;
     syncing = true;
@@ -123,6 +136,7 @@
       if (typeof window.syncFarmNow === "function") await window.syncFarmNow();
       if (typeof window.refreshCoreFromFirebase === "function") await window.refreshCoreFromFirebase();
       schedulePatch();
+      announceSynced();
     } catch (error) {
       console.warn("Farm catch-up sync skipped:", error);
     } finally {
