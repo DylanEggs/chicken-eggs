@@ -67,6 +67,7 @@
     write(META, m);
     applyingRemote = false;
     window.dispatchEvent(new CustomEvent("bird-photos-changed", { detail:{ birdId:id, deleted:!!record.deleted, fallback:true } }));
+    window.dispatchEvent(new CustomEvent("farm-data-synced", { detail:{ key:"chickenEggApp2V1", photoOnly:true } }));
   }
 
   async function mirror(id) {
