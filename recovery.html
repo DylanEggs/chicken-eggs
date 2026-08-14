@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#1f7a3a">
   <title>Chicken Eggs — Safe Recovery</title>
   <style>
-    *{box-sizing:border-box}body{margin:0;padding:calc(24px + env(safe-area-inset-top)) 18px calc(30px + env(safe-area-inset-bottom));font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif;background:#eef7ee;color:#17351f}main{max-width:620px;margin:auto}.card{background:#fff;border:1px solid #dbeadc;border-radius:24px;padding:20px;margin:14px 0;box-shadow:0 12px 35px #183f2414}h1{margin:0 0 8px;font-size:30px}h2{margin:0 0 8px;font-size:20px}.muted{color:#6c7f70;font-weight:650;line-height:1.45}.status{font-weight:850;font-size:17px;line-height:1.4}.good{color:#147433}.warn{color:#a86200}.bad{color:#b42d2d}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:12px}.stat{background:#f1f8f1;border-radius:17px;padding:14px}.stat b{font-size:25px;display:block}.stat span{font-size:12px;color:#6c7f70;font-weight:800}button{width:100%;border:0;border-radius:17px;padding:15px;margin-top:12px;background:#1f8c45;color:white;font-size:17px;font-weight:850}button.secondary{background:#e9f2e9;color:#17351f}button:disabled{opacity:.45}#manual{display:none}.tiny{font-size:12px;color:#778879;line-height:1.45;margin-top:10px}
+    *{box-sizing:border-box}body{margin:0;padding:calc(24px + env(safe-area-inset-top)) 18px calc(30px + env(safe-area-inset-bottom));font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif;background:#eef7ee;color:#17351f}main{max-width:620px;margin:auto}.card{background:#fff;border:1px solid #dbeadc;border-radius:24px;padding:20px;margin:14px 0;box-shadow:0 12px 35px #183f2414}h1{margin:0 0 8px;font-size:30px}h2{margin:0 0 8px;font-size:20px}.muted{color:#6c7f70;font-weight:650;line-height:1.45}.status{font-weight:850;font-size:17px;line-height:1.4}.good{color:#147433}.warn{color:#a86200}.bad{color:#b42d2d}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:12px}.stat{background:#f1f8f1;border-radius:17px;padding:14px}.stat b{font-size:25px;display:block}.stat span{font-size:12px;color:#6c7f70;font-weight:800}button{width:100%;border:0;border-radius:17px;padding:15px;margin-top:12px;background:#1f8c45;color:white;font-size:17px;font-weight:850}button.secondary{background:#e9f2e9;color:#17351f}button:disabled{opacity:.45}#manual{display:none}.tiny{font-size:12px;color:#778879;line-height:1.45;margin-top:10px}.notice{border-left:5px solid #e6a600}
   </style>
   <script src="sync-safety-preload-v1.js?v=20260814-recovery1"></script>
 </head>
@@ -16,10 +16,14 @@
     <h1>🛟 Farm Safe Recovery</h1>
     <div class="muted">This page loads Firebase first and does not let an old phone publish stale farm data during startup.</div>
   </div>
+  <div class="card notice">
+    <b>iPhone Home Screen app note</b>
+    <div class="muted" style="margin-top:6px">If Chicken Eggs was added to your Home Screen, Safari may have separate local storage. A snapshot count of 0 here does not prove the installed app lost its snapshots. Use this page only when instructed.</div>
+  </div>
   <div class="card">
     <h2>Recovery status</h2>
     <div id="status" class="status warn">Connecting to Firebase safely…</div>
-    <div id="detail" class="muted" style="margin-top:8px">Leave this page open while it checks the cloud and this phone's safety snapshots.</div>
+    <div id="detail" class="muted" style="margin-top:8px">Leave this page open while it checks the protected cloud copy and any safety snapshots available in this storage container.</div>
   </div>
   <div class="card">
     <h2>Farm data found</h2>
@@ -33,11 +37,10 @@
     <button id="manual">Restore Richest Safety Snapshot</button>
   </div>
   <div class="card">
-    <div class="muted"><b>Do not open the normal app on the other phones yet.</b> First make sure this page reports your flock and expenses are back.</div>
+    <div class="muted"><b>Do not open the normal app on other phones during a recovery.</b> First restore and verify the authoritative cloud copy.</div>
   </div>
 </main>
 <script>
-  // Small stubs stop old audit helpers from retrying UI hooks on this recovery-only page.
   window.saveEggs=()=>{}; window.saveSale=()=>{}; window.deleteEntry=()=>{}; window.showScreen=()=>{};
   window.setSyncStatus=text=>{const e=document.getElementById('status');if(e)e.textContent=text};
 </script>
@@ -56,7 +59,7 @@
   function paint(ready=false){
     const current=read(APP,{}), c=counts(current), all=shots(), best=bestShot(), bc=counts(best?.farmApp2);
     el('flock').textContent=c.flock;el('expenses').textContent=c.expenses;el('customers').textContent=c.customers;el('snapshots').textContent=all.length;
-    el('snapshotNote').textContent=best?`Best local snapshot (${best.date||'saved copy'}): ${bc.flock} flock profiles, ${bc.expenses} expenses, ${bc.customers} customers.`:'No local Farm App 2 safety snapshot was found on this phone.';
+    el('snapshotNote').textContent=best?`Best local snapshot (${best.date||'saved copy'}): ${bc.flock} flock profiles, ${bc.expenses} expenses, ${bc.customers} customers.`:'No local Farm App 2 safety snapshot was found in this storage container.';
     const manual=el('manual');
     const richer=best&&score(best.farmApp2)>score(current)+5&&(c.flock===0||bc.flock>c.flock||bc.expenses>c.expenses);
     manual.style.display=ready&&richer?'block':'none';manual.disabled=!ready;
@@ -84,8 +87,8 @@
     const p=paint(true);
     if(!/recovered|blocked/i.test(el('status').textContent)){
       if(p.current.flock>0){el('status').className='status good';el('status').textContent='✅ Safe Firebase load completed.';el('detail').textContent='The farm copy shown below is the protected synchronized copy.'}
-      else if(p.richer){el('status').className='status warn';el('status').textContent='A richer local safety snapshot is available.';el('detail').textContent='Tap Restore Richest Safety Snapshot below. The other phones should remain closed.'}
-      else{el('status').className='status bad';el('status').textContent='⚠️ Farm profiles are still missing.';el('detail').textContent='Do not open the other phones. Report the counts below so recovery can continue without overwriting anything.'}
+      else if(p.richer){el('status').className='status warn';el('status').textContent='A richer local safety snapshot is available.';el('detail').textContent='Tap Restore Richest Safety Snapshot below. Other phones should remain closed.'}
+      else{el('status').className='status bad';el('status').textContent='⚠️ Farm profiles are still missing.';el('detail').textContent='Do not open other phones. Report the counts below so recovery can continue without overwriting anything.'}
     }
   });
   setTimeout(()=>paint(!!window.FarmSyncSafety?.isReady?.()),4000);
