@@ -74,10 +74,9 @@
   }
   function init(){
     cleanLocalGoldenData();patchEggSaving();removeGoldenUI();installBackup();
-    const observer=new MutationObserver(removeGoldenUI);observer.observe(document.body,{childList:true,subtree:true,characterData:true});
     window.addEventListener("farm-data-synced",e=>{if(e.detail?.key===APP2_KEY){cleanLocalGoldenData();removeGoldenUI();}});
     window.addEventListener("core-data-synced",()=>{patchEggSaving();removeGoldenUI();});
-    console.log("✅ Golden Egg removed without polling");
+    console.log("✅ Golden Egg cleanup is event-driven; no DOM observer");
   }
   cleanLocalGoldenData();
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",()=>setTimeout(init,140));else setTimeout(init,140);
