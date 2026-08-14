@@ -86,7 +86,11 @@
         applyRemote(old);
         return true;
       }
-      await f.setDoc(ref, { [FIELD]:{ [key]:record } }, { merge:true });
+      if (snap.exists()) {
+        await f.updateDoc(ref, { [`${FIELD}.${key}`]:record });
+      } else {
+        await f.setDoc(ref, { [FIELD]:{ [key]:record } }, { merge:true });
+      }
       const verify = await f.getDoc(ref);
       const saved = verify.exists() ? verify.data()?.[FIELD]?.[key] : null;
       if (!saved || Number(saved.updatedAt) !== record.updatedAt || String(saved.birdId||"") !== id) throw new Error("Fallback verification failed");
