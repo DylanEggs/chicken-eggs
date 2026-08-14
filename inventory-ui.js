@@ -21,7 +21,7 @@
 (() => {
   "use strict";
   const KEY="chickenEggInventoryV2", APP2_KEY="chickenEggApp2V1";
-  const ENTRIES_KEY="chickenEggEntriesV102", SETTINGS_KEY="chickenEggSettingsV102", BUSINESS_KEY="chickenEggBusinessV1", DELUXE_KEY="chickenEggDeluxeV1";
+  const ENTRIES_KEY="chickenEggEntriesV102", SETTINGS_KEY="chickenEggSettingsV102", BUSINESS_KEY="chickenEggBusinessV1", DELUXE_KEY="chickenEggDeluxeV1", WEATHER_KEY="chickenEggWeatherIntelligenceV2";
 
   function read(k,f){try{return JSON.parse(localStorage.getItem(k)||JSON.stringify(f));}catch{return f;}}
   function cleanFarm2Object(obj){
@@ -67,7 +67,7 @@
   function installBackup(){
     const backup=function(){
       cleanLocalGoldenData();
-      const backup={format:"chicken-eggs-full-backup-v5",backupDate:new Date().toISOString(),entries:read(ENTRIES_KEY,[]),farmSettings:read(SETTINGS_KEY,{}),farmApp2:cleanFarm2Object(read(APP2_KEY,{})).value,inventoryV2:read(KEY,{}),businessV1:read(BUSINESS_KEY,{}),deluxeV1:read(DELUXE_KEY,{})};
+      const backup={format:"chicken-eggs-full-backup-v5",backupDate:new Date().toISOString(),entries:read(ENTRIES_KEY,[]),farmSettings:read(SETTINGS_KEY,{}),farmApp2:cleanFarm2Object(read(APP2_KEY,{})).value,inventoryV2:read(KEY,{}),businessV1:read(BUSINESS_KEY,{}),deluxeV1:read(DELUXE_KEY,{}),weatherV2:read(WEATHER_KEY,{})};
       const blob=new Blob([JSON.stringify(backup,null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`chicken-eggs-full-backup-${new Date().toISOString().slice(0,10)}.json`;a.click();URL.revokeObjectURL(a.href);
     };
     backup.__inventoryAuditBackup=true;window.backupData=backup;
@@ -84,5 +84,5 @@
 import("./sync-authority-v2.js?v=2").catch(error=>console.warn("Hardened sync authority failed to load:",error));
 import("./audit-finish-v1.js?v=1").catch(error=>console.warn("Final audit safeguards failed to load:",error));
 import("./app-polish-v1.js?v=1").catch(error=>console.warn("App polish failed to load:",error));
-import("./weather-trend-v1.js?v=1").catch(error=>console.warn("Weather trend detector failed to load:",error));
+import("./weather-intelligence-v2.js?v=20260814-1").catch(error=>console.warn("Farm Weather Intelligence failed to load:",error));
 import("./prediction-fix-v1.js?v=1").catch(error=>console.warn("Adaptive egg forecast failed to load:",error));
