@@ -1,9 +1,15 @@
 (() => {
   "use strict";
+  // Lock stale startup writes before any Farm App 2 code can touch local data.
+  document.write('<script src="sync-safety-preload-v1.js?v=20260814-1"><\/script>');
+
   // Install the stable runtime before Farm App 2 renders so legacy inventory
   // math never paints to the screen and cached correction helpers stay disabled.
   document.write('<script src="app2-stable-runtime-v1.js?v=20260814-2"><\/script>');
-  document.write('<script src="app2-legacy-v1.js?v=20260814-1"><\/script>');
+
+  // Load the existing Farm App 2 UI, but strip its obsolete direct Firebase
+  // reader/writer. The protected Firebase authority is the only cloud owner.
+  document.write('<script src="app2-legacy-safe-loader-v1.js?v=20260814-1"><\/script>');
   document.write('<script src="insights-calendar-v2.js?v=20260814-1"><\/script>');
 
   // One navigation authority for screens opened from the Farm hub.
