@@ -82,6 +82,7 @@
   cleanLocalGoldenData();
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",()=>setTimeout(init,140));else setTimeout(init,140);
 })();
+import("./sync-authority-v2.js?v=2").catch(error=>console.warn("Hardened sync authority failed to load:",error));
 import("./audit-finish-v1.js?v=1").catch(error=>console.warn("Final audit safeguards failed to load:",error));
 import("./app-polish-v1.js?v=1").catch(error=>console.warn("App polish failed to load:",error));
 import("./weather-trend-v1.js?v=1").catch(error=>console.warn("Weather trend detector failed to load:",error));
