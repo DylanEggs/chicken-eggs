@@ -5,11 +5,10 @@
   document.write('<script src="legacy-render-observer-guard-v1.js?v=20260815-2"><\/script>');
   document.write('<script src="audit-finish-v1.js?v=20260815-6"><\/script>');
   document.write('<script src="app-audit-v1.js?v=20260815-4"><\/script>');
-  document.write('<script type="module" src="firebase-safe-v9.js?v=20260815-2"><\/script>');
+  document.write('<script type="module" src="firebase-safe-v9.js?v=20260815-3"><\/script>');
   document.write('<script src="app2-stable-runtime-v1.js?v=20260815-4"><\/script>');
   document.write('<script src="app2-legacy-safe-loader-v1.js?v=20260815-4"><\/script>');
 
-  // Photo/Flock UI is local-first and must never wait for Firebase bootstrap.
   document.write('<script src="bird-photo-service-v4.js?v=20260815-3"><\/script>');
   document.write('<script src="flock-manager-v7.js?v=20260815-5"><\/script>');
   document.write('<script src="insights-calendar-v2.js?v=20260815-3"><\/script>');
