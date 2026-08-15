@@ -730,7 +730,7 @@ if (!window.__farmSafeFirebaseV9) {
     isReady: () => bootstrapComplete,
     refresh: syncAllFarmData,
     getDirtyKeys: () => [...dirty],
-    version: "9"
+    version: "9.1"
   };
   window.EggSyncAuthorityReady = safeReady;
   window.syncFarmNow = syncAllFarmData;
@@ -768,14 +768,14 @@ if (!window.__farmSafeFirebaseV9) {
 
   void bootstrap().catch(() => {});
 
-  import("./farm-consistency-v2.js?v=7")
-    .then(() => import("./app-audit-v1.js?v=3"))
-    .then(() => import("./audit-finish-v1.js?v=3"))
-    .catch(e => console.warn("Farm audit layer failed to load:", e));
-  import("./dom-loop-guard-v3.js?v=3")
+  // UI audit/render modules are loaded explicitly by app2.js/firebase.js with
+  // current build URLs. Do not import old cached audit generations from here.
+  import("./farm-consistency-v2.js?v=20260815-8")
+    .catch(e => console.warn("Farm consistency layer failed to load:", e));
+  import("./dom-loop-guard-v3.js?v=20260815-8")
     .catch(e => console.warn("Current redraw guard failed to load:", e));
-  import("./flock-photo-fix-v2.js?v=6")
+  import("./flock-photo-fix-v2.js?v=20260815-8")
     .catch(e => console.warn("Shared flock photo system failed to load:", e));
 
-  console.log("✅ Firebase v9 initialized in protected cloud-first mode");
+  console.log("✅ Firebase v9.1 initialized in protected cloud-first mode");
 }
