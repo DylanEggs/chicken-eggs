@@ -1,7 +1,8 @@
 (() => {
   "use strict";
   // Lock stale startup writes before any Farm App 2 code can touch local data.
-  document.write('<script src="sync-safety-preload-v1.js?v=20260814-2"><\/script>');
+  // Navigation remains available while Firebase connects; only writes are held.
+  document.write('<script src="sync-safety-preload-v1.js?v=20260815-navfix1"><\/script>');
 
   // Install the stable runtime before Farm App 2 renders so legacy inventory
   // math never paints to the screen and cached correction helpers stay disabled.
