@@ -7,198 +7,54 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <title>Chicken Eggs</title>
-  <link rel="stylesheet" href="style.css?v=100" />
-  <link rel="stylesheet" href="app2.css?v=1" />
+  <style>
+    body{margin:0;min-height:100vh;display:grid;place-items:center;background:#f5fbf5;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#17351f;padding:24px;box-sizing:border-box}
+    .boot{max-width:420px;text-align:center;background:#fff;padding:24px;border-radius:24px;box-shadow:0 15px 40px rgba(24,68,36,.12)}
+    .egg{font-size:54px}.boot b{display:block;font-size:20px;margin:10px 0 5px}.boot small{color:#6b7c70;font-weight:700}
+  </style>
 </head>
 <body>
-  <div class="app">
-    <header class="appHeader">
-      <div class="logo">🥚</div>
-      <div>
-        <p class="eyebrow">Farm Dashboard</p>
-        <h1>Chicken Eggs</h1>
-        <p id="todayText"></p>
-        <p id="syncStatus">Starting...</p>
-      </div>
-    </header>
-
-    <section id="dashboard" class="screen active">
-      <div class="heroCard">
-        <div>
-          <p class="eyebrow">Today’s Farm</p>
-          <h2 id="farmHeroName">Egg Production</h2>
-          <p id="farmHeroText">Track collections, sales, records, and revenue.</p>
-        </div>
-        <div class="heroIcon">🐔</div>
-      </div>
-
-      <div id="dashboardTotals" class="dashboardGrid"></div>
-
-      <div class="chartCard">
-        <h3>🥚 Daily Egg Production</h3>
-        <canvas id="eggChart" height="160"></canvas>
-      </div>
-
-      <div class="mainActions">
-        <button onclick="showScreen('collect')">🥚 Collect Eggs</button>
-        <button onclick="showScreen('sale')">💰 Record Sale</button>
-        <button onclick="showScreen('farm')">🐔 Farm Settings</button>
-      </div>
-    </section>
-
-    <section id="collect" class="screen">
-      <div class="screenTitle">
-        <button class="backMini" onclick="showScreen('dashboard')">←</button>
-        <h2>Collect Eggs</h2>
-      </div>
-
-      <label>Date</label>
-      <input type="date" id="eggDate" />
-
-      <label>Eggs Collected</label>
-      <input type="number" id="eggCount" placeholder="0" />
-
-      <button onclick="saveEggs()">Save Eggs</button>
-      <button class="secondary" onclick="showScreen('dashboard')">Back</button>
-    </section>
-
-    <section id="sale" class="screen">
-      <div class="screenTitle">
-        <button class="backMini" onclick="showScreen('dashboard')">←</button>
-        <h2>Record Sale</h2>
-      </div>
-
-      <label>Date</label>
-      <input type="date" id="saleDate" />
-
-      <label>Dozen Sold</label>
-      <input type="number" id="dozenSold" placeholder="0" />
-
-      <label>Price Per Dozen</label>
-      <input type="number" id="dozenPrice" step="0.01" placeholder="0.00" />
-
-      <label>18-Packs Sold</label>
-      <input type="number" id="packSold" placeholder="0" />
-
-      <label>Price Per 18-Pack</label>
-      <input type="number" id="packPrice" step="0.01" placeholder="0.00" />
-
-      <button onclick="saveSale()">Save Sale</button>
-      <button class="secondary" onclick="showScreen('dashboard')">Back</button>
-    </section>
-
-    <section id="farm" class="screen">
-      <div class="screenTitle">
-        <button class="backMini" onclick="showScreen('dashboard')">←</button>
-        <h2>Farm Settings</h2>
-      </div>
-
-      <label>Farm Name</label>
-      <input type="text" id="farmName" placeholder="Example: Happy Hollow Farm" />
-
-      <label>Total Hens</label>
-      <input type="number" id="farmHens" placeholder="0" />
-
-      <label>Total Roosters</label>
-      <input type="number" id="farmRoosters" placeholder="0" />
-
-      <label>Daily Egg Goal</label>
-      <input type="number" id="farmEggGoal" placeholder="0" />
-
-      <label>Default Dozen Price</label>
-      <input type="number" id="farmDozenPrice" step="0.01" placeholder="0.00" />
-
-      <label>Default 18-Pack Price</label>
-      <input type="number" id="farmPackPrice" step="0.01" placeholder="0.00" />
-
-      <button onclick="saveFarmSettings()">Save Farm Settings</button>
-      <button class="danger" onclick="deleteAllEntries()">🗑️ Delete All Entries</button>
-      <button onclick="backupData()">💾 Backup Data</button>
-      <input type="file" id="restoreFile" accept=".json" onchange="restoreData(event)" style="display:none;" />
-      <button onclick="document.getElementById('restoreFile').click()">📂 Restore Data</button>
-      <button class="secondary" onclick="showScreen('dashboard')">Back</button>
-    </section>
-
-    <section id="stats" class="screen">
-      <div class="screenTitle">
-        <button class="backMini" onclick="showScreen('dashboard')">←</button>
-        <h2>Statistics</h2>
-      </div>
-
-      <div id="statsTotals" class="grid"></div>
-
-      <div class="chartCard">
-        <h3>📅 Daily Eggs - Last 30 Days</h3>
-        <canvas id="dailyEggChart" height="160"></canvas>
-      </div>
-
-      <div class="chartCard">
-        <h3>📊 Weekly Egg Totals</h3>
-        <canvas id="weeklyEggChart" height="160"></canvas>
-      </div>
-
-      <div class="chartCard">
-        <h3>🗓️ Monthly Egg Totals</h3>
-        <canvas id="monthlyEggChart" height="160"></canvas>
-      </div>
-
-      <div class="chartCard">
-        <h3>💰 Revenue Over Time</h3>
-        <canvas id="revenueChart" height="160"></canvas>
-      </div>
-
-      <button class="secondary" onclick="showScreen('dashboard')">Back</button>
-    </section>
-
-    <section id="records" class="screen">
-      <div class="screenTitle">
-        <button class="backMini" onclick="showScreen('dashboard')">←</button>
-        <h2>Records</h2>
-      </div>
-
-      <div id="recordsTotals" class="grid"></div>
-
-      <button class="secondary" onclick="showScreen('dashboard')">Back</button>
-    </section>
-
-    <section id="history" class="screen">
-      <div class="screenTitle">
-        <button class="backMini" onclick="showScreen('dashboard')">←</button>
-        <h2>History</h2>
-      </div>
-
-      <input type="text" id="historySearch" placeholder="Search by date, example: 2026-07" oninput="updateApp()" />
-
-      <div class="filterButtons">
-        <button onclick="setHistoryFilter('all')">All</button>
-        <button onclick="setHistoryFilter('eggs')">🥚 Eggs</button>
-        <button onclick="setHistoryFilter('sale')">💰 Sales</button>
-      </div>
-
-      <div id="historyList"></div>
-      <button class="secondary" onclick="showScreen('dashboard')">Back</button>
-    </section>
-
-    <nav class="bottomNav">
-      <button onclick="showScreen('dashboard')">🏠<span>Home</span></button>
-      <button onclick="showScreen('stats')">📊<span>Stats</span></button>
-      <button onclick="showScreen('records')">🏆<span>Records</span></button>
-      <button onclick="showScreen('history')">📋<span>History</span></button>
-      <button onclick="showScreen('farm')">🐔<span>Farm</span></button>
-    </nav>
-  </div>
-
-  <script type="module" src="firebase.js?v=6"></script>
-  <script src="database.js?v=6"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="script.js?v=221"></script>
-  <script src="app2.js?v=1"></script>
-  <script src="inventory.js?v=1"></script>
-  <script src="inventory-ui.js?v=1"></script>
-  <script src="extras-dashboard.js?v=1"></script>
-  <script src="extras-fun.js?v=1"></script>
+  <div class="boot" id="appBoot"><div class="egg">🥚</div><b>Loading Chicken Eggs…</b><small>Opening the current farm app safely.</small></div>
   <script>
-(()=>{"use strict";const F=[["💤 Sleep","Chickens have both slow-wave sleep and REM sleep—the sleep stage associated with dreaming in humans."],["💤 Sleep","Chickens can sometimes sleep with one eye open while part of the brain stays more alert."],["💤 Sleep","In unihemispheric sleep, one side of a bird’s brain can rest more deeply while the other side helps watch for danger."],["💤 Sleep","Chickens do most of their sleeping at night, but short daytime naps are normal too."],["💤 Sleep","A relaxed chicken may tuck its head into its feathers while sleeping."],["💤 Sleep","Chickens often prefer to sleep on a raised roost rather than on the ground."],["💤 Sleep","REM sleep in chickens usually happens in short bursts compared with human REM sleep."],["💤 Sleep","Chickens that feel exposed may sleep more lightly than birds that feel secure."],["💤 Sleep","Flockmates often settle down around the same time because chickens are highly social sleepers."],["💤 Sleep","A chicken’s sleep includes real changes in brain-wave activity, not just sitting still with its eyes closed."],["🌈 Senses","Chickens see colors humans cannot—domestic chicks have ultraviolet-sensitive vision."],["🌈 Senses","Chickens have four types of color-sensitive cone cells, giving them tetrachromatic color vision."],["🌈 Senses","A chicken’s eyes sit more on the sides of its head than ours, giving it a very wide field of view."],["🌈 Senses","Chickens also have a small area of binocular vision in front of them for judging distance."],["🌈 Senses","That famous chicken head-bob helps stabilize the visual scene while the bird walks."],["🌈 Senses","Chickens have a third eyelid called the nictitating membrane that helps protect and moisten the eye."],["🌈 Senses","Chickens are very good at noticing movement—an important skill for spotting predators and tiny food items."],["🌈 Senses","Chickens have ears, but the openings are hidden beneath feathers instead of sticking out like mammal ears."],["🌈 Senses","The colored patch of skin near a chicken’s ear is called the earlobe."],["🌈 Senses","Chickens do have a sense of smell; it was underestimated for many years."],["🌈 Senses","Chickens have taste buds even though they have far fewer than humans."],["🌈 Senses","Birds are much less sensitive to capsaicin—the chemical that makes hot peppers feel hot to mammals."],["🌈 Senses","Young chicks can learn color differences very quickly."],["🌈 Senses","Chicken vision is strongly lateralized, meaning the two sides of the brain specialize in somewhat different visual jobs."],["🌈 Senses","Because their eyes move less than ours, chickens use lots of quick head movements to inspect the world."],["🧠 Chicken Brain","Chickens can recognize individual flockmates using visual information."],["🧠 Chicken Brain","The phrase “pecking order” came from scientific observations of chicken social hierarchies."],["🧠 Chicken Brain","A stable pecking order can reduce the need for flockmates to fight over every interaction."],["🧠 Chicken Brain","Chickens can learn by watching other chickens."],["🧠 Chicken Brain","Very young chicks can understand that an object still exists after it disappears behind a screen."],["🧠 Chicken Brain","Chicks have shown the ability to keep track of hidden objects for surprisingly long periods."],["🧠 Chicken Brain","Newly hatched chicks can tell the difference between small quantities."],["🧠 Chicken Brain","In experiments, chicks have kept track of simple additions and subtractions involving small numbers of objects."],["🧠 Chicken Brain","Chicks have shown a left-to-right bias when mentally arranging quantities, a bit like a primitive number line."],["🧠 Chicken Brain","Chickens can learn routines and begin anticipating what happens next."],["🧠 Chicken Brain","Studies show chickens can estimate short time intervals rather than living only in the immediate moment."],["🧠 Chicken Brain","Chickens have individual personalities—some are bold, some cautious, some curious, and some more social."],["🧠 Chicken Brain","Chickens can solve detour problems where the direct route to a goal is blocked."],["🧠 Chicken Brain","Domestic chickens have been studied in mirror-assisted spatial tasks and can use reflected information in some situations."],["🧠 Chicken Brain","Young chicks naturally pay attention to movement patterns that look like other living animals."],["🧠 Chicken Brain","Chickens can remember where food was located."],["🧠 Chicken Brain","Hens can distinguish familiar social companions from others."],["🧠 Chicken Brain","Chickens can make decisions based on what they have previously learned about food quality."],["🧠 Chicken Brain","Researchers use chickens in cognition studies because chicks are active, alert, and capable of learning almost immediately after hatch."],["🧠 Chicken Brain","A chicken brain is small, but brain size alone is a poor measure of what an animal can learn or remember."],["🧠 Chicken Brain","Chickens can be trained with rewards just like many other animals."],["🧠 Chicken Brain","Chickens remember social relationships within a flock, which helps them navigate the hierarchy."],["🧠 Chicken Brain","Hens can learn from the success or behavior of other hens."],["🧠 Chicken Brain","Chickens can recognize partly hidden shapes as complete objects rather than seeing only the visible pieces."],["🧠 Chicken Brain","Social situations can actually improve a chick’s performance on some learning tasks."],["🧠 Chicken Brain","Chicken cognition includes memory, quantity discrimination, social learning, communication, and spatial navigation."],["🐓 Rooster","Roosters do not crow only at sunrise—they can crow throughout the day."],["🐓 Rooster","A rooster’s internal circadian clock helps tell him when dawn is approaching."],["🐓 Rooster","Light and hearing another rooster can trigger crowing, but the internal clock still influences the response."],["🐓 Rooster","Rooster crowing can be extremely loud close to the bird."],["🐓 Rooster","When a rooster opens his beak to crow, parts of his ear canal can close and help protect his hearing."],["🐓 Rooster","Roosters often make special food calls when they discover something worth eating."],["🐓 Rooster","The food-sharing display where a rooster picks up and drops food while calling is called tidbitting."],["🐓 Rooster","Roosters may tidbit more enthusiastically when the food is especially desirable."],["🐓 Rooster","Roosters can give different warning calls for danger in the air versus danger on the ground."],["🐓 Rooster","A rooster may give more alarm calls when hens are nearby."],["🐓 Rooster","Roosters often stand tall and scan the area while hens are busy foraging."],["🐓 Rooster","A wing-drop dance is a common rooster courtship display."],["🐓 Rooster","Roosters can use body position, dancing, calls, and food displays—not just crowing—to communicate."],["🐓 Rooster","Crowing order can reflect social status when multiple roosters live together."],["🐓 Rooster","A dominant rooster often gets the first word at dawn, while lower-ranking males may follow."],["🐓 Rooster","Rooster hackle and saddle feathers are often more pointed than the corresponding feathers on hens."],["🐓 Rooster","Roosters usually develop larger, more obvious spurs, although some hens can grow spurs too."],["🐓 Rooster","A rooster does not cause hens to lay eggs; hens lay whether a rooster is present or not."],["🐓 Rooster","A rooster is needed only if you want the eggs to be fertilized."],["🐓 Rooster","One successful mating can fertilize more than one egg because hens can store sperm internally."],["🐓 Rooster","A hen’s reproductive tract has specialized sperm-storage tubules that can keep sperm alive for weeks."],["🐓 Rooster","Some male chickens have been observed giving food calls even when no food is present—a surprisingly sneaky social tactic."],["🐓 Rooster","Roosters can adjust their behavior depending on which flock members are nearby."],["🐓 Rooster","Crowing is partly a territorial and social signal, not just an alarm clock."],["🐓 Rooster","Two roosters can sound noticeably different even though humans describe both calls as “cock-a-doodle-doo.”"],["🥚 Eggs","A hen does not need a rooster to lay an egg."],["🥚 Eggs","Most of an eggshell is calcium carbonate."],["🥚 Eggs","Eggshells contain thousands of microscopic pores that allow gas exchange."],["🥚 Eggs","The thin natural coating on a freshly laid egg is called the cuticle or bloom."],["🥚 Eggs","The bloom helps seal shell pores and acts as part of the egg’s natural protection."],["🥚 Eggs","Brown shell color comes mainly from pigments added late in shell formation."],["🥚 Eggs","Blue egg pigment is incorporated more deeply into the shell, so a blue shell can look blue on the inside too."],["🥚 Eggs","Eggshell color does not determine how nutritious the egg is."],["🥚 Eggs","Yolk color is strongly influenced by pigments in a hen’s diet."],["🥚 Eggs","The twisted white cords that help hold the yolk centered are called chalazae."],["🥚 Eggs","An egg’s air cell forms as the contents cool and contract after the egg is laid."],["🥚 Eggs","Double-yolk eggs usually happen when two yolks enter the reproductive tract close together."],["🥚 Eggs","Young pullets are more likely to lay unusual sizes or shapes while their reproductive system is getting into rhythm."],["🥚 Eggs","A hen’s egg-making cycle takes roughly a day, which is why laying time often shifts later from one day to the next."],["🥚 Eggs","Day length affects the hormones involved in egg production."],["🥚 Eggs","Egg production often drops during a molt because growing new feathers requires a lot of nutrients."],["🥚 Eggs","Laying hens can store extra calcium in a special type of bone called medullary bone."],["🥚 Eggs","A shell gets much of its calcium during the final part of the egg’s trip through the oviduct."],["🥚 Eggs","Hens often choose one favorite nest box even when several perfectly good boxes are available."],["🥚 Eggs","Broodiness is a hormonal state that makes a hen want to sit on and incubate a clutch of eggs."],["🥚 Eggs","A broody hen regularly turns her eggs while incubating them."],["🥚 Eggs","A fertilized egg does not begin normal embryo development unless it receives the right incubation conditions."],["🥚 Eggs","The broad and narrow ends of an egg are produced by the way the shell forms around the egg inside the oviduct."],["🥚 Eggs","A hen has one functional ovary in normal adult life—the left one."],["🥚 Eggs","The egg white is also called albumen."],["🥚 Eggs","Egg size generally increases as many hens mature."],["🥚 Eggs","Shell quality can be affected by age, nutrition, heat stress, disease, and how quickly the shell is formed."],["🥚 Eggs","A hen may sing an unmistakable “egg song” before or after laying, although scientists still debate every reason for the behavior."],["🥚 Eggs","A fresh egg’s contents are warmer than the surrounding air, so cooling after laying changes the pressure inside the shell."],["🥚 Eggs","An egg can be perfectly normal even when its shell color varies slightly from day to day."],["🐣 Chicks","Chicken chicks are precocial—they hatch able to walk, see, hear, and begin learning almost immediately."],["🐣 Chicks","A chick uses a temporary hard tip on its beak called an egg tooth to help break out of the shell."],["🐣 Chicks","The egg tooth disappears after hatch because it is no longer needed."],["🐣 Chicks","Before hatching, a chick absorbs much of the remaining yolk into its body as a built-in food reserve."],["🐣 Chicks","Chicks can hear before they hatch."],["🐣 Chicks","A hen and her chicks can communicate while the chicks are still inside their shells."],["🐣 Chicks","Chicks begin making peeping sounds before the hatch is complete."],["🐣 Chicks","Newly hatched chicks can imprint on a moving object or caregiver very early in life."],["🐣 Chicks","Chicks watch their mother and flockmates to learn what is safe to investigate and eat."],["🐣 Chicks","A cold, isolated, or frightened chick often gives a distinctive distress call."],["🐣 Chicks","Chick down is temporary and is gradually replaced by juvenile feathers."],["🐣 Chicks","Young chicks spend a lot of time sleeping because growth and brain development are happening rapidly."],["🐣 Chicks","Chicks practice scratching, pecking, wing flapping, and dust-bath-like movements at surprisingly young ages."],["🐣 Chicks","A young female chicken is called a pullet; a young male is called a cockerel."]],D="chickenFactDeckV1",L="chickenFactLastV1",S="chickenFactSeenV1";function j(k,f){try{return JSON.parse(localStorage.getItem(k)||JSON.stringify(f))}catch{return f}}function h(a){a=a.slice();for(let i=a.length-1;i>0;i--){const x=Math.floor(Math.random()*(i+1));[a[i],a[x]]=[a[x],a[i]]}return a}function n(){let d=j(D,[]);d=Array.isArray(d)?d.filter(i=>Number.isInteger(i)&&i>=0&&i<F.length):[];if(!d.length){d=h(F.map((_,i)=>i));const l=Number(localStorage.getItem(L));if(d.length>1&&Number.isInteger(l)&&d[0]===l)[d[0],d[1]]=[d[1],d[0]];localStorage.setItem(S,"0")}const i=d.shift();localStorage.setItem(D,JSON.stringify(d));localStorage.setItem(L,String(i));const s=Math.min(F.length,(Number(localStorage.getItem(S))||0)+1);localStorage.setItem(S,String(s));return{f:F[i],s}}function css(){if(document.getElementById("chickenFactStyles"))return;const e=document.createElement("style");e.id="chickenFactStyles";e.textContent=`.chicken-fact-card{position:relative;overflow:hidden;margin:0 0 16px;padding:17px 18px;border-radius:24px;background:linear-gradient(135deg,rgba(255,247,223,.96),rgba(238,248,238,.95));border:1px solid rgba(31,122,58,.14);box-shadow:0 12px 30px rgba(24,68,36,.10)}.farm2-dark .chicken-fact-card{background:linear-gradient(135deg,rgba(45,52,35,.94),rgba(28,50,36,.94));border-color:rgba(255,255,255,.10)}.chicken-fact-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}.chicken-fact-kicker{font-size:12px;font-weight:950;letter-spacing:.08em;text-transform:uppercase;color:var(--green)}.farm2-dark .chicken-fact-kicker{color:#83df9d}.chicken-fact-count{font-size:11px;font-weight:800;color:var(--muted);white-space:nowrap}.chicken-fact-text{font-size:17px;line-height:1.45;font-weight:800;color:var(--dark);margin:0}.farm2-dark .chicken-fact-text{color:#f5f7f3}.chicken-fact-actions{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:11px}.chicken-fact-category{font-size:12px;font-weight:850;color:var(--muted)}.chicken-fact-next{width:auto!important;margin:0!important;padding:9px 13px!important;border-radius:14px!important;font-size:12px!important}.chicken-fact-chicken{position:absolute;right:-4px;top:-16px;font-size:56px;opacity:.09;transform:rotate(12deg);pointer-events:none}@media(max-width:600px){.chicken-fact-card{padding:15px 16px;border-radius:20px}.chicken-fact-text{font-size:16px}.chicken-fact-count{font-size:10px}}`;document.head.appendChild(e)}function c(){let e=document.getElementById("chickenFactCard");if(e)return e;const d=document.getElementById("dashboard");if(!d)return null;e=document.createElement("div");e.id="chickenFactCard";e.className="chicken-fact-card";e.innerHTML=`<div class="chicken-fact-chicken">🐔</div><div class="chicken-fact-top"><div class="chicken-fact-kicker">🐔 Did You Know?</div><div id="chickenFactCount" class="chicken-fact-count"></div></div><p id="chickenFactText" class="chicken-fact-text"></p><div class="chicken-fact-actions"><span id="chickenFactCategory" class="chicken-fact-category"></span><button type="button" class="secondary chicken-fact-next" onclick="showAnotherChickenFact()">Another fact ↻</button></div>`;d.insertBefore(e,d.firstElementChild);return e}function r(){css();if(!c())return;const{f,s}=n();document.getElementById("chickenFactText").textContent=f[1];document.getElementById("chickenFactCategory").textContent=f[0];document.getElementById("chickenFactCount").textContent=`Fact ${s} of ${F.length} this round`}window.showAnotherChickenFact=r;document.readyState==="loading"?document.addEventListener("DOMContentLoaded",()=>setTimeout(r,150)):setTimeout(r,150)})();
+    (() => {
+      "use strict";
+      const BUILD = "20260815-1818";
+      const shellUrl = `app-shell-v1.html?build=${BUILD}`;
+
+      function currentShell(html) {
+        const replacements = [
+          ["style.css?v=100", `style.css?v=${BUILD}`],
+          ["app2.css?v=1", `app2.css?v=${BUILD}`],
+          ["firebase.js?v=6", `firebase.js?v=${BUILD}`],
+          ["database.js?v=6", `database.js?v=${BUILD}`],
+          ["script.js?v=221", `script.js?v=${BUILD}`],
+          ["app2.js?v=1", `app2.js?v=${BUILD}`],
+          ["inventory.js?v=1", `inventory.js?v=${BUILD}`],
+          ["inventory-ui.js?v=1", `inventory-ui.js?v=${BUILD}`],
+          ["extras-dashboard.js?v=1", `extras-dashboard.js?v=${BUILD}`],
+          ["extras-fun.js?v=1", `extras-fun.js?v=${BUILD}`]
+        ];
+        for (const [oldValue, newValue] of replacements) html = html.split(oldValue).join(newValue);
+        return html;
+      }
+
+      fetch(shellUrl)
+        .then(response => {
+          if (!response.ok) throw new Error(`App shell HTTP ${response.status}`);
+          return response.text();
+        })
+        .then(html => {
+          html = currentShell(html);
+          document.open();
+          document.write(html);
+          document.close();
+        })
+        .catch(error => {
+          console.error("Chicken Eggs boot failed:", error);
+          const box = document.getElementById("appBoot");
+          if (box) box.innerHTML = '<div class="egg">🐔</div><b>Could not load the app yet</b><small>Your farm data was not changed. Check your internet connection, then close and reopen Chicken Eggs.</small>';
+        });
+    })();
   </script>
 </body>
 </html>
