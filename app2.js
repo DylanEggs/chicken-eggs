@@ -1,18 +1,21 @@
 (() => {
   "use strict";
   // Lock stale startup writes before any Farm App 2 code can touch local data.
-  // Navigation remains available while Firebase connects; only writes are held.
-  document.write('<script src="sync-safety-preload-v1.js?v=20260815-navfix1"><\/script>');
+  document.write('<script src="sync-safety-preload-v1.js?v=20260815-4"><\/script>');
+
+  // firebase.js in older cached pages may still point at v8. The preload makes
+  // v8 inert, and this fresh module becomes the one protected cloud authority.
+  document.write('<script type="module" src="firebase-safe-v9.js?v=20260815-1"><\/script>');
 
   // Install the stable runtime before Farm App 2 renders so legacy inventory
   // math never paints to the screen and cached correction helpers stay disabled.
-  document.write('<script src="app2-stable-runtime-v1.js?v=20260814-2"><\/script>');
+  document.write('<script src="app2-stable-runtime-v1.js?v=20260815-3"><\/script>');
 
   // Load the existing Farm App 2 UI, but strip its obsolete direct Firebase
-  // reader/writer. The protected Firebase authority is the only cloud owner.
-  document.write('<script src="app2-legacy-safe-loader-v1.js?v=20260814-2"><\/script>');
-  document.write('<script src="insights-calendar-v2.js?v=20260814-1"><\/script>');
-  document.write('<script src="flock-photo-viewer-v1.js?v=20260814-2"><\/script>');
+  // reader/writer. Protected Firebase is the only cloud owner.
+  document.write('<script src="app2-legacy-safe-loader-v1.js?v=20260815-3"><\/script>');
+  document.write('<script src="insights-calendar-v2.js?v=20260815-2"><\/script>');
+  document.write('<script src="flock-photo-viewer-v1.js?v=20260815-3"><\/script>');
 
   // One navigation authority for screens opened from the Farm hub.
   // This avoids hard-coded legacy Back buttons sending users to Home/Sale.
