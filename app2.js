@@ -11,7 +11,7 @@
   // Stop obsolete MutationObservers before any old audit generation can attach.
   // Save functions remain available; rendering is event-driven only.
   document.write('<script src="legacy-render-observer-guard-v1.js?v=20260815-1"><\/script>');
-  document.write('<script src="audit-finish-v1.js?v=20260815-4"><\/script>');
+  document.write('<script src="audit-finish-v1.js?v=20260815-5"><\/script>');
 
   // firebase.js in older cached pages may still point at an earlier generation.
   // The preload makes old farm authorities inert; v9 is the single cloud owner.
@@ -31,7 +31,7 @@
   document.write('<script src="flock-manager-v7.js?v=20260815-5"><\/script>');
 
   document.write('<script src="insights-calendar-v2.js?v=20260815-3"><\/script>');
-  document.write('<script src="flock-photo-viewer-v1.js?v=20260815-4"><\/script>');
+  document.write('<script src="flock-photo-viewer-v1.js?v=20260815-5"><\/script>');
 
   // One navigation authority for screens opened from the Farm hub.
   // This avoids hard-coded legacy Back buttons sending users to Home/Sale.
