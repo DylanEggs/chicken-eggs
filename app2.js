@@ -8,6 +8,11 @@
   // fight the protected sync engine over the status text.
   document.write('<script src="core-sync-ui-v1.js?v=20260815-1"><\/script>');
 
+  // Stop obsolete MutationObservers before any old audit generation can attach.
+  // Save functions remain available; rendering is event-driven only.
+  document.write('<script src="legacy-render-observer-guard-v1.js?v=20260815-1"><\/script>');
+  document.write('<script src="audit-finish-v1.js?v=20260815-4"><\/script>');
+
   // firebase.js in older cached pages may still point at an earlier generation.
   // The preload makes old farm authorities inert; v9 is the single cloud owner.
   document.write('<script type="module" src="firebase-safe-v9.js?v=20260815-2"><\/script>');
