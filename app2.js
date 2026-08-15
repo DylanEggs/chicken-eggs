@@ -1,7 +1,7 @@
 (() => {
   "use strict";
   // Lock stale startup writes before any Farm App 2 code can touch local data.
-  document.write('<script src="sync-safety-preload-v1.js?v=20260815-4"><\/script>');
+  document.write('<script src="sync-safety-preload-v1.js?v=20260815-5"><\/script>');
 
   // firebase.js in older cached pages may still point at v8. The preload makes
   // v8 inert, and this fresh module becomes the one protected cloud authority.
