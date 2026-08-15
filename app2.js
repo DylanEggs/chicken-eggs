@@ -1,7 +1,7 @@
 (() => {
   "use strict";
   document.write('<script src="sync-safety-preload-v1.js?v=20260815-7"><\/script>');
-  document.write('<script src="core-sync-ui-v1.js?v=20260815-2"><\/script>');
+  document.write('<script src="core-sync-ui-v1.js?v=20260815-3"><\/script>');
   document.write('<script src="legacy-render-observer-guard-v1.js?v=20260815-2"><\/script>');
   document.write('<script src="audit-finish-v1.js?v=20260815-6"><\/script>');
   document.write('<script src="app-audit-v1.js?v=20260815-4"><\/script>');
