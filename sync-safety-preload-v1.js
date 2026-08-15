@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  if (window.FarmBootstrapSafety?.version === "2") return;
+  if (window.FarmBootstrapSafety?.version === "3") return;
 
   // Disable every older Firebase farm authority before deferred modules execute.
   // firebase-safe-v9.js is the only protected farm sync authority.
@@ -100,15 +100,20 @@
   function isProtectedWriteButton(button) {
     if (!button) return false;
     const inline = button.getAttribute("onclick") || "";
-    if (!inline) return false;
-    return /(saveEggs|saveSale|saveFarmSettings|deleteAllEntries|deleteEntry|farm2(?:Add|Delete|Complete|Save)|inventory(?:SetExact|Remove|AddEggs)|biz(?:Save|Delete)ChickenSale)/.test(inline);
+    const text = String(button.textContent || "").trim();
+    return /(saveEggs|saveSale|saveFarmSettings|deleteAllEntries|deleteEntry|farm2(?:Add|Delete|Complete|Save)|inventory(?:SetExact|Remove|AddEggs)|biz(?:Save|Delete)ChickenSale|farmFlock(?:SaveEdit|DeleteBird|RemovePhoto)V7|farmConsistencyMarkPaid)/.test(inline)
+      || /Restore Data/i.test(text)
+      || /restoreFile/.test(inline);
   }
 
   function isDestructiveButton(button) {
     const inline = button?.getAttribute("onclick") || "";
+    const text = String(button?.textContent || "").trim();
     return button?.classList.contains("danger")
       || button?.classList.contains("farm2-delete")
-      || /(deleteAllEntries|deleteEntry|farm2Delete|bizDelete|inventoryRemove)/.test(inline);
+      || /(deleteAllEntries|deleteEntry|farm2Delete|bizDelete|inventoryRemove|farmFlockDeleteBirdV7|farmFlockRemovePhotoV7)/.test(inline)
+      || /Restore Data/i.test(text)
+      || /restoreFile/.test(inline);
   }
 
   async function waitForSyncApi(timeoutMs = 22000) {
@@ -159,7 +164,7 @@
     event.stopImmediatePropagation();
 
     if (isDestructiveButton(button)) {
-      setStatus("Finish Firebase sync before deleting or removing data");
+      setStatus("Finish Firebase sync before deleting, removing, or restoring data");
       return;
     }
 
@@ -167,7 +172,7 @@
   }, true);
 
   window.FarmBootstrapSafety = {
-    version: "2",
+    version: "3",
     nativeSetItem,
     isLocked: () => locked,
     unlock() {
@@ -196,5 +201,5 @@
     setTimeout(() => location.reload(), 250);
   });
 
-  console.log("🔒 Farm startup safety v2 active; navigation stays available");
+  console.log("🔒 Farm startup safety v3 active; navigation stays available");
 })();
