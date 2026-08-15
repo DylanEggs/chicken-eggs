@@ -1,10 +1,12 @@
 (() => {
   "use strict";
-  if (window.__flockPhotoViewerV1) return;
+  if (window.__flockPhotoViewerV2) return;
+  window.__flockPhotoViewerV2 = true;
   window.__flockPhotoViewerV1 = true;
 
   const STYLE_ID = "flockPhotoViewerStyles";
   const OVERLAY_ID = "flockPhotoViewer";
+  const PHOTO_SELECTOR = "#xChicken img, #farm2FlockManagerV7 img, #farm2FlockList img";
 
   function installStyles() {
     if (document.getElementById(STYLE_ID)) return;
@@ -12,6 +14,7 @@
     style.id = STYLE_ID;
     style.textContent = `
       #xChicken img,
+      #farm2FlockManagerV7 img,
       #farm2FlockList img {
         cursor: zoom-in;
         -webkit-tap-highlight-color: transparent;
@@ -116,7 +119,7 @@
     if (img.closest("#xChicken")) {
       return img.closest("#xChicken")?.querySelector("h3")?.textContent?.trim() || "Chicken of the Day";
     }
-    const item = img.closest("#farm2FlockList .farm2-listItem");
+    const item = img.closest("#farm2FlockManagerV7 .farm2-listItem, #farm2FlockList .farm2-listItem");
     if (item) {
       return item.querySelector("h4,h3,strong,b")?.textContent?.trim() || "Flock photo";
     }
@@ -147,7 +150,7 @@
   }
 
   document.addEventListener("click", event => {
-    const img = event.target?.closest?.("#xChicken img, #farm2FlockList img");
+    const img = event.target?.closest?.(PHOTO_SELECTOR);
     if (!img) return;
     event.preventDefault();
     event.stopPropagation();
@@ -159,5 +162,5 @@
   });
 
   installStyles();
-  console.log("✅ Tap-to-enlarge flock photo viewer active");
+  console.log("✅ Tap-to-enlarge current flock photo viewer active");
 })();
