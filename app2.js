@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const BUILD = String(window.__ChickenEggsBuild || "20260816-1660");
+  const BUILD = String(window.__ChickenEggsBuild || "20260816-1670");
   const load = (src, module = false) => document.write(`<script${module?' type="module"':''} src="${src}?v=${encodeURIComponent(BUILD)}"><\/script>`);
 
   load("sync-safety-preload-v1.js");
@@ -9,9 +9,8 @@
   load("audit-finish-v1.js");
   load("app-audit-v1.js");
 
-  // Inventory authority now keeps the user's real carton breakdown instead of
-  // converting every total into 18-packs. The bridge applies structured entry
-  // changes so collections/sales and deletions preserve carton types.
+  // Inventory authority keeps the user's real carton breakdown. inventory.js
+  // also protects all exact-count fields as one draft while the user edits them.
   load("core-inventory-authority-v3.js");
   load("core-action-inventory-bridge-v1.js");
   load("inventory-missed-entry-repair-v1.js");
