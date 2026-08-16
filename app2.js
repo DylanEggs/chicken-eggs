@@ -13,6 +13,7 @@
   document.write('<script src="flock-manager-v7.js?v=20260815-5"><\/script>');
   document.write('<script src="insights-calendar-v2.js?v=20260815-3"><\/script>');
   document.write('<script src="flock-photo-viewer-v1.js?v=20260815-5"><\/script>');
+  document.write('<script src="farm-diagnostics-v1.js?v=20260816-1"><\/script>');
 
   let chickenSalesReturn = "farm2Hub";
   function activeScreenId(){return document.querySelector(".screen.active")?.id||"dashboard";}
