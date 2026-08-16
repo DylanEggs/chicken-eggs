@@ -39,11 +39,11 @@ localStorage.setItem(KEY, JSON.stringify({
 localStorage.setItem(APP2, JSON.stringify({orders:[]}));
 localStorage.setItem(ENTRIES, JSON.stringify([]));
 
-let cloudSaves = 0;
-global.FarmSyncSafety = {
-  saveInventoryNow: async () => { cloudSaves += 1; return true; },
-  ready: async () => true
-};
+// Match production today: InventorySystemV6 falls back to syncFarmNow because
+// Firebase Safe v9 does not expose a dedicated saveInventoryNow method.
+let syncCalls = 0;
+global.FarmSyncSafety = { ready: async () => true };
+global.syncFarmNow = async () => { syncCalls += 1; return true; };
 
 require(path.join(__dirname, '..', 'inventory-system-v6.js'));
 assert.ok(global.InventorySystemV6, 'InventorySystemV6 did not load');
@@ -81,8 +81,8 @@ const shape = () => {
   await InventorySystemV6.applyEntryDiff([egg,saleDoz,sale18], [egg,saleDoz], 'Delete sale test');
   assert.deepStrictEqual(shape(), {dozens:2,packs18:2,loose:22,total:82});
 
-  assert.ok(cloudSaves >= 5, `Expected cloud-save verification calls, saw ${cloudSaves}`);
-  console.log('PASS InventorySystemV6 integration: exact edit, stale-write block, collection, dozen sale, 18-pack sale, deletion restore');
+  assert.ok(syncCalls >= 5, `Expected production syncFarmNow calls, saw ${syncCalls}`);
+  console.log('PASS InventorySystemV6 integration: exact edit, stale-write block, collection, dozen sale, 18-pack sale, deletion restore, production sync fallback');
 })().catch(error => {
   console.error(error);
   process.exit(1);
