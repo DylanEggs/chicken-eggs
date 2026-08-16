@@ -5,6 +5,12 @@
   document.write('<script src="legacy-render-observer-guard-v1.js?v=20260815-2"><\/script>');
   document.write('<script src="audit-finish-v1.js?v=20260815-6"><\/script>');
   document.write('<script src="app-audit-v1.js?v=20260815-4"><\/script>');
+
+  // Install the egg-history -> physical-inventory bridge before any later
+  // compatibility layer can wrap saveEggs/saveSale/deleteEntry. This makes the
+  // physical count move in the same synchronous action as the core history.
+  document.write('<script src="core-inventory-authority-v1.js?v=20260816-1"><\/script>');
+
   document.write('<script type="module" src="firebase-safe-v9.js?v=20260815-3"><\/script>');
   document.write('<script src="app2-stable-runtime-v1.js?v=20260815-4"><\/script>');
   document.write('<script src="app2-legacy-safe-loader-v1.js?v=20260815-4"><\/script>');
