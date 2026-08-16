@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const BUILD = String(window.__ChickenEggsBuild || "20260816-1610");
+  const BUILD = String(window.__ChickenEggsBuild || "20260816-1620");
   const load = (src, module = false) => document.write(`<script${module?' type="module"':''} src="${src}?v=${encodeURIComponent(BUILD)}"><\/script>`);
 
   load("sync-safety-preload-v1.js");
@@ -10,8 +10,9 @@
   load("app-audit-v1.js");
 
   // Inventory v3 rebuilds from the last trusted exact count and exposes a direct
-  // core-entry delta API. It also verifies older cached core button actions.
+  // core-entry delta API. The bridge below calls that API from the core actions.
   load("core-inventory-authority-v3.js");
+  load("core-action-inventory-bridge-v1.js");
 
   load("firebase-safe-v9.js", true);
   load("app2-stable-runtime-v1.js");
