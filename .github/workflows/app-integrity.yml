@@ -34,3 +34,6 @@ jobs:
 
       - name: Run inventory authority integration test
         run: node qa/inventory-system-v6-integration.js
+
+      - name: Verify live GitHub Pages deployment
+        run: node qa/live-pages-smoke.js
