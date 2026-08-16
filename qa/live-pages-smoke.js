@@ -53,6 +53,7 @@ async function coherentBuild() {
     'app2.js',
     'firebase.js',
     'firebase-safe-v9.js',
+    'storage-health-v1.js',
     'inventory-system-v6.js',
     'inventory.js',
     'inventory-ui.js',
@@ -85,6 +86,10 @@ async function coherentBuild() {
     console.log(`LIVE 200 ${asset} (${loaded[asset].length} bytes)`);
   }
 
+  if (!loaded['app2.js'].includes('load("storage-health-v1.js")')) throw new Error('Live app2.js is missing storage quota protection');
+  if (loaded['app2.js'].indexOf('load("storage-health-v1.js")') > loaded['app2.js'].indexOf('load("inventory-system-v6.js")')) throw new Error('Live storage protection loads too late');
+  if (!loaded['storage-health-v1.js'].includes('Browser storage full during critical farm save')) throw new Error('Live storage quota retry is missing');
+  if (!loaded['storage-health-v1.js'].includes('cloudSafelyOwns')) throw new Error('Live storage cleanup does not verify Firebase photo ownership');
   if (!loaded['app2.js'].includes('load("inventory-system-v6.js")')) throw new Error('Live app2.js is missing InventorySystemV6');
   if (loaded['app2.js'].includes('load("core-inventory-authority-v3.js")')) throw new Error('Live app2.js still loads old inventory authority');
   if (!loaded['inventory.js'].includes('__legacyInventoryRuntimeRetired = true')) throw new Error('Live legacy inventory.js is not retired');
