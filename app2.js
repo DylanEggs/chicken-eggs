@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const BUILD = String(window.__ChickenEggsBuild || "20260816-1690");
+  const BUILD = String(window.__ChickenEggsBuild || "20260816-1700");
   const load = (src, module = false) => document.write(`<script${module?' type="module"':''} src="${src}?v=${encodeURIComponent(BUILD)}"><\/script>`);
 
   load("sync-safety-preload-v1.js");
@@ -8,7 +8,7 @@
   load("legacy-render-observer-guard-v1.js");
 
   // ONE physical-inventory authority. Older inventory bridges, rebuilders and
-  // editors remain in the repository only as history and are no longer loaded.
+  // editors remain in the repository only as harmless compatibility stubs.
   load("inventory-system-v6.js");
 
   load("audit-finish-v1.js");
