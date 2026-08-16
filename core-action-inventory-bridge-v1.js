@@ -12,6 +12,10 @@
       return Array.isArray(rows) ? rows : [];
     } catch { return []; }
   }
+  function cloneRows(rows) {
+    try { return JSON.parse(JSON.stringify(rows)); }
+    catch { return Array.isArray(rows) ? rows.slice() : []; }
+  }
   function n(v) { return Number(v) || 0; }
   function contribution(e) {
     if (!e) return 0;
@@ -19,7 +23,7 @@
     if (e.type === "sale") return -(Math.max(0,n(e.dozenSold))*12 + Math.max(0,n(e.packSold ?? e.packs18Sold))*18);
     return 0;
   }
-  function balance() { return readEntries().reduce((s,e)=>s+contribution(e),0); }
+  function balance(rows = readEntries()) { return rows.reduce((s,e)=>s+contribution(e),0); }
 
   function wrap(name, label) {
     const original = window[name];
@@ -27,11 +31,17 @@
     if (original.__coreActionInventoryBridgeV1) return true;
 
     const wrapped = function() {
-      const before = balance();
+      const beforeRows = cloneRows(readEntries());
+      const beforeBalance = balance(beforeRows);
       const result = original.apply(this, arguments);
-      const after = balance();
-      const delta = Math.round(after-before);
-      if (delta && typeof window.applyCoreInventoryDelta === "function") {
+      const afterRows = cloneRows(readEntries());
+      const afterBalance = balance(afterRows);
+      const delta = Math.round(afterBalance-beforeBalance);
+
+      if (typeof window.applyCoreInventoryEntryDiff === "function") {
+        window.applyCoreInventoryEntryDiff(beforeRows, afterRows, label);
+      } else if (delta && typeof window.applyCoreInventoryDelta === "function") {
+        // Compatibility fallback for an older authority generation.
         window.applyCoreInventoryDelta(
           delta,
           label,
@@ -48,7 +58,7 @@
 
   function install() {
     if (installed) return;
-    if (!window.CoreInventoryAuthorityV3 || typeof window.applyCoreInventoryDelta !== "function") {
+    if (!window.CoreInventoryAuthorityV3 || (typeof window.applyCoreInventoryEntryDiff !== "function" && typeof window.applyCoreInventoryDelta !== "function")) {
       setTimeout(install,50); return;
     }
     const ready = [
@@ -58,7 +68,7 @@
     ].every(Boolean);
     if (!ready) { setTimeout(install,50); return; }
     installed = true;
-    console.log("✅ Direct core-action inventory bridge active");
+    console.log("✅ Direct core-action inventory bridge active — carton-aware entry diffs");
   }
 
   window.CoreActionInventoryBridgeV1 = { isInstalled:()=>installed, balance };
