@@ -17,6 +17,7 @@ const firebase = read('firebase.js');
 const firebaseSafe = read('firebase-safe-v9.js');
 const inventory = read('inventory-system-v6.js');
 const storageHealth = read('storage-health-v1.js');
+const lifetime = read('business-lifetime-v1.js');
 const legacyInventory = read('inventory.js');
 const inventoryUi = read('inventory-ui.js');
 const consistency = read('farm-consistency-v2.js');
@@ -35,6 +36,14 @@ check('Storage protection retries quota-blocked critical saves', storageHealth.i
 check('Storage cleanup only removes verified Firebase photo copies', storageHealth.includes('cloudSafelyOwns') && storageHealth.includes('getCloudRecord'));
 check('Storage cleanup preserves unverified local photo copies', storageHealth.includes('else kept[id] = src'));
 check('Storage cleanup exposes usage diagnostics', storageHealth.includes('window.FarmStorageHealth') && storageHealth.includes('usage'));
+
+check('App2 loads lifetime financial stats', app2.includes('load("business-lifetime-v1.js")'));
+check('Lifetime financials target Statistics, not Home', lifetime.includes('document.getElementById("statsTotals")') && lifetime.includes('statsLifetimeProfit') && !lifetime.includes('bizLifetimeHome'));
+check('Lifetime financials include egg sales', lifetime.includes('dozenSold') && lifetime.includes('dozenPrice') && lifetime.includes('packPrice'));
+check('Lifetime financials include chicken sales', lifetime.includes('chickenEggBusinessV1') && lifetime.includes('business.chickenSales') && lifetime.includes('e.total'));
+check('Lifetime financials include all tracked expenses', lifetime.includes('chickenEggApp2V1') && lifetime.includes('app.expenses') && lifetime.includes('e.amount'));
+check('Lifetime financials calculate revenue minus expenses', lifetime.includes('net: revenue - costs'));
+check('Lifetime financials are event-driven', !lifetime.includes('MutationObserver') && !lifetime.includes('setInterval('));
 
 check('App2 loads InventorySystemV6', app2.includes('load("inventory-system-v6.js")'));
 const retiredFiles = {
