@@ -1,9 +1,15 @@
-// Compatibility entrypoint for older cached index.html files.
-// Install no-twitch compatibility guards before protected Firebase starts.
-import "./core-sync-ui-v1.js?v=20260815-3";
-import "./legacy-render-observer-guard-v1.js?v=20260815-2";
-import "./audit-finish-v1.js?v=20260815-6";
-import "./app-audit-v1.js?v=20260815-4";
+// Compatibility entrypoint for older cached app shells.
+// Every child module must use the same live app build so iPhone/PWA cache
+// cannot mix an old Firebase generation with a newer Farm UI generation.
+const BUILD = String(window.__ChickenEggsBuild || "20260816-1650");
+const src = file => `./${file}?v=${encodeURIComponent(BUILD)}`;
+
+window.__ChickenEggsFirebaseEntrypointBuild = BUILD;
+
+await import(src("core-sync-ui-v1.js"));
+await import(src("legacy-render-observer-guard-v1.js"));
+await import(src("audit-finish-v1.js"));
+await import(src("app-audit-v1.js"));
 
 // All farm synchronization lives in one transactional cloud-first module.
-import "./firebase-safe-v9.js?v=20260815-3";
+await import(src("firebase-safe-v9.js"));
