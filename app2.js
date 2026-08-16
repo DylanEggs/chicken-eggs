@@ -6,9 +6,9 @@
   document.write('<script src="audit-finish-v1.js?v=20260815-6"><\/script>');
   document.write('<script src="app-audit-v1.js?v=20260815-4"><\/script>');
 
-  // Core inventory v2 verifies the actual before/after core history for each
-  // user action, so older compatibility wrappers cannot miss or double-count it.
-  document.write('<script src="core-inventory-authority-v2.js?v=20260816-1"><\/script>');
+  // Inventory v3 rebuilds from the last trusted exact count and exposes a direct
+  // core-entry delta API. It also verifies older cached core button actions.
+  document.write('<script src="core-inventory-authority-v3.js?v=20260816-1"><\/script>');
 
   document.write('<script type="module" src="firebase-safe-v9.js?v=20260815-3"><\/script>');
   document.write('<script src="app2-stable-runtime-v1.js?v=20260815-4"><\/script>');
