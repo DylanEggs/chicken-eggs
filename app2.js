@@ -1,24 +1,26 @@
 (() => {
   "use strict";
-  document.write('<script src="sync-safety-preload-v1.js?v=20260815-7"><\/script>');
-  document.write('<script src="core-sync-ui-v1.js?v=20260815-3"><\/script>');
-  document.write('<script src="legacy-render-observer-guard-v1.js?v=20260815-2"><\/script>');
-  document.write('<script src="audit-finish-v1.js?v=20260815-6"><\/script>');
-  document.write('<script src="app-audit-v1.js?v=20260815-4"><\/script>');
+  const BUILD = String(window.__ChickenEggsBuild || "20260816-1610");
+  const load = (src, module = false) => document.write(`<script${module?' type="module"':''} src="${src}?v=${encodeURIComponent(BUILD)}"><\/script>`);
+
+  load("sync-safety-preload-v1.js");
+  load("core-sync-ui-v1.js");
+  load("legacy-render-observer-guard-v1.js");
+  load("audit-finish-v1.js");
+  load("app-audit-v1.js");
 
   // Inventory v3 rebuilds from the last trusted exact count and exposes a direct
   // core-entry delta API. It also verifies older cached core button actions.
-  document.write('<script src="core-inventory-authority-v3.js?v=20260816-1"><\/script>');
+  load("core-inventory-authority-v3.js");
 
-  document.write('<script type="module" src="firebase-safe-v9.js?v=20260815-3"><\/script>');
-  document.write('<script src="app2-stable-runtime-v1.js?v=20260815-4"><\/script>');
-  document.write('<script src="app2-legacy-safe-loader-v1.js?v=20260815-4"><\/script>');
-
-  document.write('<script src="bird-photo-service-v4.js?v=20260815-3"><\/script>');
-  document.write('<script src="flock-manager-v7.js?v=20260815-5"><\/script>');
-  document.write('<script src="insights-calendar-v2.js?v=20260815-3"><\/script>');
-  document.write('<script src="flock-photo-viewer-v1.js?v=20260815-5"><\/script>');
-  document.write('<script src="farm-diagnostics-v1.js?v=20260816-2"><\/script>');
+  load("firebase-safe-v9.js", true);
+  load("app2-stable-runtime-v1.js");
+  load("app2-legacy-safe-loader-v1.js");
+  load("bird-photo-service-v4.js");
+  load("flock-manager-v7.js");
+  load("insights-calendar-v2.js");
+  load("flock-photo-viewer-v1.js");
+  load("farm-diagnostics-v1.js");
 
   let chickenSalesReturn = "farm2Hub";
   function activeScreenId(){return document.querySelector(".screen.active")?.id||"dashboard";}
