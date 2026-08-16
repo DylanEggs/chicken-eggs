@@ -7,6 +7,10 @@
   load("core-sync-ui-v1.js");
   load("legacy-render-observer-guard-v1.js");
 
+  // Critical farm data gets first claim on browser storage. This can reclaim
+  // only photo copies already verified in Firebase if localStorage is full.
+  load("storage-health-v1.js");
+
   // ONE physical-inventory authority. Older inventory bridges, rebuilders and
   // editors remain in the repository only as harmless compatibility stubs.
   load("inventory-system-v6.js");
