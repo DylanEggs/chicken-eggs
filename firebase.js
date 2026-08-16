@@ -1,7 +1,7 @@
 // Compatibility entrypoint for older cached app shells.
 // Every child module must use the same live app build so iPhone/PWA cache
 // cannot mix an old Firebase generation with a newer Farm UI generation.
-const BUILD = String(window.__ChickenEggsBuild || "20260816-1650");
+const BUILD = String(window.__ChickenEggsBuild || "20260816-1660");
 const src = file => `./${file}?v=${encodeURIComponent(BUILD)}`;
 
 window.__ChickenEggsFirebaseEntrypointBuild = BUILD;
