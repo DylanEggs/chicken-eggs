@@ -55,6 +55,7 @@ async function coherentBuild() {
     'firebase-safe-v9.js',
     'storage-health-v1.js',
     'inventory-system-v6.js',
+    'business-lifetime-v1.js',
     'inventory.js',
     'inventory-ui.js',
     'farm-consistency-v2.js',
@@ -90,6 +91,11 @@ async function coherentBuild() {
   if (loaded['app2.js'].indexOf('load("storage-health-v1.js")') > loaded['app2.js'].indexOf('load("inventory-system-v6.js")')) throw new Error('Live storage protection loads too late');
   if (!loaded['storage-health-v1.js'].includes('Browser storage full during critical farm save')) throw new Error('Live storage quota retry is missing');
   if (!loaded['storage-health-v1.js'].includes('cloudSafelyOwns')) throw new Error('Live storage cleanup does not verify Firebase photo ownership');
+  if (!loaded['app2.js'].includes('load("business-lifetime-v1.js")')) throw new Error('Live app2.js is missing lifetime financial stats');
+  if (!loaded['business-lifetime-v1.js'].includes('statsLifetimeProfit') || !loaded['business-lifetime-v1.js'].includes('document.getElementById("statsTotals")')) throw new Error('Live lifetime financial card is not on Statistics');
+  if (loaded['business-lifetime-v1.js'].includes('bizLifetimeHome')) throw new Error('Live lifetime financial card still targets Home');
+  if (!loaded['business-lifetime-v1.js'].includes('net: revenue - costs')) throw new Error('Live lifetime profit/loss calculation is missing');
+  if (loaded['business-lifetime-v1.js'].includes('MutationObserver') || loaded['business-lifetime-v1.js'].includes('setInterval(')) throw new Error('Live lifetime financials use obsolete polling/observer rendering');
   if (!loaded['app2.js'].includes('load("inventory-system-v6.js")')) throw new Error('Live app2.js is missing InventorySystemV6');
   if (loaded['app2.js'].includes('load("core-inventory-authority-v3.js")')) throw new Error('Live app2.js still loads old inventory authority');
   if (!loaded['inventory.js'].includes('__legacyInventoryRuntimeRetired = true')) throw new Error('Live legacy inventory.js is not retired');
