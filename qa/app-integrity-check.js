@@ -14,6 +14,7 @@ const build = JSON.parse(read('app-build.json')).build;
 const index = read('index.html');
 const app2 = read('app2.js');
 const firebase = read('firebase.js');
+const firebaseSafe = read('firebase-safe-v9.js');
 const inventory = read('inventory-system-v6.js');
 const legacyInventory = read('inventory.js');
 const inventoryUi = read('inventory-ui.js');
@@ -26,15 +27,22 @@ check('App2 fallback matches manifest', app2.includes(`window.__ChickenEggsBuild
 check('Firebase fallback matches manifest', firebase.includes(`window.__ChickenEggsBuild || "${build}"`), build);
 
 check('App2 loads InventorySystemV6', app2.includes('load("inventory-system-v6.js")'));
-for (const obsolete of [
-  'core-inventory-authority-v1.js',
-  'core-inventory-authority-v2.js',
-  'core-inventory-authority-v3.js',
-  'core-action-inventory-bridge-v1.js',
-  'inventory-missed-entry-repair-v1.js',
-  'inventory-editor-v2.js'
-]) {
+const retiredFiles = {
+  'core-inventory-authority-v1.js':'__coreInventoryAuthorityV1Retired',
+  'core-inventory-authority-v2.js':'__coreInventoryAuthorityV2Retired',
+  'core-inventory-authority-v3.js':'__coreInventoryAuthorityV3Retired',
+  'core-action-inventory-bridge-v1.js':'__coreActionInventoryBridgeV1Retired',
+  'inventory-missed-entry-repair-v1.js':'__inventoryMissedEntryRepairV1Retired',
+  'inventory-editor-v2.js':'__inventoryEditorV2Retired',
+  'inventory-packaging-display-v1.js':'__inventoryPackagingDisplayV1Retired',
+  'inventory-packaging-display-v2.js':'__inventoryPackagingDisplayV2Retired',
+  'inventory-guard-loader-v2.js':'__inventoryGuardLoaderV2Retired',
+  'data-integrity-v1.js':'__farmDataIntegrityV1Retired'
+};
+for (const [obsolete, marker] of Object.entries(retiredFiles)) {
   check(`App2 does not load obsolete ${obsolete}`, !app2.includes(`load("${obsolete}")`));
+  const source = read(obsolete);
+  check(`Obsolete ${obsolete} is harmless if a stale cache requests it`, source.includes(marker) && source.length < 800, `size=${source.length}`);
 }
 check('App2 does not start a second Firebase authority', !app2.includes('load("firebase-safe-v9.js"'));
 
@@ -58,6 +66,9 @@ check('InventorySystemV6 has known 80-egg carton repair', inventory.includes('wh
 check('InventorySystemV6 has startup self-test', inventory.includes('runPureSelfTest'));
 
 check('Firebase entrypoint starts only protected sync engine', (firebase.match(/await import/g) || []).length === 1 && firebase.includes('firebase-safe-v9.js'));
+check('Firebase inventory sync merges carton scalar fields', firebaseSafe.includes('ds.kind === "inventory"') && firebaseSafe.includes('applyScalarDelta(base, local, remote, new Set(["adjustments"]))'));
+check('Firebase inventory sync contains no 18-pack repacker', !firebaseSafe.includes('Math.floor(total / 18)') && !firebaseSafe.includes('setPhysicalTotal'));
+check('Firebase local write hook marks datasets dirty', firebaseSafe.includes('dirty.add(ds.key)') && firebaseSafe.includes('scheduleDatasetSync(ds)'));
 
 console.log(`\nChicken Eggs integrity audit — build ${build}`);
 for (const p of passes) console.log(`PASS  ${p}`);
