@@ -31,3 +31,6 @@ jobs:
 
       - name: Run app integrity audit
         run: node qa/app-integrity-check.js
+
+      - name: Run inventory authority integration test
+        run: node qa/inventory-system-v6-integration.js
