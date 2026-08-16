@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const BUILD = String(window.__ChickenEggsBuild || "20260816-1650");
+  const BUILD = String(window.__ChickenEggsBuild || "20260816-1660");
   const load = (src, module = false) => document.write(`<script${module?' type="module"':''} src="${src}?v=${encodeURIComponent(BUILD)}"><\/script>`);
 
   load("sync-safety-preload-v1.js");
@@ -9,8 +9,9 @@
   load("audit-finish-v1.js");
   load("app-audit-v1.js");
 
-  // Inventory v3 rebuilds from the last trusted exact count and exposes a direct
-  // core-entry delta API. The bridge below calls that API from the core actions.
+  // Inventory authority now keeps the user's real carton breakdown instead of
+  // converting every total into 18-packs. The bridge applies structured entry
+  // changes so collections/sales and deletions preserve carton types.
   load("core-inventory-authority-v3.js");
   load("core-action-inventory-bridge-v1.js");
   load("inventory-missed-entry-repair-v1.js");
@@ -19,9 +20,6 @@
   load("app2-stable-runtime-v1.js");
   load("app2-legacy-safe-loader-v1.js");
 
-  // Bird photos remain separate from the flock document. Recovery v2 adds a
-  // cloud-memory display path when localStorage cannot hold every photo and
-  // safely reconnects old photo IDs to current flock IDs when history proves it.
   load("bird-photo-service-v4.js");
   load("bird-photo-recovery-v2.js");
   load("flock-manager-v7.js");
