@@ -1,27 +1,25 @@
 (() => {
   "use strict";
-  const BUILD = String(window.__ChickenEggsBuild || "20260816-1680");
+  const BUILD = String(window.__ChickenEggsBuild || "20260816-1690");
   const load = (src, module = false) => document.write(`<script${module?' type="module"':''} src="${src}?v=${encodeURIComponent(BUILD)}"><\/script>`);
 
   load("sync-safety-preload-v1.js");
   load("core-sync-ui-v1.js");
   load("legacy-render-observer-guard-v1.js");
+
+  // ONE physical-inventory authority. Older inventory bridges, rebuilders and
+  // editors remain in the repository only as history and are no longer loaded.
+  load("inventory-system-v6.js");
+
   load("audit-finish-v1.js");
   load("app-audit-v1.js");
-
-  // Inventory authority keeps the user's real carton breakdown.
-  load("core-inventory-authority-v3.js");
-  load("core-action-inventory-bridge-v1.js");
-  load("inventory-missed-entry-repair-v1.js");
-
-  load("firebase-safe-v9.js", true);
   load("app2-stable-runtime-v1.js");
   load("app2-legacy-safe-loader-v1.js");
 
-  // Isolated exact-inventory editor uses its own draft controls so legacy or
-  // background renders cannot overwrite numbers while the user is editing.
-  load("inventory-editor-v2.js");
-
+  // Current feature modules are loaded explicitly with the same app build.
+  load("app-polish-v1.js");
+  load("prediction-fix-v1.js");
+  load("weather-intelligence-v2.js");
   load("bird-photo-service-v4.js");
   load("bird-photo-recovery-v2.js");
   load("flock-manager-v7.js");
@@ -29,6 +27,7 @@
   load("flock-photo-viewer-v1.js");
   load("farm-diagnostics-v1.js");
   load("farm-diagnostics-photo-v2.js");
+  load("app-self-test-v1.js");
 
   let chickenSalesReturn = "farm2Hub";
   function activeScreenId(){return document.querySelector(".screen.active")?.id||"dashboard";}
