@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const BUILD = String(window.__ChickenEggsBuild || "20260816-1630");
+  const BUILD = String(window.__ChickenEggsBuild || "20260816-1640");
   const load = (src, module = false) => document.write(`<script${module?' type="module"':''} src="${src}?v=${encodeURIComponent(BUILD)}"><\/script>`);
 
   load("sync-safety-preload-v1.js");
@@ -18,11 +18,17 @@
   load("firebase-safe-v9.js", true);
   load("app2-stable-runtime-v1.js");
   load("app2-legacy-safe-loader-v1.js");
+
+  // Bird photos remain separate from the flock document. Recovery v2 adds a
+  // cloud-memory display path when localStorage cannot hold every photo and
+  // safely reconnects old photo IDs to current flock IDs when history proves it.
   load("bird-photo-service-v4.js");
+  load("bird-photo-recovery-v2.js");
   load("flock-manager-v7.js");
   load("insights-calendar-v2.js");
   load("flock-photo-viewer-v1.js");
   load("farm-diagnostics-v1.js");
+  load("farm-diagnostics-photo-v2.js");
 
   let chickenSalesReturn = "farm2Hub";
   function activeScreenId(){return document.querySelector(".screen.active")?.id||"dashboard";}
