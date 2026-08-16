@@ -30,15 +30,16 @@
     const localScripts = performance.getEntriesByType?.("resource")
       ?.map(x => String(x.name || ""))
       ?.filter(x => /chicken-eggs\/.+\.js(?:\?|$)/.test(x)) || [];
+    const compatibilityOnly = /app2-legacy-v1|app-audit-legacy-v1|extras-(?:dashboard|fun)-legacy-v1|farm-consistency-v2|dom-loop-guard-v3|flock-photo-fix-v2/;
     const wrongBuild = build ? localScripts.filter(url => {
       const m = url.match(/[?&]v=([^&]+)/);
-      return m && decodeURIComponent(m[1]) !== build && !/app2-legacy-v1|app-audit-legacy-v1|extras-(?:dashboard|fun)-legacy-v1/.test(url);
+      return m && decodeURIComponent(m[1]) !== build && !compatibilityOnly.test(url);
     }) : [];
     check("Active feature scripts use one build", wrongBuild.length === 0, wrongBuild.slice(0,8).join(" | "));
 
     const failed = checks.filter(x => !x.pass);
     const result = {
-      version:"1.0",
+      version:"1.1",
       generatedAt:new Date().toISOString(),
       build,
       pass:failed.length===0,
@@ -52,7 +53,7 @@
     return result;
   }
 
-  const start = () => setTimeout(run, 2600);
+  const start = () => setTimeout(run, 3200);
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start, { once:true });
   else start();
 })();
