@@ -1,1 +1,5 @@
-import("./dom-loop-guard-v1.js?v=2").catch(error=>console.warn("Physical inventory redraw guard failed:",error));
+(() => {
+  "use strict";
+  window.__inventoryGuardLoaderV2Retired = true;
+  console.log("✅ Obsolete inventory guard loader retired");
+})();
