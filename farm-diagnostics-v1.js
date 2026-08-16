@@ -37,7 +37,6 @@
   const dateKey = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
   const addDays = (key, amount) => { const d=new Date(`${key}T12:00:00`); d.setDate(d.getDate()+amount); return dateKey(d); };
   const same = (a,b) => { try { return JSON.stringify(a) === JSON.stringify(b); } catch { return false; } };
-  const itemId = x => String(x?.id || x?.birdId || "");
   const list = x => Array.isArray(x) ? x : [];
 
   function physicalInventory(x) {
@@ -54,9 +53,7 @@
       dozenSold:x.type === "sale" ? n(x.dozenSold) : 0,
       packSold:x.type === "sale" ? n(x.packSold ?? x.packs18Sold) : 0,
       dozenPrice:x.type === "sale" ? n(x.dozenPrice) : 0,
-      packPrice:x.type === "sale" ? n(x.packPrice ?? x.packs18Price) : 0,
-      updatedAt:n(x.updatedAt),
-      createdAt:n(x.createdAt)
+      packPrice:x.type === "sale" ? n(x.packPrice ?? x.packs18Price) : 0
     }));
   }
 
@@ -98,16 +95,17 @@
       const onlyLocal = [...lm.keys()].filter(id=>!cm.has(id));
       const onlyCloud = [...cm.keys()].filter(id=>!lm.has(id));
       const changed = [...lm.keys()].filter(id=>cm.has(id) && !same(lm.get(id),cm.get(id)));
+      const phoneEggs=l.reduce((s,x)=>s+x.eggs,0), firebaseEggs=c.reduce((s,x)=>s+x.eggs,0);
       days.push({
         date,
-        phoneEggs:l.reduce((s,x)=>s+x.eggs,0),
-        firebaseEggs:c.reduce((s,x)=>s+x.eggs,0),
-        phoneEntries:l.map(x=>({id:x.id,eggs:x.eggs,updatedAt:x.updatedAt})),
-        firebaseEntries:c.map(x=>({id:x.id,eggs:x.eggs,updatedAt:x.updatedAt})),
+        phoneEggs,
+        firebaseEggs,
+        phoneEntries:l.map(x=>({id:x.id,eggs:x.eggs})),
+        firebaseEntries:c.map(x=>({id:x.id,eggs:x.eggs})),
         onlyOnPhone:onlyLocal,
         onlyInFirebase:onlyCloud,
         different:changed,
-        matches:onlyLocal.length===0 && onlyCloud.length===0 && changed.length===0 && l.reduce((s,x)=>s+x.eggs,0)===c.reduce((s,x)=>s+x.eggs,0)
+        matches:onlyLocal.length===0 && onlyCloud.length===0 && changed.length===0 && phoneEggs===firebaseEggs
       });
     }
     return days;
@@ -134,7 +132,12 @@
   async function waitForFirebase(ms=18000) {
     const start=Date.now();
     while (Date.now()-start < ms) {
-      if (window.FirestoreDB && window.FirebaseUser && window.ChickenEggsDB) return true;
+      if (window.FirestoreDB && window.FirebaseUser && window.ChickenEggsDB) {
+        if (window.FarmSyncSafety?.ready && !window.FarmSyncSafety?.isReady?.()) {
+          try { await window.FarmSyncSafety.ready(); } catch {}
+        }
+        return true;
+      }
       await new Promise(r=>setTimeout(r,100));
     }
     return false;
@@ -162,7 +165,7 @@
       inventory:map.farm_inventory_v2 || null,
       business:map.farm_business_v1 || null,
       deluxe:map.farm_deluxe_v1 || null,
-      photos:allDocs.filter(x=>x.type==="birdPhotoV4"),
+      photos:allDocs.filter(x=>x.type==="birdPhotoV4")
     };
   }
 
@@ -206,7 +209,7 @@
     if (!window.FarmSyncSafety?.isReady?.()) warnings.push("Protected Firebase bootstrap is not reporting ready.");
 
     return {
-      diagnosticVersion:"1.0",
+      diagnosticVersion:"1.1",
       generatedAt:new Date().toISOString(),
       localTime:new Date().toString(),
       online:navigator.onLine,
@@ -307,7 +310,7 @@
       return lastReport;
     }catch(error){
       console.error("Farm diagnostics failed:",error);
-      lastReport={diagnosticVersion:"1.0",generatedAt:new Date().toISOString(),result:"ERROR",error:String(error?.message||error),syncStatus:document.getElementById("syncStatus")?.textContent||""};
+      lastReport={diagnosticVersion:"1.1",generatedAt:new Date().toISOString(),result:"ERROR",error:String(error?.message||error),syncStatus:document.getElementById("syncStatus")?.textContent||""};
       if(out)out.innerHTML=`<div class="diag-result warn"><b>⚠️ Diagnostic could not finish</b><span>${esc(lastReport.error)}</span></div>`;
       const raw=document.getElementById("farmDiagnosticsRaw");if(raw)raw.value=JSON.stringify(lastReport,null,2);
       return lastReport;
@@ -334,6 +337,6 @@
   window.farmDiagnosticsOpen=()=>{ensureUi();if(typeof window.showScreen==="function")window.showScreen("farmDiagnostics");void run();};
   window.FarmDiagnostics={run,getLastReport:()=>clone(lastReport)};
 
-  function init(){ensureUi();window.addEventListener("farm-sync-ready",ensureUi);window.addEventListener("farm-data-synced",ensureUi);console.log("✅ Read-only Farm Diagnostics v1 active");}
+  function init(){ensureUi();setTimeout(ensureUi,1500);window.addEventListener("farm-sync-ready",ensureUi);window.addEventListener("farm-data-synced",ensureUi);console.log("✅ Read-only Farm Diagnostics v1.1 active");}
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",()=>setTimeout(init,500));else setTimeout(init,500);
 })();
