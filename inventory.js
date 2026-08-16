@@ -3,6 +3,7 @@
 
   const K = "chickenEggInventoryV2";
   const A = "chickenEggApp2V1";
+  const CARTON_REPAIR_ID = "20260816-cartons-2x18-3doz-v1";
   let queued = false;
   let hooked = false;
 
@@ -11,6 +12,7 @@
     catch { return f; }
   };
   const n = v => Math.max(0, Number(v) || 0);
+  const whole = v => Math.max(0, Math.round(n(v)));
   const today = () => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -18,7 +20,7 @@
   const id = () => `inv-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
   function emptyState() {
-    return { version: 3, dozens: 0, packs18: 0, loose: 0, adjustments: [], updatedAt: 0 };
+    return { version: 4, dozens: 0, packs18: 0, loose: 0, adjustments: [], recoveryMarkers: {}, updatedAt: 0 };
   }
 
   function st() {
@@ -27,36 +29,124 @@
     return {
       ...emptyState(),
       ...x,
-      version: Math.max(3, Number(x.version) || 0),
-      dozens: n(x.dozens),
-      packs18: n(x.packs18),
-      loose: n(x.loose),
+      version: Math.max(4, Number(x.version) || 0),
+      dozens: whole(x.dozens),
+      packs18: whole(x.packs18),
+      loose: whole(x.loose),
       adjustments: Array.isArray(x.adjustments) ? x.adjustments : [],
+      recoveryMarkers: x.recoveryMarkers && typeof x.recoveryMarkers === "object" ? x.recoveryMarkers : {},
       updatedAt: Number(x.updatedAt) || 0
     };
   }
 
-  const total = s => Math.round(n(s.dozens) * 12 + n(s.packs18) * 18 + n(s.loose));
+  const total = s => whole(s.dozens) * 12 + whole(s.packs18) * 18 + whole(s.loose);
   const res = () => {
     const a = read(A, { orders: [] });
     return (Array.isArray(a.orders) ? a.orders : [])
       .filter(o => o?.status === "pending")
-      .reduce((q, o) => q + n(o.dozen) * 12 + n(o.packs18) * 18, 0);
+      .reduce((q, o) => q + whole(o.dozen) * 12 + whole(o.packs18) * 18, 0);
   };
-  const pack = t => ({ dozens: 0, packs18: Math.floor(Math.max(0, t) / 18), loose: Math.max(0, t) % 18 });
 
-  function save(s, delta = 0, reason = "Inventory adjustment", details = "") {
-    s.version = 3;
+  function addLoose(s, qty) {
+    s.loose = whole(s.loose) + whole(qty);
+  }
+
+  function removeGeneric(s, qty) {
+    let remaining = Math.min(whole(qty), total(s));
+    const removed = remaining;
+
+    // Normal loose use should never disturb sealed cartons when loose eggs exist.
+    const looseTake = Math.min(whole(s.loose), remaining);
+    s.loose = whole(s.loose) - looseTake;
+    remaining -= looseTake;
+
+    // If more eggs are needed, open a dozen carton first. Any eggs left from the
+    // opened carton become loose rather than silently being repacked.
+    while (remaining > 0 && whole(s.dozens) > 0) {
+      s.dozens = whole(s.dozens) - 1;
+      const take = Math.min(12, remaining);
+      remaining -= take;
+      s.loose = whole(s.loose) + (12 - take);
+    }
+
+    // Only open an 18-pack if loose eggs and dozen cartons cannot cover it.
+    while (remaining > 0 && whole(s.packs18) > 0) {
+      s.packs18 = whole(s.packs18) - 1;
+      const take = Math.min(18, remaining);
+      remaining -= take;
+      s.loose = whole(s.loose) + (18 - take);
+    }
+
+    // Defensive cleanup. This should only matter with malformed old data.
+    if (remaining > 0) {
+      const take = Math.min(whole(s.loose), remaining);
+      s.loose = whole(s.loose) - take;
+      remaining -= take;
+    }
+    return removed - remaining;
+  }
+
+  function removeSmart(s, qty) {
+    let remaining = Math.min(whole(qty), total(s));
+    const requested = remaining;
+
+    // A 12-egg give-away/use should remove real dozen cartons first when they
+    // exist. Likewise, an 18-egg action should remove real 18-packs first.
+    if (remaining > 0 && remaining % 12 === 0) {
+      const wanted = Math.floor(remaining / 12);
+      const take = Math.min(whole(s.dozens), wanted);
+      s.dozens = whole(s.dozens) - take;
+      remaining -= take * 12;
+    }
+    if (remaining > 0 && remaining % 18 === 0) {
+      const wanted = Math.floor(remaining / 18);
+      const take = Math.min(whole(s.packs18), wanted);
+      s.packs18 = whole(s.packs18) - take;
+      remaining -= take * 18;
+    }
+    if (remaining > 0) removeGeneric(s, remaining);
+    return requested;
+  }
+
+  function save(s, delta = 0, reason = "Inventory adjustment", details = "", forceLog = false) {
+    s.version = 4;
     s.adjustments = Array.isArray(s.adjustments) ? s.adjustments : [];
-    if (delta || reason === "Exact inventory count") {
+    s.recoveryMarkers = s.recoveryMarkers && typeof s.recoveryMarkers === "object" ? s.recoveryMarkers : {};
+    if (delta || reason === "Exact inventory count" || forceLog) {
       s.adjustments.unshift({
-        id: id(), date: today(), at: Date.now(), delta, reason, details, totalAfter: total(s)
+        id: id(), date: today(), at: Date.now(), delta, reason, details, totalAfter: total(s),
+        cartonBreakdown: { dozens: whole(s.dozens), packs18: whole(s.packs18), loose: whole(s.loose) }
       });
     }
     s.adjustments = s.adjustments.slice(0, 100);
     s.updatedAt = Date.now();
     localStorage.setItem(K, JSON.stringify(s));
+    if (typeof window.syncFarmNow === "function") void Promise.resolve(window.syncFarmNow()).catch(() => {});
     renderSoon();
+  }
+
+  function repairKnownCartonBreakdown() {
+    const s = st();
+    if (s.recoveryMarkers?.[CARTON_REPAIR_ID]) return false;
+
+    // Dylan's known state after giving away one dozen: the old code converted
+    // 2 x 18-packs + 3 dozen into 4 x 18-packs. Both represent 72 packaged eggs,
+    // so this repair changes only the carton labels and leaves loose/total intact.
+    if (whole(s.dozens) === 0 && whole(s.packs18) === 4) {
+      const before = total(s);
+      s.dozens = 3;
+      s.packs18 = 2;
+      s.recoveryMarkers[CARTON_REPAIR_ID] = {
+        appliedAt: Date.now(), total: before,
+        from: { dozens: 0, packs18: 4 },
+        to: { dozens: 3, packs18: 2 },
+        loose: whole(s.loose)
+      };
+      save(s, 0, "Carton breakdown repair", "Restored 2 18-packs + 3 dozen without changing the egg total or loose eggs.", true);
+      console.log("✅ Restored real carton breakdown without changing inventory total");
+      return true;
+    }
+    return false;
   }
 
   function inject() {
@@ -111,7 +201,7 @@
 
     const h = document.getElementById("inventoryHistory");
     if (h) h.innerHTML = s.adjustments.length
-      ? s.adjustments.slice(0, 30).map(a => `<div class="inventory-historyRow"><span>${a.reason}<small class="farm2-subtle"> ${a.date || ""}</small></span><b>${n(a.delta) > 0 ? "+" : ""}${Number(a.delta) || 0} 🥚</b></div>`).join("")
+      ? s.adjustments.slice(0, 30).map(a => `<div class="inventory-historyRow"><span>${a.reason}<small class="farm2-subtle"> ${a.date || ""}</small></span><b>${Number(a.delta) > 0 ? "+" : ""}${Number(a.delta) || 0} 🥚</b></div>`).join("")
       : '<div class="farm2-empty">No inventory adjustments yet.</div>';
 
     const c = document.getElementById("inventoryDashboardCard");
@@ -127,30 +217,30 @@
   window.inventorySetExact = () => {
     const s = st();
     const old = total(s);
-    s.dozens = n(document.getElementById("inventoryDozens")?.value);
-    s.packs18 = n(document.getElementById("inventoryPacks18")?.value);
-    s.loose = n(document.getElementById("inventoryLoose")?.value);
+    s.dozens = whole(document.getElementById("inventoryDozens")?.value);
+    s.packs18 = whole(document.getElementById("inventoryPacks18")?.value);
+    s.loose = whole(document.getElementById("inventoryLoose")?.value);
     save(s, total(s) - old, "Exact inventory count", `${s.dozens} dozen, ${s.packs18} 18-packs, ${s.loose} loose`);
   };
 
   window.inventoryRemove = reason => {
-    const q = Math.round(n(document.getElementById("inventoryAdjustQty")?.value));
+    const q = whole(document.getElementById("inventoryAdjustQty")?.value);
     if (!q) { alert("Enter how many eggs left inventory."); return; }
     const s = st();
     const old = total(s);
     const rm = Math.min(q, old);
-    Object.assign(s, pack(old - rm));
-    save(s, -rm, reason);
+    removeSmart(s, rm);
+    save(s, -rm, reason, `Removed ${rm} eggs while preserving untouched carton types.`);
     const e = document.getElementById("inventoryAdjustQty");
     if (e) e.value = "";
   };
 
   window.inventoryAddEggs = () => {
-    const q = Math.round(n(document.getElementById("inventoryAddQty")?.value));
+    const q = whole(document.getElementById("inventoryAddQty")?.value);
     if (!q) { alert("Enter how many eggs to add."); return; }
     const s = st();
-    Object.assign(s, pack(total(s) + q));
-    save(s, q, "Manual inventory add");
+    addLoose(s, q);
+    save(s, q, "Manual inventory add", `Added ${q} loose eggs; existing cartons were left unchanged.`);
     const e = document.getElementById("inventoryAddQty");
     if (e) e.value = "";
   };
@@ -160,6 +250,13 @@
     const onHand = total(s);
     const reserved = res();
     return { state: s, onHand, reserved, available: Math.max(0, onHand - reserved) };
+  };
+
+  window.InventoryCartonMathV4 = {
+    total: () => total(st()),
+    addLoose(q) { const s = st(); addLoose(s, q); return s; },
+    removeGeneric(q) { const s = st(); removeGeneric(s, q); return s; },
+    removeSmart(q) { const s = st(); removeSmart(s, q); return s; }
   };
 
   function hook() {
@@ -175,16 +272,21 @@
   }
 
   function init() {
-    // Important: do NOT create a fresh inventory record on startup. On a new device,
-    // Firebase must get the first chance to supply the existing physical inventory.
+    // Do not create a fresh inventory record on startup. Firebase gets the first
+    // chance to supply inventory on a new device. The known carton repair only
+    // runs when the exact bad 0-dozen/4-pack state is present.
     hook();
     render();
+    setTimeout(repairKnownCartonBreakdown, 2200);
     window.addEventListener("farm-data-synced", e => {
-      if (!e.detail?.key || [K, A].includes(e.detail.key)) renderSoon();
+      if (!e.detail?.key || [K, A].includes(e.detail.key)) {
+        if (e.detail?.key === K) setTimeout(repairKnownCartonBreakdown, 80);
+        renderSoon();
+      }
     });
     window.addEventListener("core-data-synced", renderSoon);
     window.addEventListener("storage", e => { if ([K, A].includes(e.key)) renderSoon(); });
-    console.log("✅ Physical inventory v3 active; cloud inventory wins cleanly on new devices");
+    console.log("✅ Physical inventory v4 active — real carton types are preserved");
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => setTimeout(init, 80));
