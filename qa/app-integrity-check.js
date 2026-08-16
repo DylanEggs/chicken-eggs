@@ -20,6 +20,8 @@ const legacyInventory = read('inventory.js');
 const inventoryUi = read('inventory-ui.js');
 const consistency = read('farm-consistency-v2.js');
 const photoCompat = read('flock-photo-fix-v2.js');
+const legacyLoader = read('app2-legacy-safe-loader-v1.js');
+const auditFinish = read('audit-finish-v1.js');
 
 check('Build manifest is valid', /^\d{8}-\d+$/.test(build), build);
 check('Index fallback matches manifest', index.includes(`FALLBACK_BUILD = "${build}"`), build);
@@ -51,10 +53,11 @@ check('Legacy inventory.js cannot write inventory', !legacyInventory.includes('c
 check('Old farm-consistency repacker is retired', consistency.includes('__farmConsistencyV2Retired = true'));
 check('Old farm-consistency repack math is gone', !consistency.includes('Math.floor(total / 18)') && !consistency.includes('setPhysicalTotal'));
 check('Duplicate flock-photo loader is retired', photoCompat.includes('__flockPhotoFixV2Retired = true'));
-
+check('Inventory UI wrapper itself is retired', inventoryUi.includes('__inventoryUiCompatibilityV6Retired = true'));
 check('Inventory UI compatibility does not own inventory', !inventoryUi.includes('chickenEggInventoryV2'));
 check('Inventory UI compatibility has no child imports', !inventoryUi.includes('import('));
 check('Inventory UI compatibility does not patch Storage', !inventoryUi.includes('Storage.prototype'));
+check('Golden Egg random branch is stripped in legacy loader', legacyLoader.includes('Golden Egg branch was not removed') && legacyLoader.includes('Golden Egg feature retired'));
 
 check('InventorySystemV6 installs one-writer firewall', inventory.includes('Blocked obsolete direct inventory writer'));
 check('InventorySystemV6 preserves carton fields', inventory.includes('dozens') && inventory.includes('packs18') && inventory.includes('loose'));
@@ -64,6 +67,8 @@ check('InventorySystemV6 removes 18-packs first', inventory.includes('removePack
 check('InventorySystemV6 exact editor uses isolated IDs', inventory.includes('id="inv6Dozens"') && inventory.includes('id="inv6Packs"') && inventory.includes('id="inv6Loose"'));
 check('InventorySystemV6 has known 80-egg carton repair', inventory.includes('whole(s.dozens)===0') && inventory.includes('whole(s.packs18)===4') && inventory.includes('whole(s.loose)===8') && inventory.includes('s.dozens=3; s.packs18=2; s.loose=8'));
 check('InventorySystemV6 has startup self-test', inventory.includes('runPureSelfTest'));
+check('Backup restore routes inventory through InventorySystemV6', auditFinish.includes('InventorySystemV6?.replaceFromRestore') && auditFinish.includes('restoreInventory(data.inventoryV2'));
+check('Backup format is current v8', auditFinish.includes('chicken-eggs-full-backup-v8'));
 
 check('Firebase entrypoint starts only protected sync engine', (firebase.match(/await import/g) || []).length === 1 && firebase.includes('firebase-safe-v9.js'));
 check('Firebase inventory sync merges carton scalar fields', firebaseSafe.includes('ds.kind === "inventory"') && firebaseSafe.includes('applyScalarDelta(base, local, remote, new Set(["adjustments"]))'));
