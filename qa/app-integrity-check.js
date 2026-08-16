@@ -16,6 +16,7 @@ const app2 = read('app2.js');
 const firebase = read('firebase.js');
 const firebaseSafe = read('firebase-safe-v9.js');
 const inventory = read('inventory-system-v6.js');
+const storageHealth = read('storage-health-v1.js');
 const legacyInventory = read('inventory.js');
 const inventoryUi = read('inventory-ui.js');
 const consistency = read('farm-consistency-v2.js');
@@ -27,6 +28,13 @@ check('Build manifest is valid', /^\d{8}-\d+$/.test(build), build);
 check('Index fallback matches manifest', index.includes(`FALLBACK_BUILD = "${build}"`), build);
 check('App2 fallback matches manifest', app2.includes(`window.__ChickenEggsBuild || "${build}"`), build);
 check('Firebase fallback matches manifest', firebase.includes(`window.__ChickenEggsBuild || "${build}"`), build);
+
+check('App2 loads storage protection', app2.includes('load("storage-health-v1.js")'));
+check('Storage protection loads before InventorySystemV6', app2.indexOf('load("storage-health-v1.js")') < app2.indexOf('load("inventory-system-v6.js")'));
+check('Storage protection retries quota-blocked critical saves', storageHealth.includes('Browser storage full during critical farm save') && storageHealth.includes('farm-storage-recovered'));
+check('Storage cleanup only removes verified Firebase photo copies', storageHealth.includes('cloudSafelyOwns') && storageHealth.includes('getCloudRecord'));
+check('Storage cleanup preserves unverified local photo copies', storageHealth.includes('else kept[id] = src'));
+check('Storage cleanup exposes usage diagnostics', storageHealth.includes('window.FarmStorageHealth') && storageHealth.includes('usage'));
 
 check('App2 loads InventorySystemV6', app2.includes('load("inventory-system-v6.js")'));
 const retiredFiles = {
