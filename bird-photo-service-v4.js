@@ -10,6 +10,7 @@
   const FALLBACK_DOC = "farm_deluxe_v1";
   const FALLBACK_FIELD = "birdPhotosV3Fallback";
   const TYPE = "birdPhotoV4";
+  const PHOTO_TYPES = ["birdPhotoV2", "birdPhotoV3", TYPE];
   const listeners = new Set();
   const remote = new Map();
   let api = null;
@@ -125,6 +126,19 @@
     return {birdId:id,dataUrl:deleted?"":src,deleted,updatedAt:Number(data.updatedAt)||1,sourceRank:Number(data.sourceRank)||rank};
   }
 
+  function sameRecord(a,b) {
+    if (!a || !b) return false;
+    return String(a.birdId||"")===String(b.birdId||"") &&
+      !!a.deleted===!!b.deleted &&
+      Number(a.updatedAt||0)===Number(b.updatedAt||0) &&
+      String(a.dataUrl||"")===String(b.dataUrl||"");
+  }
+
+  function rememberRemote(record) {
+    if (!record?.birdId) return;
+    remote.set(record.birdId, candidateBetter(remote.get(record.birdId), record));
+  }
+
   async function collectMigrationCandidates() {
     const ids=birdIds();
     const best=new Map();
@@ -146,10 +160,17 @@
     const f=await firebaseApi();
     if (!f) return best;
     try {
-      const snap=await f.getDocs(f.collection(window.FirestoreDB,"entries"));
+      const photoQuery=f.query(
+        f.collection(window.FirestoreDB,"entries"),
+        f.where("type","in",PHOTO_TYPES)
+      );
+      const snap=await f.getDocs(photoQuery);
       for (const d of snap.docs) {
         const data=d.data()||{};
-        if (["birdPhotoV2","birdPhotoV3",TYPE].includes(data.type)) take(normalizeRecord(data,data.type===TYPE?4:3));
+        const record=normalizeRecord(data,data.type===TYPE?4:3);
+        if (!record) continue;
+        rememberRemote(record);
+        take(record);
       }
       const fb=await f.getDoc(f.doc(window.FirestoreDB,"entries",FALLBACK_DOC));
       const map=fb.exists()&&fb.data()?.[FALLBACK_FIELD]&&typeof fb.data()[FALLBACK_FIELD]==="object"?fb.data()[FALLBACK_FIELD]:{};
@@ -162,11 +183,18 @@
     const f=await firebaseApi();
     if (!f) throw new Error("Firebase not ready");
     const id=String(record.birdId||"");
+    const known=remote.get(id);
+    if (known && sameRecord(known,record)) return "already-synced";
+
     const ref=f.doc(window.FirestoreDB,"entries",docId(id));
     const snap=await f.getDoc(ref);
     const existing=snap.exists()?normalizeRecord(snap.data(),4):null;
     if (existing && Number(existing.updatedAt)>Number(record.updatedAt)) {
       setLocal(id,existing); remote.set(id,existing); return "remote-newer";
+    }
+    if (existing && sameRecord(existing,record)) {
+      remote.set(id,existing);
+      return "already-synced";
     }
     await f.setDoc(ref,{
       type:TYPE,birdId:id,dataUrl:record.deleted?"":record.dataUrl,deleted:!!record.deleted,
@@ -185,6 +213,8 @@
     const best=await collectMigrationCandidates();
     for (const [id,record] of best) {
       setLocal(id,record);
+      const known=remote.get(id);
+      if (known && sameRecord(known,record)) continue;
       try { await writeCloud(record); }
       catch (error) { console.warn("Photo migration write waiting:",id,error); }
     }
@@ -206,11 +236,14 @@
     const f=await firebaseApi();
     if (!f) return;
     unsubscribe?.();
-    unsubscribe=f.onSnapshot(f.collection(window.FirestoreDB,"entries"),snap=>{
+    const currentPhotoQuery=f.query(
+      f.collection(window.FirestoreDB,"entries"),
+      f.where("type","==",TYPE)
+    );
+    unsubscribe=f.onSnapshot(currentPhotoQuery,snap=>{
       for (const change of snap.docChanges()) {
         if (change.type==="removed") continue;
-        const data=change.doc.data()||{};
-        if (data.type===TYPE) applyRemote(data);
+        applyRemote(change.doc.data()||{});
       }
     },error=>console.warn("Photo v4 listener failed:",error));
   }
@@ -261,13 +294,21 @@
     await reconcile();
     await startListener();
     window.addEventListener("online",async()=>{await reconcile();await startListener();});
-    console.log("✅ Bird photo service v4 active — one Firebase document per chicken");
+    console.log("✅ Bird photo service v4 active — scoped photo-only Firebase sync");
   }
   function ready(){if(!readyPromise)readyPromise=initWork();return readyPromise;}
+
+  function startAfterFarmSync() {
+    const start=()=>{ if (window.FarmSyncSafety?.isReady?.()) { void ready(); return true; } return false; };
+    if (start()) return;
+    window.addEventListener("farm-sync-ready",()=>void ready(),{once:true});
+    window.addEventListener("online",()=>{ if (window.FarmSyncSafety?.isReady?.()) void ready(); });
+    setTimeout(start,5000);
+  }
 
   const service={get,prepareFile,saveFile,savePrepared,saveUrl,remove,flush,ready,subscribe(fn){if(typeof fn==="function")listeners.add(fn);return()=>listeners.delete(fn);}};
   window.FarmBirdPhotosV4=service;
   window.FarmBirdPhotosV3=service;
   window.FarmBirdPhotosV2=service;
-  ready();
+  startAfterFarmSync();
 })();
