@@ -54,6 +54,7 @@ async function coherentBuild() {
     'script.js',
     'app2.js',
     'firebase.js',
+    'database.js',
     'firebase-safe-v9.js',
     'storage-health-v1.js',
     'inventory-system-v6.js',
@@ -90,6 +91,15 @@ async function coherentBuild() {
     if (!loaded[asset].trim()) throw new Error(`${asset} deployed empty`);
     console.log(`LIVE 200 ${asset} (${loaded[asset].length} bytes)`);
   }
+
+  if (!loaded['database.js'].includes('where("type", "in", ["eggs", "sale"])')) throw new Error('Live core history still reads the whole entries collection');
+  if (loaded['database.js'].includes('getDocs(collection(window.FirestoreDB, "entries"))')) throw new Error('Live database.js still performs an unscoped entries getDocs');
+  if (!loaded['bird-photo-service-v4.js'].includes('where("type","in",PHOTO_TYPES)')) throw new Error('Live bird photo migration scan is not photo-only');
+  if (!loaded['bird-photo-service-v4.js'].includes('where("type","==",TYPE)')) throw new Error('Live bird photo listener is not V4-only');
+  if (!loaded['bird-photo-service-v4.js'].includes('startAfterFarmSync')) throw new Error('Live bird photo service still competes with initial farm sync');
+  if (!loaded['bird-photo-service-v4.js'].includes('already-synced')) throw new Error('Live bird photo service may rewrite already-synced photos');
+  if (!loaded['bird-photo-recovery-v2.js'].includes('waitForFarmSync')) throw new Error('Live bird photo recovery still competes with initial farm sync');
+  if (!loaded['bird-photo-recovery-v2.js'].includes('Date.now()-lastScanAt < 20000')) throw new Error('Live bird photo recovery repeat scans are not throttled');
 
   if (!loaded['app2.js'].includes('load("storage-health-v1.js")')) throw new Error('Live app2.js is missing storage quota protection');
   if (loaded['app2.js'].indexOf('load("storage-health-v1.js")') > loaded['app2.js'].indexOf('load("inventory-system-v6.js")')) throw new Error('Live storage protection loads too late');
