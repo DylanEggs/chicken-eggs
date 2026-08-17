@@ -6,7 +6,8 @@
   const APP = "chickenEggApp2V1";
   const SNAPSHOTS = "chickenEggApp2SnapshotsV1";
   const TYPE4 = "birdPhotoV4";
-  const PHOTO_TYPES = new Set(["birdPhotoV2", "birdPhotoV3", "birdPhotoV4"]);
+  const PHOTO_TYPES = ["birdPhotoV2", "birdPhotoV3", "birdPhotoV4"];
+  const PHOTO_TYPE_SET = new Set(PHOTO_TYPES);
   const LEGACY_APP_DOC = "__farm_app_2__";
   const CURRENT_APP_DOC = "farm_app_2_v1";
   const FALLBACK_DOC = "farm_deluxe_v1";
@@ -20,6 +21,7 @@
   let unsubscribe = null;
   let running = false;
   let initialScanDone = false;
+  let lastScanAt = 0;
 
   const read = (key, fallback) => {
     try { return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback)); }
@@ -151,10 +153,14 @@
 
   async function loadCloud(f) {
     cloud.clear();
-    const snap=await f.getDocs(f.collection(window.FirestoreDB,"entries"));
+    const photoQuery=f.query(
+      f.collection(window.FirestoreDB,"entries"),
+      f.where("type","in",PHOTO_TYPES)
+    );
+    const snap=await f.getDocs(photoQuery);
     for (const d of snap.docs) {
       const data=d.data() || {};
-      if (PHOTO_TYPES.has(data.type)) remember(record(data,data.type===TYPE4?4:3));
+      if (PHOTO_TYPE_SET.has(data.type)) remember(record(data,data.type===TYPE4?4:3));
     }
     try {
       const fb=await f.getDoc(f.doc(window.FirestoreDB,"entries",FALLBACK_DOC));
@@ -239,8 +245,9 @@
     window.dispatchEvent(new CustomEvent("farm-data-synced",{detail:{key:APP,photoOnly:true,source}}));
   }
 
-  async function scanAndRecover() {
+  async function scanAndRecover(force=false) {
     if (running) return stats();
+    if (!force && initialScanDone && Date.now()-lastScanAt < 20000) return stats();
     running=true;
     try {
       patchGet();
@@ -251,6 +258,7 @@
       notify("firebase-photo-memory");
       await recoverAliases(f);
       initialScanDone=true;
+      lastScanAt=Date.now();
       notify("firebase-photo-recovery");
       return stats();
     } catch (error) {
@@ -265,12 +273,16 @@
     const f=await firebase();
     if (!f) return;
     try { unsubscribe?.(); } catch {}
-    unsubscribe=f.onSnapshot(f.collection(window.FirestoreDB,"entries"), snap => {
+    const photoQuery=f.query(
+      f.collection(window.FirestoreDB,"entries"),
+      f.where("type","in",PHOTO_TYPES)
+    );
+    unsubscribe=f.onSnapshot(photoQuery, snap => {
       let changed=false;
       for (const change of snap.docChanges()) {
         if (change.type === "removed") continue;
         const data=change.doc.data() || {};
-        if (!PHOTO_TYPES.has(data.type)) continue;
+        if (!PHOTO_TYPE_SET.has(data.type)) continue;
         const r=record(data,data.type===TYPE4?4:3);
         if (!r) continue;
         remember(r); changed=true;
@@ -283,10 +295,17 @@
   }
 
   window.FarmBirdPhotoRecoveryV2={
-    scan:scanAndRecover,
+    scan:()=>scanAndRecover(true),
     stats,
     getCloudRecord:id=>cloud.get(String(id || "")) || null
   };
+
+  function waitForFarmSync() {
+    if (window.FarmSyncSafety?.isReady?.()) return Promise.resolve(true);
+    return new Promise(resolve => {
+      window.addEventListener("farm-sync-ready",()=>resolve(true),{once:true});
+    });
+  }
 
   async function init() {
     const start=Date.now();
@@ -295,13 +314,14 @@
       await new Promise(r=>setTimeout(r,50));
     }
     patchGet();
-    await scanAndRecover();
+    await waitForFarmSync();
+    await scanAndRecover(true);
     await startListener();
-    window.addEventListener("online",()=>{ void scanAndRecover(); void startListener(); });
+    window.addEventListener("online",()=>{ if (window.FarmSyncSafety?.isReady?.()) { void scanAndRecover(); void startListener(); } });
     window.addEventListener("farm-data-synced",e=>{
-      if (e.detail?.key === APP && !e.detail?.photoOnly) setTimeout(()=>void scanAndRecover(),250);
+      if (e.detail?.key === APP && !e.detail?.photoOnly) setTimeout(()=>void scanAndRecover(),500);
     });
-    console.log("✅ Flock photo recovery v2 active — Firebase memory display + historical ID recovery");
+    console.log("✅ Flock photo recovery v2 active — deferred, photo-only Firebase queries");
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded",()=>setTimeout(()=>void init(),300),{once:true});
