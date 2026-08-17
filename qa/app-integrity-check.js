@@ -15,6 +15,9 @@ const index = read('index.html');
 const app2 = read('app2.js');
 const firebase = read('firebase.js');
 const firebaseSafe = read('firebase-safe-v9.js');
+const database = read('database.js');
+const birdPhotoService = read('bird-photo-service-v4.js');
+const birdPhotoRecovery = read('bird-photo-recovery-v2.js');
 const inventory = read('inventory-system-v6.js');
 const storageHealth = read('storage-health-v1.js');
 const lifetime = read('business-lifetime-v1.js');
@@ -32,6 +35,17 @@ check('Index fallback matches manifest', index.includes(`FALLBACK_BUILD = "${bui
 check('App2 fallback matches manifest', app2.includes(`window.__ChickenEggsBuild || "${build}"`), build);
 check('Firebase fallback matches manifest', firebase.includes(`window.__ChickenEggsBuild || "${build}"`), build);
 check('Dashboard extras fallback matches manifest', extrasDashboard.includes(`window.__ChickenEggsBuild || "${build}"`), build);
+
+check('Core entry reads are scoped to egg and sale docs', database.includes('where("type", "in", ["eggs", "sale"])'));
+check('Core entry reads do not fetch the whole entries collection', !database.includes('getDocs(collection(window.FirestoreDB, "entries"))'));
+check('Core entry listener uses the scoped core query', database.includes('onSnapshot(\n      coreQuery'));
+check('Bird photo migration query is photo-only', birdPhotoService.includes('where("type","in",PHOTO_TYPES)'));
+check('Bird photo live listener is V4-only', birdPhotoService.includes('where("type","==",TYPE)'));
+check('Bird photo service defers automatic cloud work until farm sync', birdPhotoService.includes('startAfterFarmSync') && birdPhotoService.includes('farm-sync-ready'));
+check('Bird photo service skips already-synced cloud rewrites', birdPhotoService.includes('sameRecord(known,record)') && birdPhotoService.includes('already-synced'));
+check('Bird photo recovery query is photo-only', birdPhotoRecovery.includes('where("type","in",PHOTO_TYPES)'));
+check('Bird photo recovery waits for main farm sync', birdPhotoRecovery.includes('waitForFarmSync') && birdPhotoRecovery.includes('farm-sync-ready'));
+check('Bird photo recovery throttles repeat scans', birdPhotoRecovery.includes('Date.now()-lastScanAt < 20000'));
 
 check('App2 loads storage protection', app2.includes('load("storage-health-v1.js")'));
 check('Storage protection loads before InventorySystemV6', app2.indexOf('load("storage-health-v1.js")') < app2.indexOf('load("inventory-system-v6.js")'));
