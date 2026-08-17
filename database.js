@@ -47,25 +47,31 @@ window.ChickenEggsDB = {
   },
 
   async loadEntries() {
-    const { collection, getDocs } = await import(
+    const { collection, getDocs, query, where } = await import(
       "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js"
     );
     await this.waitUntilReady();
-    const snap = await getDocs(collection(window.FirestoreDB, "entries"));
+    const coreQuery = query(
+      collection(window.FirestoreDB, "entries"),
+      where("type", "in", ["eggs", "sale"])
+    );
+    const snap = await getDocs(coreQuery);
     return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   },
 
   async subscribeEntries(onChange, onError) {
-    const { collection, onSnapshot } = await import(
+    const { collection, onSnapshot, query, where } = await import(
       "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js"
     );
     await this.waitUntilReady();
-    return onSnapshot(
+    const coreQuery = query(
       collection(window.FirestoreDB, "entries"),
+      where("type", "in", ["eggs", "sale"])
+    );
+    return onSnapshot(
+      coreQuery,
       snap => {
-        const rows = snap.docs
-          .map(doc => ({ id: doc.id, ...doc.data() }))
-          .filter(row => row.type === "eggs" || row.type === "sale");
+        const rows = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         onChange(rows);
       },
       error => {
