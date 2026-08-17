@@ -18,6 +18,8 @@ const firebaseSafe = read('firebase-safe-v9.js');
 const inventory = read('inventory-system-v6.js');
 const storageHealth = read('storage-health-v1.js');
 const lifetime = read('business-lifetime-v1.js');
+const extrasDashboard = read('extras-dashboard.js');
+const extrasDashboardLegacy = read('extras-dashboard-legacy-v1.js');
 const legacyInventory = read('inventory.js');
 const inventoryUi = read('inventory-ui.js');
 const consistency = read('farm-consistency-v2.js');
@@ -29,6 +31,7 @@ check('Build manifest is valid', /^\d{8}-\d+$/.test(build), build);
 check('Index fallback matches manifest', index.includes(`FALLBACK_BUILD = "${build}"`), build);
 check('App2 fallback matches manifest', app2.includes(`window.__ChickenEggsBuild || "${build}"`), build);
 check('Firebase fallback matches manifest', firebase.includes(`window.__ChickenEggsBuild || "${build}"`), build);
+check('Dashboard extras fallback matches manifest', extrasDashboard.includes(`window.__ChickenEggsBuild || "${build}"`), build);
 
 check('App2 loads storage protection', app2.includes('load("storage-health-v1.js")'));
 check('Storage protection loads before InventorySystemV6', app2.indexOf('load("storage-health-v1.js")') < app2.indexOf('load("inventory-system-v6.js")'));
@@ -36,6 +39,12 @@ check('Storage protection retries quota-blocked critical saves', storageHealth.i
 check('Storage cleanup only removes verified Firebase photo copies', storageHealth.includes('cloudSafelyOwns') && storageHealth.includes('getCloudRecord'));
 check('Storage cleanup preserves unverified local photo copies', storageHealth.includes('else kept[id] = src'));
 check('Storage cleanup exposes usage diagnostics', storageHealth.includes('window.FarmStorageHealth') && storageHealth.includes('usage'));
+
+check('Chicken of the Day uses current flock photo service', extrasDashboard.includes('FarmBirdPhotosV4') && extrasDashboard.includes('svc?.get?.(String(id||""))'));
+check('Chicken of the Day refreshes when photos recover', extrasDashboard.includes('bird-photos-changed'));
+check('Home photo upload routes through current photo service', extrasDashboard.includes('svc?.saveFile') && extrasDashboard.includes('svc.saveFile(id,f).then(()=>render())'));
+check('Legacy dashboard flock photo controls are disabled', extrasDashboard.includes('renderBird();patchCust();backup()'));
+check('Legacy dashboard photo signature is still transformable', extrasDashboardLegacy.includes('function pics(){return r(P,{})}function pic(id){return pics()[id]||st.birdPhotoUrls[id]||""}'));
 
 check('App2 loads lifetime financial stats', app2.includes('load("business-lifetime-v1.js")'));
 check('Lifetime financials target Statistics, not Home', lifetime.includes('document.getElementById("statsTotals")') && lifetime.includes('statsLifetimeProfit') && !lifetime.includes('bizLifetimeHome'));
