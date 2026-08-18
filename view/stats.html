@@ -4,7 +4,13 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#1f7a3a" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Rose Poultry" />
+  <meta name="application-name" content="Rose Family Poultry" />
   <title>Rose Family Poultry — Egg Stats</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="app-icon.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="view.css" />
 </head>
 <body>
@@ -18,7 +24,7 @@
     <section class="public-chart"><h3>📅 Weekly egg totals — last 8 weeks</h3><div class="chart-wrap"><canvas id="weeklyPublicChart"></canvas></div></section>
     <section class="public-chart"><h3>🗓️ Monthly egg totals — last 12 months</h3><div class="chart-wrap"><canvas id="monthlyPublicChart"></canvas></div></section>
     <section class="section-block"><div class="section-heading"><div><div class="section-kicker">🌦️ Weather + laying</div><h2>What weather seems to do to this flock</h2></div><span class="mini-chip" id="weatherSamples">Learning</span></div><div class="weather-factor-grid" id="weatherFactorGrid"></div><div class="trend-card" id="productionTrend"></div><p class="privacy-note">These percentages are observational patterns in this farm’s own matched weather and egg logs. Daylight, age, molt, nutrition and flock changes can also affect laying.</p></section>
-    <footer class="site-footer"><div class="footer-chicken">🐔</div><strong id="statsFooterFarm">Rose Family Poultry</strong><span>Real flock data. Just the fun farm side.</span><small>This view intentionally contains no customer history, sales prices, expenses, revenue, profit or loss information.</small></footer>
+    <footer class="site-footer"><div class="footer-chicken">🐔</div><strong id="statsFooterFarm">Rose Family Poultry</strong><span>Real flock data. Just the fun farm side.</span><a class="install-footer-link" href="./#installApp">📲 Add this farm to your Home Screen</a><small>This view intentionally contains no customer history, sales prices, expenses, revenue, profit or loss information.</small></footer>
   </main>
   <div class="missing-data" id="statsMissing" hidden><div class="missing-card"><div class="missing-icon">🐔</div><h2>The live stats are coming online</h2><p>Rose Family Poultry is finishing the public stats connection. Private farm data is not available from this page.</p></div></div>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
