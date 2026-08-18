@@ -38,6 +38,9 @@ jobs:
       - name: Run staging isolation architecture checks
         run: node qa/staging-isolation-check.js
 
+      - name: Run staging shell transform check
+        run: node qa/staging-shell-transform-check.js
+
       - name: Run destructive staging isolation test
         run: node qa/staging-isolation-integration.js
 
