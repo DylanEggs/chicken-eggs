@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#f7b928" />
+  <title>Rose Family Poultry — Farm View</title>
+  <link rel="stylesheet" href="view.css" />
+</head>
+<body>
+  <main class="customer-app" id="customerApp">
+    <header class="site-header">
+      <div class="brand-mark" aria-hidden="true">🐔</div>
+      <div class="brand-copy"><div class="eyebrow">Fresh from the flock</div><h1 id="farmName">Rose Family Poultry</h1><p id="farmLocation">High Point, NC</p></div>
+      <div class="live-pill"><i></i> Live farm view</div>
+    </header>
+    <nav class="customer-tabs" aria-label="Customer farm pages"><a class="active" href="./">🏡 Farm View</a><a href="stats.html">📊 Egg Stats</a></nav>
+    <div class="public-status" id="publicStatus">Connecting to the flock…</div>
+
+    <section class="hero" id="availabilityHero" aria-labelledby="availabilityTitle">
+      <div class="hero-glow hero-glow-one"></div><div class="hero-glow hero-glow-two"></div>
+      <div class="hero-copy"><div class="section-kicker">🥚 Egg availability</div><h2 id="availabilityTitle"><span id="availableEggs">—</span> eggs available right now</h2><p id="availabilityEquivalent">Checking the nest boxes…</p><div class="availability-badge" id="availabilityBadge">Loading availability</div></div>
+      <div class="basket-scene" aria-hidden="true"><div class="sun-dot"></div><div class="basket">🧺</div><span class="float-egg e1">🥚</span><span class="float-egg e2">🥚</span><span class="float-egg e3">🥚</span></div>
+      <div class="freshness" id="freshness">Connecting to the farm…</div>
+    </section>
+
+    <section class="section-block" aria-labelledby="coopReportTitle">
+      <div class="section-heading"><div><div class="section-kicker">📈 From the laying boxes</div><h2 id="coopReportTitle">Today’s coop report</h2></div><span class="mini-chip" id="forecastConfidence">Learning the flock</span></div>
+      <div class="metric-grid">
+        <article class="metric-card yellow"><span class="metric-icon">🥚</span><strong id="todayCollected">—</strong><span>collected today</span></article>
+        <article class="metric-card green"><span class="metric-icon">🔮</span><strong id="todayForecast">—</strong><span>today’s flock outlook</span></article>
+        <article class="metric-card blue"><span class="metric-icon">📅</span><strong id="weekForecast">—</strong><span>predicted this week</span></article>
+        <article class="metric-card purple"><span class="metric-icon">🌙</span><strong id="monthForecast">—</strong><span>predicted this month</span></article>
+      </div>
+      <p class="forecast-note" id="forecastNote">Predictions update as the flock logs more laying days.</p>
+    </section>
+
+    <section class="weather-card" aria-labelledby="weatherTitle">
+      <div class="weather-left"><div class="weather-icon" id="weatherEmoji" aria-hidden="true">🌤️</div><div><div class="section-kicker">🌤️ Coop weather</div><h2 id="weatherTitle"><span id="weatherTemp">—</span><small>°F</small></h2><p><span id="weatherCondition">Weather loading</span> <span id="weatherFeels"></span></p></div></div>
+      <div class="weather-details"><div><span>High / Low</span><strong id="weatherHighLow">—</strong></div><div><span>Rain chance</span><strong id="weatherRain">—</strong></div><div><span>Humidity</span><strong id="weatherHumidity">—</strong></div></div>
+    </section>
+
+    <section class="weather-impact-card" id="customerWeatherImpact">
+      <div class="section-kicker">🌦️ Weather + laying</div><h2>What the flock’s history is showing</h2><p id="weatherImpactIntro">Comparing this farm’s own weather and egg logs…</p><div class="weather-impact-list" id="weatherImpactList"></div><p class="weather-impact-note" id="weatherImpactNote"><a href="stats.html">See all egg stats →</a></p>
+    </section>
+
+    <section class="celebrity-card" aria-labelledby="chickenDayTitle">
+      <div class="celebrity-photo" id="chickenDayPhoto"><span>🐔</span></div>
+      <div class="celebrity-copy"><div class="section-kicker">⭐ Chicken of the Day</div><h2 id="chickenDayTitle">Meet today’s flock celebrity</h2><h3 id="chickenDayName">Loading…</h3><p id="chickenDayDetails">Checking the roost…</p><div class="celebrity-tag">🏆 Today’s featured feathered employee</div></div>
+    </section>
+
+    <section class="fact-card" aria-labelledby="factTitle">
+      <div class="fact-emoji" aria-hidden="true">💡🐓</div><div class="fact-copy"><div class="section-kicker">Did you know?</div><h2 id="factTitle">Chicken fact of the visit</h2><p id="factText">Loading a flock fact…</p></div><button type="button" class="fact-next" id="nextFact">Another fact ✨</button>
+    </section>
+
+    <section class="section-block flock-section" aria-labelledby="flockTitle">
+      <div class="section-heading flock-heading"><div><div class="section-kicker">🐔 Meet the crew</div><h2 id="flockTitle">Browse the flock</h2><p><span id="flockCount">—</span> current flock profiles</p></div><div class="flock-filter" role="group" aria-label="Filter flock profiles"><button type="button" class="filter active" data-filter="all">All</button><button type="button" class="filter" data-filter="hens">Hens</button><button type="button" class="filter" data-filter="roosters">Roosters</button></div></div>
+      <div class="flock-grid" id="flockGrid"></div><div class="empty-flock" id="emptyFlock" hidden>No flock profiles match this view yet.</div>
+    </section>
+
+    <footer class="site-footer"><div class="footer-chicken">🐓</div><strong id="footerFarmName">Rose Family Poultry</strong><span>Fresh eggs and real flock updates from High Point, NC.</span><small>This page is view-only. It intentionally does not contain customer history, sales prices, expenses, revenue, profit or loss information.</small></footer>
+  </main>
+
+  <div class="profile-modal" id="profileModal" hidden><div class="modal-backdrop" data-close-profile></div><article class="profile-sheet" role="dialog" aria-modal="true" aria-labelledby="profileName"><button type="button" class="modal-close" data-close-profile aria-label="Close chicken profile">×</button><div class="profile-photo" id="profilePhoto"><span>🐔</span></div><div class="section-kicker">Flock profile</div><h2 id="profileName">Chicken</h2><div class="profile-facts" id="profileFacts"></div><div class="profile-signoff">🐾 Certified member of the feathered production team.</div></article></div>
+
+  <div class="missing-data" id="missingData" hidden><div class="missing-card"><div class="missing-icon">🐔</div><h2>The live flock view is coming online</h2><p>Rose Family Poultry is finishing the connection between the private farm app and this customer view. No private farm information is available from this page.</p></div></div>
+
+  <script src="../customer-facts-v1.js"></script>
+  <script type="module" src="view.js"></script>
+</body>
+</html>
