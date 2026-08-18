@@ -35,9 +35,9 @@ function assert(ok,msg){if(!ok)throw new Error(msg);}
 assert(raw('chickenEggEntriesV102')===liveEntries,'initial live entries changed during staging seed');
 assert(raw('chickenEggApp2V1')===liveApp,'initial live app state changed during staging seed');
 assert(raw(PREFIX+'chickenEggEntriesV102')===liveEntries,'staging did not copy live entries into isolated key');
-assert(localStorage.getItem('chickenEggEntriesV102')===liveEntries,'virtual staging read did not return staged copy');
+assert(store.getItem('chickenEggEntriesV102')===liveEntries,'virtual staging read did not return staged copy');
 
-localStorage.setItem('chickenEggEntriesV102',JSON.stringify([{id:'TEST-ONLY',type:'eggs',eggs:999}]));
+store.setItem('chickenEggEntriesV102',JSON.stringify([{id:'TEST-ONLY',type:'eggs',eggs:999}]));
 assert(raw('chickenEggEntriesV102')===liveEntries,'staging setItem overwrote live entries');
 assert(raw(PREFIX+'chickenEggEntriesV102').includes('TEST-ONLY'),'staging setItem did not update isolated copy');
 
@@ -45,18 +45,18 @@ vm.runInContext(fs.readFileSync(path.join(root,'staging/staging-database.js'),'u
 
 (async()=>{
   await window.ChickenEggsDB.saveEntry({id:'staging-sale',type:'sale',date:'2099-01-01',dozenSold:10,dozenPrice:99});
-  const staged=JSON.parse(localStorage.getItem('chickenEggEntriesV102'));
+  const staged=JSON.parse(store.getItem('chickenEggEntriesV102'));
   assert(staged.some(x=>x.id==='staging-sale'),'staging database failed to create test sale');
   assert(raw('chickenEggEntriesV102')===liveEntries,'staging database save touched live entries');
 
   await window.ChickenEggsDB.deleteEntry('staging-sale');
-  assert(!JSON.parse(localStorage.getItem('chickenEggEntriesV102')).some(x=>x.id==='staging-sale'),'staging delete failed inside sandbox');
+  assert(!JSON.parse(store.getItem('chickenEggEntriesV102')).some(x=>x.id==='staging-sale'),'staging delete failed inside sandbox');
   assert(raw('chickenEggEntriesV102')===liveEntries,'staging database delete touched live entries');
 
-  localStorage.removeItem('chickenEggApp2V1');
+  store.removeItem('chickenEggApp2V1');
   assert(raw('chickenEggApp2V1')===liveApp,'staging removeItem deleted live app state');
 
-  localStorage.clear();
+  store.clear();
   assert(raw('chickenEggEntriesV102')===liveEntries,'staging clear deleted live entries');
   assert(raw('chickenEggApp2V1')===liveApp,'staging clear deleted live app state');
   assert(raw('unrelatedSiteKey')==='do-not-touch','staging clear touched unrelated live storage');
