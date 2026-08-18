@@ -9,14 +9,14 @@
   <meta name="apple-mobile-web-app-title" content="Rose Poultry" />
   <meta name="application-name" content="Rose Family Poultry" />
   <title>Rose Family Poultry — Egg Stats</title>
-  <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="icon" href="app-icon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="view.css" />
+  <link rel="manifest" href="manifest.webmanifest?v=20260818-1830" />
+  <link rel="icon" href="app-icon.svg?v=20260818-1830" type="image/svg+xml" />
+  <link rel="stylesheet" href="view.css?v=20260818-1830" />
 </head>
 <body>
   <main class="customer-app" id="customerStatsApp">
     <header class="site-header"><div class="brand-mark" aria-hidden="true">🥚</div><div class="brand-copy"><div class="eyebrow">Fresh from the flock</div><h1 id="statsFarmName">Rose Family Poultry</h1><p id="statsFarmLocation">High Point, NC</p></div><div class="live-pill"><i></i> Live egg stats</div></header>
-    <nav class="customer-tabs" aria-label="Customer farm pages"><a href="./">🏡 Farm View</a><a class="active" href="stats.html">📊 Egg Stats</a></nav>
+    <nav class="customer-tabs" aria-label="Customer farm pages"><a href="./">🏡 Farm View</a><a class="active" href="stats.html">📊 Egg Stats</a><a href="./#installApp">📲 Add App</a></nav>
     <div class="public-status" id="statsStatus">Connecting to the flock…</div>
     <section class="stats-hero"><div class="section-kicker">📊 Flock numbers</div><h2>Egg production, without the boring part</h2><p>Daily, weekly and monthly laying trends from the Rose Family Poultry flock. No private business information is part of this page.</p></section>
     <section class="section-block"><div class="section-heading"><div><div class="section-kicker">🏆 Flock records</div><h2>Production highlights</h2></div></div><div class="public-stat-grid" id="recordGrid"></div></section>
@@ -28,6 +28,6 @@
   </main>
   <div class="missing-data" id="statsMissing" hidden><div class="missing-card"><div class="missing-icon">🐔</div><h2>The live stats are coming online</h2><p>Rose Family Poultry is finishing the public stats connection. Private farm data is not available from this page.</p></div></div>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script type="module" src="stats.js"></script>
+  <script type="module" src="stats.js?v=20260818-1830"></script>
 </body>
 </html>
