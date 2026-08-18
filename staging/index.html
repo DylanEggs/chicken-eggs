@@ -33,16 +33,26 @@
         html=html.replace("<head>","<head><base href=\"../\"><meta name=\"robots\" content=\"noindex,nofollow\">"+scriptTag(`staging/staging-storage.js?v=${build}`));
         html=replaceAsset(html,"style.css","v=100",build);
         html=replaceAsset(html,"app2.css","v=1",build);
+        html=replaceAsset(html,"firebase.js","v=6",build);
+        html=replaceAsset(html,"database.js","v=6",build);
         html=replaceAsset(html,"script.js","v=221",build);
+        html=replaceAsset(html,"app2.js","v=1",build);
         html=replaceAsset(html,"inventory.js","v=1",build);
         html=replaceAsset(html,"inventory-ui.js","v=1",build);
         html=replaceAsset(html,"extras-dashboard.js","v=1",build);
         html=replaceAsset(html,"extras-fun.js","v=1",build);
+
+        // After every shell URL is normalized to the current live build, replace
+        // the only cloud-capable entrypoints with staging-only adapters.
         html=html.replace(`type="module" src="firebase.js?v=${build}"`,`type="module" src="staging/staging-firebase.js?v=${build}"`);
         html=html.replace(`src="database.js?v=${build}"`,`src="staging/staging-database.js?v=${build}"`);
         html=html.replace(`src="app2.js?v=${build}"`,`src="staging/staging-app2.js?v=${build}"`);
         html=html.replace("<title>Chicken Eggs</title>","<title>Chicken Eggs — STAGING</title>");
         html=html.replace("</body>",scriptTag(`staging/staging-banner.js?v=${build}`)+"</body>");
+
+        if(html.includes(`type="module" src="firebase.js?v=${build}"`))throw new Error("Safety stop: live firebase.js remained in staging shell");
+        if(html.includes(`src="database.js?v=${build}"`))throw new Error("Safety stop: live database.js remained in staging shell");
+        if(html.includes(`src="app2.js?v=${build}"`))throw new Error("Safety stop: live app2.js remained in staging shell");
 
         window.__ChickenEggsBuild=build;
         window.__ChickenEggsEnvironment="staging";
