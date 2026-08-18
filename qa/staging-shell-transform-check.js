@@ -24,15 +24,18 @@ html=replaceAsset(html,'extras-fun.js','v=1',build);
 html=html.replace(`type="module" src="firebase.js?v=${build}"`,`type="module" src="${stageAsset('staging/staging-firebase.js')}"`);
 html=html.replace(`src="database.js?v=${build}"`,`src="${stageAsset('staging/staging-database.js')}"`);
 html=html.replace(`src="app2.js?v=${build}"`,`src="${stageAsset('staging/staging-app2.js')}"`);
+html=html.replace(`src="extras-fun.js?v=${build}"`,`src="${stageAsset('staging/staging-extras-fun.js')}"`);
 
 const failures=[];
 const check=(name,ok)=>{if(!ok)failures.push(name);else console.log('PASS ',name);};
 check('Live firebase entrypoint removed from generated staging shell',!html.includes(`type="module" src="firebase.js?v=${build}"`));
 check('Live database adapter removed from generated staging shell',!html.includes(`src="database.js?v=${build}"`));
 check('Live app2 loader removed from generated staging shell',!html.includes(`src="app2.js?v=${build}"`));
+check('Live fun loader removed from generated staging shell',!html.includes(`src="extras-fun.js?v=${build}"`));
 check('Staging Firebase adapter present with staging build cache key',html.includes(stageAsset('staging/staging-firebase.js')));
 check('Staging database adapter present with staging build cache key',html.includes(stageAsset('staging/staging-database.js')));
 check('Staging app2 adapter present with staging build cache key',html.includes(stageAsset('staging/staging-app2.js')));
+check('Guarded staging fun adapter present with staging build cache key',html.includes(stageAsset('staging/staging-extras-fun.js')));
 check('Staging storage has staging-specific cache key',html.includes(stageAsset('staging/staging-storage.js')));
 check('Staging storage loads before shell application code',html.indexOf('staging/staging-storage.js') < html.indexOf('staging/staging-firebase.js'));
 check('Normal core script still uses current live code build',html.includes(`script.js?v=${build}`));
@@ -40,4 +43,4 @@ check('Normal inventory compatibility shell remains current build',html.includes
 check('Normal dashboard extras remain current build',html.includes(`extras-dashboard.js?v=${build}`));
 
 if(failures.length){console.error('\nSTAGING SHELL TRANSFORM FAILURES:');failures.forEach(x=>console.error('FAIL ',x));process.exit(1);}
-console.log(`\nPASS Staging shell transform — app ${build}, staging ${stageBuild}; live cloud entrypoints cannot survive and staging assets cannot stay stale across staging builds`);
+console.log(`\nPASS Staging shell transform — app ${build}, staging ${stageBuild}; live cloud/fun entrypoints cannot survive and staging assets cannot stay stale across staging builds`);
