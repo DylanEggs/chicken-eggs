@@ -27,7 +27,7 @@ async function fetchText(file){
   }
   if(live!==expected)throw new Error(`Staging build ${expected} did not deploy; live=${live}`);
 
-  const assets=['index.html','staging-storage.js','staging-firebase.js','staging-database.js','staging-app2.js','staging-photo-service.js','staging-banner.js','staging-diagnostics.js','staging-full-test.js','staging-backup-test.js'];
+  const assets=['index.html','staging-storage.js','staging-firebase.js','staging-database.js','staging-app2.js','staging-photo-service.js','staging-banner.js','staging-diagnostics.js','staging-full-test.js','staging-backup-test.js','customer-public-data-v1.js','view/index.html','view/view.css','view/view.js'];
   const loaded={};
   for(const file of assets){
     loaded[file]=await fetchText(file);
@@ -48,10 +48,19 @@ async function fetchText(file){
   if(!loaded['staging-firebase.js'].includes('FarmBootstrapSafety?.unlock?.()'))throw new Error('Staging cannot release normal startup write lock');
   if(loaded['staging-photo-service.js'].includes('firebasejs')||loaded['staging-photo-service.js'].includes('FirestoreDB'))throw new Error('Staging photo service can reach Firebase');
   if(!loaded['staging-banner.js'].includes('LIVE FARM DATA IS READ-ONLY'))throw new Error('Staging safety banner missing');
+  if(!loaded['staging-banner.js'].includes('staging/view/'))throw new Error('Staging customer preview link missing');
   if(!loaded['staging-full-test.js'].includes('restore(snap)'))throw new Error('Full staging runner does not restore staging baseline');
   if(!loaded['staging-full-test.js'].includes('Mark Paid does not change inventory'))throw new Error('Full staging runner is missing payment/inventory regression check');
   if(!loaded['staging-backup-test.js'].includes('chicken-eggs-full-backup-v8'))throw new Error('Backup test does not verify current backup format');
   if(!loaded['staging-backup-test.js'].includes('Restore routes exact inventory through InventorySystemV6'))throw new Error('Backup test does not verify inventory restore authority');
 
-  console.log(`PASS Staging live smoke — ${expected}, ${assets.length} isolated assets verified`);
+  const customerBundle=loaded['customer-public-data-v1.js']+loaded['view/index.html']+loaded['view/view.js'];
+  if(!loaded['view/index.html'].includes('CUSTOMER VIEW PREVIEW'))throw new Error('Customer preview identity missing');
+  if(!loaded['view/index.html'].includes('../customer-public-data-v1.js'))throw new Error('Customer preview does not load sanitizer');
+  if(/(firebasejs|FirestoreDB|FirebaseUser|setDoc|addDoc|updateDoc|deleteDoc)/i.test(loaded['view/index.html']+loaded['view/view.js']))throw new Error('Customer preview can reach Firebase');
+  if(/localStorage\.(setItem|removeItem|clear)/.test(customerBundle))throw new Error('Customer preview contains a browser data writer');
+  if(!loaded['customer-public-data-v1.js'].includes('customer-public-v1'))throw new Error('Customer public data contract missing');
+  if(!loaded['view/index.html'].includes('Browse the flock')||!loaded['view/index.html'].includes('Chicken of the Day'))throw new Error('Customer preview core viewing features missing');
+
+  console.log(`PASS Staging live smoke — ${expected}, ${assets.length} isolated assets verified including customer preview`);
 })().catch(error=>{console.error('STAGING LIVE SMOKE FAILED:',error);process.exit(1);});
