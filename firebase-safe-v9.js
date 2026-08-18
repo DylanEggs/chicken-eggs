@@ -665,11 +665,11 @@ if (!window.__farmSafeFirebaseV9) {
       window.FirebaseUser = user;
       installCoreAuthority();
 
-      let remoteApp2 = null;
-      for (const ds of DATASETS) {
-        const remote = await pullInitial(ds);
-        if (ds.kind === "app2") remoteApp2 = remote;
-      }
+      const initial = await Promise.all(DATASETS.map(async ds => ({
+        ds,
+        remote: await pullInitial(ds)
+      })));
+      const remoteApp2 = initial.find(x => x.ds.kind === "app2")?.remote || null;
 
       const recovery = await maybeRecoverApp2(remoteApp2 || {});
       if (recovery) {
@@ -730,7 +730,7 @@ if (!window.__farmSafeFirebaseV9) {
     isReady: () => bootstrapComplete,
     refresh: syncAllFarmData,
     getDirtyKeys: () => [...dirty],
-    version: "9.1"
+    version: "9.2"
   };
   window.EggSyncAuthorityReady = safeReady;
   window.syncFarmNow = syncAllFarmData;
@@ -777,5 +777,5 @@ if (!window.__farmSafeFirebaseV9) {
   import("./flock-photo-fix-v2.js?v=20260815-8")
     .catch(e => console.warn("Shared flock photo system failed to load:", e));
 
-  console.log("✅ Firebase v9.1 initialized in protected cloud-first mode");
+  console.log("✅ Firebase v9.2 initialized in protected cloud-first mode");
 }
