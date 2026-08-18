@@ -2,6 +2,7 @@ import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebase
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
 
 if (!window.FarmOwnerAuth) {
+  const OWNER_UID = "aLvjMpXgMJf5W3YUjQM6wqKagLo2";
   const firebaseConfig = {
     apiKey: "AIzaSyCSruU8Sae0mFI16N2tcIh2GRLartzYhHE",
     authDomain: "chicken-eggs-53358.firebaseapp.com",
@@ -17,8 +18,8 @@ if (!window.FarmOwnerAuth) {
   let gateResolve = null;
   let lastUser = null;
 
-  function nonAnonymous(user) {
-    return !!(user && !user.isAnonymous);
+  function isOwner(user) {
+    return !!(user && !user.isAnonymous && String(user.uid || "") === OWNER_UID);
   }
 
   function css() {
@@ -69,6 +70,7 @@ if (!window.FarmOwnerAuth) {
 
   function messageFor(error) {
     const code = String(error?.code || "");
+    if (code === "farm/not-owner") return "That Firebase account is not authorized to manage this farm.";
     if (/invalid-credential|wrong-password|user-not-found/.test(code)) return "Email or password was not accepted.";
     if (/too-many-requests/.test(code)) return "Too many attempts. Wait a little while and try again.";
     if (/network-request-failed/.test(code)) return "Internet connection problem. Try again when you are online.";
@@ -88,7 +90,12 @@ if (!window.FarmOwnerAuth) {
     if (errorBox) errorBox.textContent = "";
     try {
       const result = await signInWithEmailAndPassword(auth, email, password);
-      if (!nonAnonymous(result?.user)) throw new Error("Owner authentication did not return a private account");
+      if (!isOwner(result?.user)) {
+        await signOut(auth).catch(() => {});
+        const error = new Error("Not authorized owner UID");
+        error.code = "farm/not-owner";
+        throw error;
+      }
     } catch (error) {
       console.warn("Owner sign-in failed:", error?.code || error?.message || error);
       if (errorBox) errorBox.textContent = messageFor(error);
@@ -111,14 +118,12 @@ if (!window.FarmOwnerAuth) {
   }
 
   function requireSignIn() {
-    if (nonAnonymous(auth.currentUser)) {
+    if (isOwner(auth.currentUser)) {
       lastUser = auth.currentUser;
       hide();
       return Promise.resolve(auth.currentUser);
     }
-    if (!gatePromise) {
-      gatePromise = new Promise(resolve => { gateResolve = resolve; });
-    }
+    if (!gatePromise) gatePromise = new Promise(resolve => { gateResolve = resolve; });
     show();
     return gatePromise;
   }
@@ -132,12 +137,12 @@ if (!window.FarmOwnerAuth) {
   }
 
   onAuthStateChanged(auth, async user => {
-    if (user?.isAnonymous) {
+    if (user && !isOwner(user)) {
       try { await signOut(auth); } catch {}
       show();
       return;
     }
-    if (nonAnonymous(user)) {
+    if (isOwner(user)) {
       lastUser = user;
       hide();
       gateResolve?.(user);
@@ -148,10 +153,12 @@ if (!window.FarmOwnerAuth) {
   });
 
   window.FarmOwnerAuth = {
-    version: 1,
+    version: 2,
+    ownerUid: () => OWNER_UID,
     requireSignIn,
     signOut: logout,
-    currentUser: () => lastUser || (nonAnonymous(auth.currentUser) ? auth.currentUser : null),
-    isSignedIn: () => nonAnonymous(auth.currentUser)
+    currentUser: () => lastUser || (isOwner(auth.currentUser) ? auth.currentUser : null),
+    isSignedIn: () => isOwner(auth.currentUser),
+    isOwner
   };
 }
