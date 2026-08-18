@@ -61,6 +61,23 @@
   async function disconnect(){await init();await api.authSdk.signOut(auth);user=null;window.dispatchEvent(new CustomEvent("public-customer-owner-auth-changed",{detail:status()}));return status();}
   async function publisherDb(){await init();return db;}
 
-  window.PublicCustomerOwnerAuth={version:2,init,status,currentOwner,signIn,disconnect,publisherDb,ownerUid:()=>OWNER_UID};
-  void init();
+  function startAfterFarmSync(){
+    let started=false;
+    const start=()=>{
+      if(started)return true;
+      if(!window.FarmSyncSafety?.isReady?.())return false;
+      started=true;
+      setTimeout(()=>void init(),800);
+      return true;
+    };
+    if(start())return;
+    window.addEventListener("farm-sync-ready",()=>{
+      if(started)return;
+      started=true;
+      setTimeout(()=>void init(),800);
+    },{once:true});
+  }
+
+  window.PublicCustomerOwnerAuth={version:3,init,status,currentOwner,signIn,disconnect,publisherDb,ownerUid:()=>OWNER_UID};
+  startAfterFarmSync();
 })();
