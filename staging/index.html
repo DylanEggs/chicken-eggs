@@ -48,7 +48,7 @@
         html=html.replace(`src="database.js?v=${build}"`,`src="staging/staging-database.js?v=${build}"`);
         html=html.replace(`src="app2.js?v=${build}"`,`src="staging/staging-app2.js?v=${build}"`);
         html=html.replace("<title>Chicken Eggs</title>","<title>Chicken Eggs — STAGING</title>");
-        html=html.replace("</body>",scriptTag(`staging/staging-banner.js?v=${build}`)+scriptTag(`staging/staging-full-test.js?v=${build}`)+scriptTag(`staging/staging-backup-test.js?v=${build}`)+"</body>");
+        html=html.replace("</body>",scriptTag(`staging/staging-manual-snapshots.js?v=${build}`)+scriptTag(`staging/staging-banner.js?v=${build}`)+scriptTag(`staging/staging-full-test.js?v=${build}`)+scriptTag(`staging/staging-backup-test.js?v=${build}`)+"</body>");
 
         if(html.includes(`type="module" src="firebase.js?v=${build}"`))throw new Error("Safety stop: live firebase.js remained in staging shell");
         if(html.includes(`src="database.js?v=${build}"`))throw new Error("Safety stop: live database.js remained in staging shell");
