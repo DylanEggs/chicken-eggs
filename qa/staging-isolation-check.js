@@ -36,6 +36,7 @@ check('Staging Firebase has no Firestore write API imports',!/(setDoc|addDoc|upd
 check('Staging Firebase does not expose live Firestore handle',firebase.includes('Deliberately DO NOT expose FirestoreDB/FirebaseUser')&&!firebase.includes('window.FirestoreDB =')&&!firebase.includes('window.FirebaseUser ='));
 check('Staging live snapshot is scoped, not whole collection',firebase.includes('where("type", "in", ["eggs", "sale"])')&&firebase.includes('where("type", "in", PHOTO_TYPES)')&&!firebase.includes('getDocs(collection(db, "entries"))'));
 check('Staging live seed is authoritative to local safety firewalls',firebase.includes('window.__farmApplyingRemote = true')&&firebase.includes('runBypass(doWrite)'));
+check('Staging refreshes in-memory core/App2 state after seed',firebase.includes('function refreshAppMemory()')&&firebase.includes('window.loadLocal?.()')&&firebase.includes('window.__reloadFarm2Memory?.()')&&firebase.includes('refreshAppMemory();'));
 check('Staging releases normal startup write lock after seed',firebase.includes('FarmBootstrapSafety?.unlock?.()')&&firebase.includes('unlockSandbox();'));
 check('Full staging runner snapshots and restores sandbox data',fullTest.includes('snap=snapshot()')&&fullTest.includes('restore(snap)'));
 check('Full staging runner exercises egg add/edit/delete',fullTest.includes('Egg collection creates one history entry')&&fullTest.includes('Editing collection applies only the +2 inventory delta')&&fullTest.includes('Deleting collection reverses its inventory effect'));
