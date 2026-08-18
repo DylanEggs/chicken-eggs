@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex,nofollow" />
+  <meta name="theme-color" content="#7f1d1d" />
+  <title>Chicken Eggs — STAGING</title>
+  <style>
+    body{margin:0;min-height:100vh;display:grid;place-items:center;background:#fff7ed;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#7f1d1d;padding:24px;box-sizing:border-box}
+    .boot{max-width:460px;text-align:center;background:#fff;padding:24px;border-radius:24px;box-shadow:0 15px 40px rgba(127,29,29,.15)}
+    .egg{font-size:54px}.boot b{display:block;font-size:20px;margin:10px 0 5px}.boot small{color:#92400e;font-weight:700}
+  </style>
+</head>
+<body>
+  <div class="boot" id="stageBoot"><div class="egg">🧪🐔</div><b>Loading TEST / STAGING Farm…</b><small>Live farm data will be read-only. Test changes stay isolated.</small></div>
+  <script>
+    (()=>{
+      "use strict";
+      const stamp=Date.now();
+      const root="../";
+      const replaceAsset=(html,file,oldQuery,build)=>html.split(`${file}?${oldQuery}`).join(`${file}?v=${build}`);
+
+      async function boot(){
+        const vr=await fetch(`${root}app-build.json?t=${stamp}`,{cache:"no-store"});
+        if(!vr.ok)throw new Error(`Build manifest HTTP ${vr.status}`);
+        const build=String((await vr.json()).build||stamp);
+        const sr=await fetch(`${root}app-shell-v1.html?stage=${encodeURIComponent(build)}&t=${stamp}`,{cache:"no-store"});
+        if(!sr.ok)throw new Error(`App shell HTTP ${sr.status}`);
+        let html=await sr.text();
+
+        html=html.replace("<head>",`<head><base href="../"><meta name="robots" content="noindex,nofollow"><script src="staging/staging-storage.js?v=${build}"><\\/script>`);
+        html=replaceAsset(html,"style.css","v=100",build);
+        html=replaceAsset(html,"app2.css","v=1",build);
+        html=replaceAsset(html,"script.js","v=221",build);
+        html=replaceAsset(html,"inventory.js","v=1",build);
+        html=replaceAsset(html,"inventory-ui.js","v=1",build);
+        html=replaceAsset(html,"extras-dashboard.js","v=1",build);
+        html=replaceAsset(html,"extras-fun.js","v=1",build);
+
+        html=html.replace(/<script type="module" src="firebase\.js[^\"]*"><\\/script>/,
+          `<script type="module" src="staging/staging-firebase.js?v=${build}"><\\/script>`);
+        html=html.replace(/<script src="database\.js[^\"]*"><\\/script>/,
+          `<script src="staging/staging-database.js?v=${build}"><\\/script>`);
+        html=html.replace(/<script src="app2\.js[^\"]*"><\\/script>/,
+          `<script src="staging/staging-app2.js?v=${build}"><\\/script>`);
+        html=html.replace("<title>Chicken Eggs</title>","<title>Chicken Eggs — STAGING</title>");
+        html=html.replace("</body>",`<script src="staging/staging-banner.js?v=${build}"><\\/script></body>`);
+
+        window.__ChickenEggsBuild=build;
+        window.__ChickenEggsEnvironment="staging";
+        document.open();
+        document.write(html);
+        document.close();
+      }
+      boot().catch(error=>{
+        console.error("STAGING boot failed:",error);
+        const el=document.getElementById("stageBoot");
+        if(el)el.innerHTML='<div class="egg">🛡️</div><b>Staging did not start</b><small>The live app and live farm data were not changed.</small>';
+      });
+    })();
+  </script>
+</body>
+</html>
