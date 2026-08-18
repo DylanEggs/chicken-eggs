@@ -15,7 +15,7 @@
     document.head.appendChild(style);
     const bar=document.createElement("div");
     bar.id="stagingSafetyBanner";
-    bar.innerHTML=`<div class="st-row">🧪 TEST / STAGING — LIVE FARM DATA IS READ-ONLY <button id="stagingResetLive">Reset Test Copy From Live</button><a href="../">Open LIVE App</a></div><small>Anything you add, edit, delete, pay, restore, or photograph here stays in the sandbox.</small>`;
+    bar.innerHTML=`<div class="st-row">🧪 TEST / STAGING — LIVE FARM DATA IS READ-ONLY <button id="stagingResetLive">Reset Test Copy From Live</button><a href="./">Open LIVE App</a></div><small>Anything you add, edit, delete, pay, restore, or photograph here stays in the sandbox.</small>`;
     document.body.prepend(bar);
 
     document.getElementById("stagingResetLive")?.addEventListener("click", async()=>{
