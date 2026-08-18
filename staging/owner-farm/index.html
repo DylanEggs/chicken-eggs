@@ -52,7 +52,7 @@
         html=html.replace(`src="database.js?v=${build}"`,`src="${stageAsset("staging/staging-database.js")}"`);
         html=html.replace(`src="app2.js?v=${build}"`,`src="${stageAsset("staging/staging-app2.js")}"`);
         html=html.replace("<title>Chicken Eggs</title>","<title>Chicken Eggs — OWNER STAGING</title>");
-        html=html.replace("</body>",scriptTag(stageAsset(`staging/staging-manual-snapshots.js`))+scriptTag(stageAsset(`staging/staging-banner.js`))+scriptTag(stageAsset(`staging/staging-full-test.js`))+scriptTag(stageAsset(`staging/staging-backup-test.js`))+"</body>");
+        html=html.replace("</body>",scriptTag(stageAsset(`staging/staging-manual-snapshots.js`))+scriptTag(stageAsset(`staging/staging-banner.js`))+scriptTag(stageAsset(`staging/staging-business-refresh-v1.js`))+scriptTag(stageAsset(`staging/staging-full-test.js`))+scriptTag(stageAsset(`staging/staging-full-test-v2.js`))+scriptTag(stageAsset(`staging/staging-backup-test.js`))+"</body>");
 
         if(html.includes(`type="module" src="firebase.js?v=${build}"`))throw new Error("Safety stop: live firebase.js remained in owner staging shell");
         if(html.includes(`src="database.js?v=${build}"`))throw new Error("Safety stop: live database.js remained in owner staging shell");
