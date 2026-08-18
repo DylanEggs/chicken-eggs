@@ -19,6 +19,7 @@
       "use strict";
       const stamp=Date.now();
       const root="../";
+      const scriptTag=(src,attrs="")=>"<scr"+"ipt "+attrs+"src=\""+src+"\"></scr"+"ipt>";
       const replaceAsset=(html,file,oldQuery,build)=>html.split(`${file}?${oldQuery}`).join(`${file}?v=${build}`);
 
       async function boot(){
@@ -29,7 +30,7 @@
         if(!sr.ok)throw new Error(`App shell HTTP ${sr.status}`);
         let html=await sr.text();
 
-        html=html.replace("<head>",`<head><base href="../"><meta name="robots" content="noindex,nofollow"><script src="staging/staging-storage.js?v=${build}"><\\/script>`);
+        html=html.replace("<head>","<head><base href=\"../\"><meta name=\"robots\" content=\"noindex,nofollow\">"+scriptTag(`staging/staging-storage.js?v=${build}`));
         html=replaceAsset(html,"style.css","v=100",build);
         html=replaceAsset(html,"app2.css","v=1",build);
         html=replaceAsset(html,"script.js","v=221",build);
@@ -37,15 +38,11 @@
         html=replaceAsset(html,"inventory-ui.js","v=1",build);
         html=replaceAsset(html,"extras-dashboard.js","v=1",build);
         html=replaceAsset(html,"extras-fun.js","v=1",build);
-
-        html=html.replace(/<script type="module" src="firebase\.js[^\"]*"><\\/script>/,
-          `<script type="module" src="staging/staging-firebase.js?v=${build}"><\\/script>`);
-        html=html.replace(/<script src="database\.js[^\"]*"><\\/script>/,
-          `<script src="staging/staging-database.js?v=${build}"><\\/script>`);
-        html=html.replace(/<script src="app2\.js[^\"]*"><\\/script>/,
-          `<script src="staging/staging-app2.js?v=${build}"><\\/script>`);
+        html=html.replace(`type="module" src="firebase.js?v=${build}"`,`type="module" src="staging/staging-firebase.js?v=${build}"`);
+        html=html.replace(`src="database.js?v=${build}"`,`src="staging/staging-database.js?v=${build}"`);
+        html=html.replace(`src="app2.js?v=${build}"`,`src="staging/staging-app2.js?v=${build}"`);
         html=html.replace("<title>Chicken Eggs</title>","<title>Chicken Eggs — STAGING</title>");
-        html=html.replace("</body>",`<script src="staging/staging-banner.js?v=${build}"><\\/script></body>`);
+        html=html.replace("</body>",scriptTag(`staging/staging-banner.js?v=${build}`)+"</body>");
 
         window.__ChickenEggsBuild=build;
         window.__ChickenEggsEnvironment="staging";
