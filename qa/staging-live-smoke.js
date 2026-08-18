@@ -14,20 +14,20 @@ async function fetchText(file){
 
 (async()=>{
   let live='';
-  for(let attempt=1;attempt<=48;attempt++){
+  for(let attempt=1;attempt<=72;attempt++){
     try{
       const raw=await fetchText('staging-build.json');
       live=JSON.parse(raw).build||'';
       if(live===expected)break;
-      console.log(`Waiting for staging deployment: live=${live||'unknown'} expected=${expected} attempt=${attempt}/48`);
+      console.log(`Waiting for staging deployment: live=${live||'unknown'} expected=${expected} attempt=${attempt}/72`);
     }catch(error){
-      console.log(`Waiting for staging deployment: ${error.message} attempt=${attempt}/48`);
+      console.log(`Waiting for staging deployment: ${error.message} attempt=${attempt}/72`);
     }
     await sleep(5000);
   }
   if(live!==expected)throw new Error(`Staging build ${expected} did not deploy; live=${live}`);
 
-  const assets=['index.html','staging-storage.js','staging-firebase.js','staging-owner-firebase.js','staging-database.js','staging-app2.js','staging-photo-service.js','staging-banner.js','staging-manual-snapshots.js','staging-diagnostics.js','staging-full-test.js','staging-backup-test.js','customer-public-data-v1.js','view/index.html','view/view.css','view/view.js','view/year-forecast-v1.js','owner-login/index.html','owner-login/owner-login.js','owner-farm/index.html'];
+  const assets=['index.html','staging-storage.js','staging-firebase.js','staging-owner-firebase.js','staging-database.js','staging-app2.js','staging-photo-service.js','staging-banner.js','staging-manual-snapshots.js','staging-diagnostics.js','staging-business-refresh-v1.js','staging-full-test.js','staging-full-test-v2.js','staging-backup-test.js','customer-public-data-v1.js','view/index.html','view/view.css','view/view.js','view/year-forecast-v1.js','owner-login/index.html','owner-login/owner-login.js','owner-farm/index.html'];
   const loaded={};
   for(const file of assets){
     loaded[file]=await fetchText(file);
@@ -39,7 +39,9 @@ async function fetchText(file){
   if(!loaded['index.html'].includes('staging/staging-firebase.js'))throw new Error('Staging shell does not swap Firebase entrypoint');
   if(!loaded['index.html'].includes('staging/staging-database.js'))throw new Error('Staging shell does not swap database adapter');
   if(!loaded['index.html'].includes('staging/staging-manual-snapshots.js'))throw new Error('Staging shell does not load manual baseline controls');
-  if(!loaded['index.html'].includes('staging/staging-full-test.js'))throw new Error('Staging shell does not load destructive sandbox test runner');
+  if(!loaded['index.html'].includes('staging/staging-business-refresh-v1.js'))throw new Error('Staging shell does not load safe business display bridge');
+  if(!loaded['index.html'].includes('staging/staging-full-test.js'))throw new Error('Staging shell does not load base destructive sandbox test runner');
+  if(!loaded['index.html'].includes('staging/staging-full-test-v2.js'))throw new Error('Staging shell does not load visible business regression suite');
   if(!loaded['index.html'].includes('staging/staging-backup-test.js'))throw new Error('Staging shell does not load backup/restore test runner');
   if(!loaded['index.html'].includes('Safety stop: live firebase.js remained in staging shell'))throw new Error('Staging runtime cloud safety stop missing');
   if(!loaded['staging-storage.js'].includes('__chicken_eggs_staging__::'))throw new Error('Staging storage namespace missing');
@@ -58,8 +60,14 @@ async function fetchText(file){
   if(!loaded['staging-manual-snapshots.js'].includes('refreshFromLiveAndSaveBaseline'))throw new Error('Manual snapshot live refresh helper missing');
   if(!loaded['staging-manual-snapshots.js'].includes('restoreBaseline'))throw new Error('Manual snapshot restore helper missing');
   if(/Firestore|firebasejs|setDoc|addDoc|updateDoc|deleteDoc/.test(loaded['staging-manual-snapshots.js']))throw new Error('Manual snapshot module unexpectedly reaches Firebase');
-  if(!loaded['staging-full-test.js'].includes('restore(snap)'))throw new Error('Full staging runner does not restore staging baseline');
-  if(!loaded['staging-full-test.js'].includes('Mark Paid does not change inventory'))throw new Error('Full staging runner is missing payment/inventory regression check');
+  if(!loaded['staging-business-refresh-v1.js'].includes('staging-business-display-refreshed'))throw new Error('Staging business display refresh event missing');
+  if(!loaded['staging-business-refresh-v1.js'].includes('setStat(home,"Egg Sales"'))throw new Error('Staging business bridge does not refresh visible Egg Sales');
+  if(!loaded['staging-business-refresh-v1.js'].includes('el.id!=="bizCalcResult"'))throw new Error('Staging business bridge does not target visible Net Profit/Loss separately from calculator result');
+  if(!loaded['staging-full-test.js'].includes('restore(snap)'))throw new Error('Base staging runner does not restore staging baseline');
+  if(!loaded['staging-full-test.js'].includes('Mark Paid does not change inventory'))throw new Error('Base staging runner is missing payment/inventory regression check');
+  if(!loaded['staging-full-test-v2.js'].includes('staging-full-v2-visible-business'))throw new Error('Visible business v2 suite marker missing');
+  if(!loaded['staging-full-test-v2.js'].includes('Home Net Profit/Loss visibly improves by exactly $5'))throw new Error('Visible Home profit/loss regression check missing');
+  if(!loaded['staging-full-test-v2.js'].includes('Sandbox test restores sale date form field'))throw new Error('Sandbox form restoration regression check missing');
   if(!loaded['staging-backup-test.js'].includes('chicken-eggs-full-backup-v8'))throw new Error('Backup test does not verify current backup format');
   if(!loaded['staging-backup-test.js'].includes('Restore routes exact inventory through InventorySystemV6'))throw new Error('Backup test does not verify inventory restore authority');
 
@@ -84,10 +92,11 @@ async function fetchText(file){
   const ownerFirebase=loaded['staging-owner-firebase.js'];
   if(!loaded['owner-farm/index.html'].includes('OWNER LOGIN Test Farm'))throw new Error('Owner-gated staging farm identity missing');
   if(!loaded['owner-farm/index.html'].includes('staging/staging-owner-firebase.js'))throw new Error('Owner-gated staging farm does not swap to owner Firebase adapter');
+  if(!loaded['owner-farm/index.html'].includes('staging/staging-business-refresh-v1.js')||!loaded['owner-farm/index.html'].includes('staging/staging-full-test-v2.js'))throw new Error('Owner-gated staging does not load visible business regression layer');
   if(!ownerFirebase.includes('FarmOwnerAuth')||!ownerFirebase.includes('requireSignIn'))throw new Error('Owner-gated staging Firebase does not require owner login');
   if(!ownerFirebase.includes('aLvjMpXgMJf5W3YUjQM6wqKagLo2'))throw new Error('Owner-gated staging Firebase does not verify exact owner UID');
   if(/\b(setDoc|addDoc|updateDoc|deleteDoc|runTransaction|writeBatch|onSnapshot)\b/.test(ownerFirebase))throw new Error('Owner-gated staging Firebase unexpectedly contains Firestore write/listener APIs');
   if(ownerFirebase.includes('window.FirestoreDB =')||ownerFirebase.includes('window.FirebaseUser ='))throw new Error('Owner-gated staging exposes live Firestore handles');
 
-  console.log(`PASS Staging live smoke — ${expected}, ${assets.length} isolated assets verified including customer preview, manual bash/restore controls, yearly forecast, and owner-gated test farm`);
+  console.log(`PASS Staging live smoke — ${expected}, ${assets.length} isolated assets verified including visible profit regression, customer preview, manual bash/restore controls, yearly forecast, and owner-gated test farm`);
 })().catch(error=>{console.error('STAGING LIVE SMOKE FAILED:',error);process.exit(1);});
