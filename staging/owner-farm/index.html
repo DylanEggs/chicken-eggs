@@ -23,14 +23,20 @@
       const replaceAsset=(html,file,oldQuery,build)=>html.split(`${file}?${oldQuery}`).join(`${file}?v=${build}`);
 
       async function boot(){
-        const vr=await fetch(`${root}app-build.json?t=${stamp}`,{cache:"no-store"});
+        const [vr,sbr]=await Promise.all([
+          fetch(`${root}app-build.json?t=${stamp}`,{cache:"no-store"}),
+          fetch(`${root}staging/staging-build.json?t=${stamp}`,{cache:"no-store"})
+        ]);
         if(!vr.ok)throw new Error(`Build manifest HTTP ${vr.status}`);
+        if(!sbr.ok)throw new Error(`Staging build manifest HTTP ${sbr.status}`);
         const build=String((await vr.json()).build||stamp);
-        const sr=await fetch(`${root}app-shell-v1.html?ownerstage=${encodeURIComponent(build)}&t=${stamp}`,{cache:"no-store"});
+        const stageBuild=String((await sbr.json()).build||stamp);
+        const stageAsset=path=>`${path}?stage=${encodeURIComponent(stageBuild)}&app=${encodeURIComponent(build)}`;
+        const sr=await fetch(`${root}app-shell-v1.html?ownerstage=${encodeURIComponent(stageBuild)}&app=${encodeURIComponent(build)}&t=${stamp}`,{cache:"no-store"});
         if(!sr.ok)throw new Error(`App shell HTTP ${sr.status}`);
         let html=await sr.text();
 
-        html=html.replace("<head>","<head><base href=\"../../\"><meta name=\"robots\" content=\"noindex,nofollow\">"+scriptTag(`staging/staging-storage.js?v=${build}`));
+        html=html.replace("<head>","<head><base href=\"../../\"><meta name=\"robots\" content=\"noindex,nofollow\">"+scriptTag(stageAsset(`staging/staging-storage.js`)));
         html=replaceAsset(html,"style.css","v=100",build);
         html=replaceAsset(html,"app2.css","v=1",build);
         html=replaceAsset(html,"firebase.js","v=6",build);
@@ -42,17 +48,18 @@
         html=replaceAsset(html,"extras-dashboard.js","v=1",build);
         html=replaceAsset(html,"extras-fun.js","v=1",build);
 
-        html=html.replace(`type="module" src="firebase.js?v=${build}"`,`type="module" src="staging/staging-owner-firebase.js?v=${build}"`);
-        html=html.replace(`src="database.js?v=${build}"`,`src="staging/staging-database.js?v=${build}"`);
-        html=html.replace(`src="app2.js?v=${build}"`,`src="staging/staging-app2.js?v=${build}"`);
+        html=html.replace(`type="module" src="firebase.js?v=${build}"`,`type="module" src="${stageAsset("staging/staging-owner-firebase.js")}"`);
+        html=html.replace(`src="database.js?v=${build}"`,`src="${stageAsset("staging/staging-database.js")}"`);
+        html=html.replace(`src="app2.js?v=${build}"`,`src="${stageAsset("staging/staging-app2.js")}"`);
         html=html.replace("<title>Chicken Eggs</title>","<title>Chicken Eggs — OWNER STAGING</title>");
-        html=html.replace("</body>",scriptTag(`staging/staging-manual-snapshots.js?v=${build}`)+scriptTag(`staging/staging-banner.js?v=${build}`)+scriptTag(`staging/staging-full-test.js?v=${build}`)+scriptTag(`staging/staging-backup-test.js?v=${build}`)+"</body>");
+        html=html.replace("</body>",scriptTag(stageAsset(`staging/staging-manual-snapshots.js`))+scriptTag(stageAsset(`staging/staging-banner.js`))+scriptTag(stageAsset(`staging/staging-full-test.js`))+scriptTag(stageAsset(`staging/staging-backup-test.js`))+"</body>");
 
         if(html.includes(`type="module" src="firebase.js?v=${build}"`))throw new Error("Safety stop: live firebase.js remained in owner staging shell");
         if(html.includes(`src="database.js?v=${build}"`))throw new Error("Safety stop: live database.js remained in owner staging shell");
         if(html.includes(`src="app2.js?v=${build}"`))throw new Error("Safety stop: live app2.js remained in owner staging shell");
 
         window.__ChickenEggsBuild=build;
+        window.__ChickenEggsStagingBuild=stageBuild;
         window.__ChickenEggsEnvironment="staging";
         window.__ChickenEggsStagingOwnerMode=true;
         document.open();
