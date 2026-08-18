@@ -98,12 +98,11 @@
   function schedule(reason="event",delay=700){clearTimeout(timer);timer=setTimeout(()=>void publishNow(reason),delay);}
   function install(){
     const events=["farm-sync-ready","core-data-synced","farm-data-synced","farm-local-data-changed","bird-photos-changed","weather-intelligence-updated","inventory-authority-changed"];
-    for(const name of events)window.addEventListener(name,()=>schedule(name));
-    window.addEventListener("public-customer-owner-auth-changed",e=>{if(e.detail?.connected)schedule("owner-auth-connected",50);});
-    window.addEventListener("online",()=>schedule("online",1000));
-    setTimeout(()=>schedule("startup",0),2200);
+    for(const name of events)window.addEventListener(name,()=>schedule(name,name==="farm-sync-ready"?1400:700));
+    window.addEventListener("public-customer-owner-auth-changed",e=>{if(e.detail?.connected)schedule("owner-auth-connected",150);});
+    window.addEventListener("online",()=>schedule("online",1200));
   }
 
-  window.FarmPublicCustomerPublisherV1={version:3,publishNow,schedule,buildPreview:build,last:()=>lastResult,ownerUid:()=>OWNER_UID};
+  window.FarmPublicCustomerPublisherV1={version:4,publishNow,schedule,buildPreview:build,last:()=>lastResult,ownerUid:()=>OWNER_UID};
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",install,{once:true});else install();
 })();
