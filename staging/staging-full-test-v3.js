@@ -6,12 +6,12 @@
 
   const ENTRIES="chickenEggEntriesV102";
   const APP2="chickenEggApp2V1";
-  const BUSINESS="chickenEggBusinessV1";
   const sleep=ms=>new Promise(r=>setTimeout(r,ms));
   const n=v=>Number(v)||0;
   const read=(key,fallback)=>{try{return JSON.parse(localStorage.getItem(key)||JSON.stringify(fallback));}catch{return fallback;}};
   const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;};
   const total=s=>n(s?.dozens)*12+n(s?.packs18)*18+n(s?.loose);
+  const shape=s=>({dozens:n(s?.dozens),packs18:n(s?.packs18),loose:n(s?.loose)});
   const inv=()=>window.InventorySystemV6?.state?.()||{};
   const eggRevenue=e=>n(e?.dozenSold)*n(e?.dozenPrice)+n(e?.packSold??e?.packs18Sold)*n(e?.packPrice??e?.packs18Price);
   const monthRevenue=()=>read(ENTRIES,[]).filter(e=>e?.type==="sale"&&String(e.date||"").startsWith(today().slice(0,7))).reduce((s,e)=>s+eggRevenue(e),0);
@@ -34,43 +34,43 @@
       setEmptyOrders();
 
       await window.InventorySystemV6?.commitExact?.(2,1,5);await sleep(80);
-      const base=inv();check(results,"V3 exact mixed inventory starts at 47 eggs",n(base.dozens)===2&&n(base.packs18)===1&&n(base.loose)===5&&total(base)===47,JSON.stringify(base));
+      const base=inv();check(results,"V3 exact mixed inventory starts at 47 eggs",n(base.dozens)===2&&n(base.packs18)===1&&n(base.loose)===5&&total(base)===47,JSON.stringify(shape(base)));
       const e1=await saveEgg(3),e2=await saveEgg(4);await sleep(120);
       let s=inv();check(results,"Two same-day collections create two history rows",!!e1&&!!e2&&String(e1.id)!==String(e2.id));
-      check(results,"Two same-day collections add exactly 7 loose eggs",n(s.dozens)===2&&n(s.packs18)===1&&n(s.loose)===12,JSON.stringify(s));
-      if(e2){window.editEntry?.(e2.id);set("eggCount",6);window.saveEggs?.();await sleep(180);s=inv();check(results,"Editing second collection from 4 to 6 adds only 2 eggs",n(s.loose)===14,JSON.stringify(s));}
-      if(e1){window.deleteEntry?.(e1.id);await sleep(180);s=inv();check(results,"Deleting first collection reverses only its 3 eggs",n(s.loose)===11,JSON.stringify(s));}
-      if(e2){window.deleteEntry?.(e2.id);await sleep(180);s=inv();check(results,"Deleting edited second collection restores original 47-egg inventory",n(s.dozens)===2&&n(s.packs18)===1&&n(s.loose)===5&&total(s)===47,JSON.stringify(s));}
+      check(results,"Two same-day collections add exactly 7 loose eggs",n(s.dozens)===2&&n(s.packs18)===1&&n(s.loose)===12,JSON.stringify(shape(s)));
+      if(e2){window.editEntry?.(e2.id);set("eggCount",6);window.saveEggs?.();await sleep(180);s=inv();check(results,"Editing second collection from 4 to 6 adds only 2 eggs",n(s.loose)===14,JSON.stringify(shape(s)));}
+      if(e1){window.deleteEntry?.(e1.id);await sleep(180);s=inv();check(results,"Deleting first collection reverses only its 3 eggs",n(s.loose)===11,JSON.stringify(shape(s)));}
+      if(e2){window.deleteEntry?.(e2.id);await sleep(180);s=inv();check(results,"Deleting edited second collection restores original 47-egg inventory",n(s.dozens)===2&&n(s.packs18)===1&&n(s.loose)===5&&total(s)===47,JSON.stringify(shape(s)));}
 
       setEmptyOrders();await window.InventorySystemV6?.commitExact?.(1,0,0);await sleep(80);
       const revBeforeExact=monthRevenue();const exactSale=await saveSale(1,0,5,8,"V3 exact stock sale");s=inv();
-      check(results,"Sale equal to all available stock succeeds",!!exactSale.sale&&total(s)===0,JSON.stringify({sale:exactSale.sale,inventory:s}));
+      check(results,"Sale equal to all available stock succeeds",!!exactSale.sale&&total(s)===0,JSON.stringify({sale:exactSale.sale,inventory:shape(s)}));
       check(results,"Exact-stock sale adds revenue once",Math.abs(monthRevenue()-(revBeforeExact+5))<0.005,`${revBeforeExact} -> ${monthRevenue()}`);
       alerts=[];const zeroBefore=read(ENTRIES,[]).length;await saveSale(1,0,5,8,"V3 zero stock oversell");s=inv();
-      check(results,"Another sale at zero stock is blocked",read(ENTRIES,[]).length===zeroBefore&&total(s)===0,JSON.stringify(s));
+      check(results,"Another sale at zero stock is blocked",read(ENTRIES,[]).length===zeroBefore&&total(s)===0,JSON.stringify(shape(s)));
       check(results,"Zero-stock block explains insufficient availability",alerts.some(x=>/sale blocked/i.test(x)&&/available/i.test(x)),alerts.join(" | "));
-      if(exactSale.sale){window.deleteEntry?.(exactSale.sale.id);await sleep(180);s=inv();check(results,"Deleting exact-stock sale restores its dozen",n(s.dozens)===1&&total(s)===12,JSON.stringify(s));}
+      if(exactSale.sale){window.deleteEntry?.(exactSale.sale.id);await sleep(180);s=inv();check(results,"Deleting exact-stock sale restores its dozen",n(s.dozens)===1&&total(s)===12,JSON.stringify(shape(s)));}
 
-      await window.InventorySystemV6?.commitExact?.(2,2,10);await sleep(80);const mixedStart=JSON.stringify(inv());const mixed=await saveSale(1,1,5,8,"V3 mixed sale");s=inv();
-      check(results,"Mixed dozen + 18-pack sale removes one of each",!!mixed.sale&&n(s.dozens)===1&&n(s.packs18)===1&&n(s.loose)===10,JSON.stringify(s));
+      await window.InventorySystemV6?.commitExact?.(2,2,10);await sleep(80);const mixedStart=shape(inv());const mixed=await saveSale(1,1,5,8,"V3 mixed sale");s=inv();
+      check(results,"Mixed dozen + 18-pack sale removes one of each",!!mixed.sale&&n(s.dozens)===1&&n(s.packs18)===1&&n(s.loose)===10,JSON.stringify(shape(s)));
       if(mixed.sale){
         window.editEntry?.(mixed.sale.id);await sleep(30);set("dozenSold",0);set("packSold",2);set("dozenPrice",5);set("packPrice",8);window.saveSale?.();await sleep(230);s=inv();
         const edited=read(ENTRIES,[]).find(x=>String(x.id)===String(mixed.sale.id));
         check(results,"Editing mixed sale changes existing history instead of duplicating",!!edited&&n(edited.dozenSold)===0&&n(edited.packSold)===2&&read(ENTRIES,[]).filter(x=>String(x.id)===String(mixed.sale.id)).length===1,JSON.stringify(edited||{}));
-        check(results,"Editing sale restores old packages before subtracting new packages",n(s.dozens)===2&&n(s.packs18)===0&&n(s.loose)===10,JSON.stringify(s));
-        window.deleteEntry?.(mixed.sale.id);await sleep(220);s=inv();check(results,"Deleting edited sale restores exact pre-sale mixed inventory",JSON.stringify(s)===mixedStart,JSON.stringify({expected:mixedStart,actual:s}));
+        check(results,"Editing sale restores old packages before subtracting new packages",n(s.dozens)===2&&n(s.packs18)===0&&n(s.loose)===10,JSON.stringify(shape(s)));
+        window.deleteEntry?.(mixed.sale.id);await sleep(220);s=inv();check(results,"Deleting edited sale restores exact pre-sale mixed inventory",JSON.stringify(shape(s))===JSON.stringify(mixedStart),JSON.stringify({expected:mixedStart,actual:shape(s)}));
       }
 
       setEmptyOrders();await window.InventorySystemV6?.commitExact?.(2,0,0);await sleep(80);let app=read(APP2,{});app.orders=[{id:"v3-reservation",status:"pending",dozen:1,packs18:0,date:today()}];localStorage.setItem(APP2,JSON.stringify(app));window.__reloadFarm2Memory?.();window.dispatchEvent(new CustomEvent("farm-local-data-changed",{detail:{key:APP2,staging:true,v3:true}}));await sleep(80);
-      check(results,"Pending order reserves 12 without changing physical inventory",total(inv())===24&&n(window.InventorySystemV6?.reservations?.())===12&&n(window.InventorySystemV6?.available?.())===12,JSON.stringify({inventory:inv(),reserved:window.InventorySystemV6?.reservations?.(),available:window.InventorySystemV6?.available?.()}));
+      check(results,"Pending order reserves 12 without changing physical inventory",total(inv())===24&&n(window.InventorySystemV6?.reservations?.())===12&&n(window.InventorySystemV6?.available?.())===12,JSON.stringify({inventory:shape(inv()),reserved:window.InventorySystemV6?.reservations?.(),available:window.InventorySystemV6?.available?.()}));
       alerts=[];const reservedBefore=read(ENTRIES,[]).length;await saveSale(2,0,5,8,"V3 reserved oversell");check(results,"Sale cannot consume eggs reserved for pending order",read(ENTRIES,[]).length===reservedBefore&&total(inv())===24&&n(window.InventorySystemV6?.available?.())===12);
-      const allowed=await saveSale(1,0,5,8,"V3 available around reservation");check(results,"Sale can use only the unreserved dozen",!!allowed.sale&&total(inv())===12&&n(window.InventorySystemV6?.available?.())===0,JSON.stringify(inv()));
+      const allowed=await saveSale(1,0,5,8,"V3 available around reservation");check(results,"Sale can use only the unreserved dozen",!!allowed.sale&&total(inv())===12&&n(window.InventorySystemV6?.available?.())===0,JSON.stringify(shape(inv())));
       if(allowed.sale){window.deleteEntry?.(allowed.sale.id);await sleep(180);check(results,"Deleting reservation-safe sale restores available dozen",total(inv())===24&&n(window.InventorySystemV6?.available?.())===12);}
       app=read(APP2,{});app.orders=[];localStorage.setItem(APP2,JSON.stringify(app));window.__reloadFarm2Memory?.();window.dispatchEvent(new CustomEvent("farm-local-data-changed",{detail:{key:APP2,staging:true,v3:true}}));await sleep(80);check(results,"Removing pending order releases all 24 eggs for sale",n(window.InventorySystemV6?.available?.())===24);
 
       await window.InventorySystemV6?.commitExact?.(3,0,0);await sleep(70);
       for(const [label,dz,pk] of [["negative dozen",-1,0],["decimal dozen",1.5,0],["negative 18-pack",0,-1],["decimal 18-pack",0,1.25]]){
-        alerts=[];const beforeRows=read(ENTRIES,[]).length,beforeInv=JSON.stringify(inv());await saveSale(dz,pk,5,8,`V3 invalid ${label}`);check(results,`Invalid ${label} sale is rejected`,read(ENTRIES,[]).length===beforeRows&&JSON.stringify(inv())===beforeInv,alerts.join(" | "));
+        alerts=[];const beforeRows=read(ENTRIES,[]).length,beforeInv=JSON.stringify(shape(inv()));await saveSale(dz,pk,5,8,`V3 invalid ${label}`);check(results,`Invalid ${label} sale is rejected`,read(ENTRIES,[]).length===beforeRows&&JSON.stringify(shape(inv()))===beforeInv,alerts.join(" | "));
       }
 
       if(window.FarmPublicCustomerBuilderV2?.build){
