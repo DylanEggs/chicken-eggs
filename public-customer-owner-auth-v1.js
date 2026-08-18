@@ -61,23 +61,8 @@
   async function disconnect(){await init();await api.authSdk.signOut(auth);user=null;window.dispatchEvent(new CustomEvent("public-customer-owner-auth-changed",{detail:status()}));return status();}
   async function publisherDb(){await init();return db;}
 
-  function startAfterFarmSync(){
-    let started=false;
-    const start=()=>{
-      if(started)return true;
-      if(!window.FarmSyncSafety?.isReady?.())return false;
-      started=true;
-      setTimeout(()=>void init(),800);
-      return true;
-    };
-    if(start())return;
-    window.addEventListener("farm-sync-ready",()=>{
-      if(started)return;
-      started=true;
-      setTimeout(()=>void init(),800);
-    },{once:true});
-  }
-
-  window.PublicCustomerOwnerAuth={version:3,init,status,currentOwner,signIn,disconnect,publisherDb,ownerUid:()=>OWNER_UID};
-  startAfterFarmSync();
+  // Deliberately no automatic init here. The second Firebase app stays completely
+  // dormant during owner-app startup. It wakes only for a real post-bootstrap
+  // public publish or when the Customer Page Sync card is actually opened/used.
+  window.PublicCustomerOwnerAuth={version:4,init,status,currentOwner,signIn,disconnect,publisherDb,ownerUid:()=>OWNER_UID};
 })();
