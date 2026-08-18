@@ -27,7 +27,7 @@ async function fetchText(file){
   }
   if(live!==expected)throw new Error(`Staging build ${expected} did not deploy; live=${live}`);
 
-  const assets=['index.html','staging-storage.js','staging-firebase.js','staging-database.js','staging-app2.js','staging-photo-service.js','staging-banner.js','staging-diagnostics.js','staging-full-test.js','staging-backup-test.js','customer-public-data-v1.js','view/index.html','view/view.css','view/view.js','view/year-forecast-v1.js'];
+  const assets=['index.html','staging-storage.js','staging-firebase.js','staging-database.js','staging-app2.js','staging-photo-service.js','staging-banner.js','staging-diagnostics.js','staging-full-test.js','staging-backup-test.js','customer-public-data-v1.js','view/index.html','view/view.css','view/view.js','view/year-forecast-v1.js','owner-login/index.html','owner-login/owner-login.js'];
   const loaded={};
   for(const file of assets){
     loaded[file]=await fetchText(file);
@@ -49,6 +49,7 @@ async function fetchText(file){
   if(loaded['staging-photo-service.js'].includes('firebasejs')||loaded['staging-photo-service.js'].includes('FirestoreDB'))throw new Error('Staging photo service can reach Firebase');
   if(!loaded['staging-banner.js'].includes('LIVE FARM DATA IS READ-ONLY'))throw new Error('Staging safety banner missing');
   if(!loaded['staging-banner.js'].includes('staging/view/'))throw new Error('Staging customer preview link missing');
+  if(!loaded['staging-banner.js'].includes('staging/owner-login/'))throw new Error('Staging owner-login verification link missing');
   if(!loaded['staging-full-test.js'].includes('restore(snap)'))throw new Error('Full staging runner does not restore staging baseline');
   if(!loaded['staging-full-test.js'].includes('Mark Paid does not change inventory'))throw new Error('Full staging runner is missing payment/inventory regression check');
   if(!loaded['staging-backup-test.js'].includes('chicken-eggs-full-backup-v8'))throw new Error('Backup test does not verify current backup format');
@@ -64,5 +65,13 @@ async function fetchText(file){
   if(!loaded['view/index.html'].includes('Browse the flock')||!loaded['view/index.html'].includes('Chicken of the Day'))throw new Error('Customer preview core viewing features missing');
   if(!loaded['view/year-forecast-v1.js'].includes('predicted this year'))throw new Error('Customer yearly forecast UI missing');
 
-  console.log(`PASS Staging live smoke — ${expected}, ${assets.length} isolated assets verified including customer preview and yearly forecast`);
+  const ownerLogin=loaded['owner-login/owner-login.js'];
+  if(!loaded['owner-login/index.html'].includes('Test Owner Login'))throw new Error('Owner login verification page identity missing');
+  if(!ownerLogin.includes('signInWithEmailAndPassword'))throw new Error('Owner verification does not use email/password auth');
+  if(!ownerLogin.includes('aLvjMpXgMJf5W3YUjQM6wqKagLo2'))throw new Error('Owner verification does not check exact owner UID');
+  if(!ownerLogin.includes('getDoc')||!ownerLogin.includes('farm", "settings'))throw new Error('Owner verification read-only settings check missing');
+  if(/\b(setDoc|addDoc|updateDoc|deleteDoc|runTransaction|writeBatch)\b/.test(ownerLogin))throw new Error('Owner login verification unexpectedly contains Firestore write APIs');
+  if(/localStorage\.(setItem|removeItem|clear)/.test(ownerLogin))throw new Error('Owner login verification stores credentials or state in localStorage');
+
+  console.log(`PASS Staging live smoke — ${expected}, ${assets.length} isolated assets verified including customer preview, yearly forecast, and read-only owner login verifier`);
 })().catch(error=>{console.error('STAGING LIVE SMOKE FAILED:',error);process.exit(1);});
