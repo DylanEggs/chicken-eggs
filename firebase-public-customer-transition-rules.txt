@@ -1,0 +1,37 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner() {
+      return signedIn()
+        && request.auth.uid == "aLvjMpXgMJf5W3YUjQM6wqKagLo2";
+    }
+
+    // CUSTOMER-FACING SNAPSHOT
+    // Anyone may read these two sanitized collections. Only Dylan's exact
+    // owner account may publish/update them.
+    match /public_customer/{document=**} {
+      allow read: if true;
+      allow write: if isOwner();
+    }
+
+    match /public_flock/{document=**} {
+      allow read: if true;
+      allow write: if isOwner();
+    }
+
+    // TRANSITIONAL PRIVATE FARM ACCESS
+    // Preserve the working app's current authenticated/anonymous Firebase
+    // behavior while explicitly excluding the two public snapshot collections
+    // from this broader rule. This prevents an anonymous farm session from
+    // writing customer-facing documents.
+    match /{topLevel}/{document=**} {
+      allow read, write: if signedIn()
+        && topLevel != "public_customer"
+        && topLevel != "public_flock";
+    }
+  }
+}
