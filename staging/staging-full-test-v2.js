@@ -146,6 +146,7 @@
       const details=document.querySelector("#bizHome details");
       if(details)details.open=true;
       const calcValues={bizCalcEgg:"111.11",bizCalcChicken:"22.22",bizCalcFeed:"33.33",bizCalcSupplies:"44.44"};
+      const calcExpected=55.56;
       for(const [id,value] of Object.entries(calcValues)){
         const el=element(id);
         if(el){
@@ -153,6 +154,8 @@
           el.dispatchEvent(new Event("input",{bubbles:true}));
         }
       }
+      await sleep(30);
+      check(results,"Profit/Loss Calculator computes typed values correctly",near(parseMoney(element("bizCalcResult")?.textContent),calcExpected),element("bizCalcResult")?.textContent||"");
 
       await window.InventorySystemV6?.commitExact?.(5,3,20);
       await sleep(100);
@@ -169,6 +172,7 @@
       const afterInv=window.InventorySystemV6?.state?.();
       await waitFor(()=>{window.StagingBusinessDisplay?.refresh?.();const u=homeBusiness();return !!u&&near(u.egg,before.egg+5)&&near(u.net,before.net+5);},3500);
       const afterUi=homeBusiness();
+      const currentDetails=document.querySelector("#bizHome details");
 
       check(results,"Current-month $5 egg sale is actually saved",!!sale&&String(sale.date)===today()&&near(eggRevenue(sale),5),JSON.stringify(sale||{}));
       check(results,"$5 egg sale reduces physical inventory by 12 eggs",n(beforeInv?.dozens)===5&&n(afterInv?.dozens)===4&&n(afterInv?.packs18)===3&&n(afterInv?.loose)===20,JSON.stringify({before:beforeInv,after:afterInv}));
@@ -176,8 +180,10 @@
       check(results,"$5 egg sale improves current-month profit/loss by exactly $5",near(after.net,before.net+5),`${before.net} -> ${after.net}`);
       check(results,"Home Egg Sales visibly increases by exactly $5",!!afterUi&&near(afterUi.egg,beforeUi.egg+5),`${beforeUi?.egg} -> ${afterUi?.egg}`);
       check(results,"Home Net Profit/Loss visibly improves by exactly $5",!!afterUi&&near(afterUi.net,beforeUi.net+5),`${beforeUi?.net} -> ${afterUi?.net}`);
-      check(results,"Open Profit/Loss Calculator does not freeze business totals",!!details?.open&&!!afterUi&&near(afterUi.net,before.net+5));
+      check(results,"Open Profit/Loss Calculator does not freeze business totals",!!currentDetails?.open&&!!afterUi&&near(afterUi.net,before.net+5));
+      check(results,"Open Profit/Loss Calculator stays open through business refresh",!!currentDetails?.open);
       check(results,"Business refresh preserves calculator inputs",Object.entries(calcValues).every(([id,value])=>!element(id)||element(id).value===value),JSON.stringify(Object.fromEntries(Object.keys(calcValues).map(id=>[id,element(id)?.value]))));
+      check(results,"Business refresh preserves calculator result",near(parseMoney(element("bizCalcResult")?.textContent),calcExpected),element("bizCalcResult")?.textContent||"");
 
       if(sale){
         window.deleteEntry?.(sale.id);
@@ -209,7 +215,7 @@
     if(!out)return;
     if(!report){out.innerHTML="No full sandbox test has run yet.";return;}
     const failures=(report.results||[]).filter(x=>!x.pass);
-    out.innerHTML=`<div style="font-weight:950;margin:8px 0">${report.failed===0?"✅":"❌"} ${report.passed}/${report.total} checks passed</div>${failures.length?failures.map(x=>`<div style="margin:5px 0">❌ ${String(x.name)}${x.detail?` — ${String(x.detail).slice(0,220)}`:""}</div>`).join(""):`<div>All destructive staging checks, visible business calculations, and UI restoration checks passed. The staging baseline was restored.</div>`}`;
+    out.innerHTML=`<div style="font-weight:950;margin:8px 0">${report.failed===0?"✅":"❌"} ${report.passed}/${report.total} checks passed</div>${failures.length?failures.map(x=>`<div style="margin:5px 0">❌ ${String(x.name)}${x.detail?` — ${String(x.detail).slice(0,220)}`:""}</div>`).join(""):`<div>All destructive staging checks, visible business calculations, calculator math/state, and UI restoration checks passed. The staging baseline was restored.</div>`}`;
   }
 
   async function install(){
@@ -262,7 +268,7 @@
     },true);
 
     renderReport(window.StagingFullTest.last());
-    console.log("🧪 STAGING Full Test v2 active — visible revenue/profit and form-restoration regression checks added");
+    console.log("🧪 STAGING Full Test v2 active — visible revenue/profit, calculator, and form-restoration regression checks added");
   }
 
   install();
