@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#1f7a3a" />
+  <title>Rose Family Poultry — Egg Stats</title>
+  <link rel="stylesheet" href="view.css" />
+</head>
+<body>
+  <main class="customer-app" id="customerStatsApp">
+    <header class="site-header"><div class="brand-mark" aria-hidden="true">🥚</div><div class="brand-copy"><div class="eyebrow">Fresh from the flock</div><h1 id="statsFarmName">Rose Family Poultry</h1><p id="statsFarmLocation">High Point, NC</p></div><div class="live-pill"><i></i> Live egg stats</div></header>
+    <nav class="customer-tabs" aria-label="Customer farm pages"><a href="./">🏡 Farm View</a><a class="active" href="stats.html">📊 Egg Stats</a></nav>
+    <div class="public-status" id="statsStatus">Connecting to the flock…</div>
+    <section class="stats-hero"><div class="section-kicker">📊 Flock numbers</div><h2>Egg production, without the boring part</h2><p>Daily, weekly and monthly laying trends from the Rose Family Poultry flock. No private business information is part of this page.</p></section>
+    <section class="section-block"><div class="section-heading"><div><div class="section-kicker">🏆 Flock records</div><h2>Production highlights</h2></div></div><div class="public-stat-grid" id="recordGrid"></div></section>
+    <section class="public-chart"><h3>🥚 Daily eggs — last 30 days</h3><div class="chart-wrap"><canvas id="dailyPublicChart"></canvas></div></section>
+    <section class="public-chart"><h3>📅 Weekly egg totals — last 8 weeks</h3><div class="chart-wrap"><canvas id="weeklyPublicChart"></canvas></div></section>
+    <section class="public-chart"><h3>🗓️ Monthly egg totals — last 12 months</h3><div class="chart-wrap"><canvas id="monthlyPublicChart"></canvas></div></section>
+    <section class="section-block"><div class="section-heading"><div><div class="section-kicker">🌦️ Weather + laying</div><h2>What weather seems to do to this flock</h2></div><span class="mini-chip" id="weatherSamples">Learning</span></div><div class="weather-factor-grid" id="weatherFactorGrid"></div><div class="trend-card" id="productionTrend"></div><p class="privacy-note">These percentages are observational patterns in this farm’s own matched weather and egg logs. Daylight, age, molt, nutrition and flock changes can also affect laying.</p></section>
+    <footer class="site-footer"><div class="footer-chicken">🐔</div><strong id="statsFooterFarm">Rose Family Poultry</strong><span>Real flock data. Just the fun farm side.</span><small>This view intentionally contains no customer history, sales prices, expenses, revenue, profit or loss information.</small></footer>
+  </main>
+  <div class="missing-data" id="statsMissing" hidden><div class="missing-card"><div class="missing-icon">🐔</div><h2>The live stats are coming online</h2><p>Rose Family Poultry is finishing the public stats connection. Private farm data is not available from this page.</p></div></div>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script type="module" src="stats.js"></script>
+</body>
+</html>
