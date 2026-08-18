@@ -44,5 +44,8 @@ jobs:
       - name: Verify live GitHub Pages deployment
         run: node qa/live-pages-smoke.js
 
+      - name: Verify staging GitHub Pages deployment
+        run: node qa/staging-live-smoke.js
+
       - name: Run Who Owes regression test
         run: node qa/who-owes-check.js
