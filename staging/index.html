@@ -51,12 +51,14 @@
         html=html.replace(`type="module" src="firebase.js?v=${build}"`,`type="module" src="${stageAsset("staging/staging-firebase.js")}"`);
         html=html.replace(`src="database.js?v=${build}"`,`src="${stageAsset("staging/staging-database.js")}"`);
         html=html.replace(`src="app2.js?v=${build}"`,`src="${stageAsset("staging/staging-app2.js")}"`);
+        html=html.replace(`src="extras-fun.js?v=${build}"`,`src="${stageAsset("staging/staging-extras-fun.js")}"`);
         html=html.replace("<title>Chicken Eggs</title>","<title>Chicken Eggs — STAGING</title>");
         html=html.replace("</body>",scriptTag(stageAsset(`customer-public-builder-v1.js`))+scriptTag(stageAsset(`customer-public-builder-v2.js`))+scriptTag(stageAsset(`staging/staging-manual-snapshots.js`))+scriptTag(stageAsset(`staging/staging-banner.js`))+scriptTag(stageAsset(`staging/staging-business-refresh-v1.js`))+scriptTag(stageAsset(`staging/staging-sale-stock-guard-v1.js`))+scriptTag(stageAsset(`staging/staging-full-test.js`))+scriptTag(stageAsset(`staging/staging-oversell-regression-v1.js`))+scriptTag(stageAsset(`staging/staging-full-test-v2.js`))+scriptTag(stageAsset(`staging/staging-full-test-v3.js`))+scriptTag(stageAsset(`staging/staging-backup-test.js`))+"</body>");
 
         if(html.includes(`type="module" src="firebase.js?v=${build}"`))throw new Error("Safety stop: live firebase.js remained in staging shell");
         if(html.includes(`src="database.js?v=${build}"`))throw new Error("Safety stop: live database.js remained in staging shell");
         if(html.includes(`src="app2.js?v=${build}"`))throw new Error("Safety stop: live app2.js remained in staging shell");
+        if(html.includes(`src="extras-fun.js?v=${build}"`))throw new Error("Safety stop: live extras-fun.js remained in staging shell");
 
         window.__ChickenEggsBuild=build;
         window.__ChickenEggsStagingBuild=stageBuild;
