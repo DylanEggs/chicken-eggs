@@ -13,6 +13,7 @@
   function stableString(value){try{return JSON.stringify(value);}catch{return "";}}
   function hash(value){const text=stableString(value);let h=2166136261;for(let i=0;i<text.length;i++){h^=text.charCodeAt(i);h=Math.imul(h,16777619);}return (h>>>0).toString(36);}
   function safeDocId(id){return String(id||"").replace(/[^A-Za-z0-9_-]/g,"_").slice(0,120)||"bird";}
+  function mainReady(){return !!window.FarmSyncSafety?.isReady?.();}
   function photoResolver(id){
     const svc=window.FarmBirdPhotosV4||window.FarmBirdPhotosV3||window.FarmBirdPhotosV2;
     const fromService=svc?.get?.(String(id||""));
@@ -95,14 +96,24 @@
       return lastResult;
     } finally {running=false;}
   }
-  function schedule(reason="event",delay=700){clearTimeout(timer);timer=setTimeout(()=>void publishNow(reason),delay);}
+  function schedule(reason="event",delay=700){
+    if(!mainReady())return false;
+    clearTimeout(timer);
+    timer=setTimeout(()=>void publishNow(reason),delay);
+    return true;
+  }
   function install(){
-    const events=["farm-sync-ready","core-data-synced","farm-data-synced","farm-local-data-changed","bird-photos-changed","weather-intelligence-updated","inventory-authority-changed"];
-    for(const name of events)window.addEventListener(name,()=>schedule(name,name==="farm-sync-ready"?1400:700));
-    window.addEventListener("public-customer-owner-auth-changed",e=>{if(e.detail?.connected)schedule("owner-auth-connected",150);});
-    window.addEventListener("online",()=>schedule("online",1200));
+    // These events fire both during startup bootstrap and during real later changes.
+    // Ignore every bootstrap event so customer publishing cannot compete with the
+    // main Firebase connection. Once main sync is ready, the same events publish normally.
+    const events=["core-data-synced","farm-data-synced","farm-local-data-changed","bird-photos-changed","weather-intelligence-updated","inventory-authority-changed"];
+    for(const name of events)window.addEventListener(name,()=>{if(mainReady())schedule(name,700);});
+    window.addEventListener("public-customer-owner-auth-changed",e=>{if(e.detail?.connected&&mainReady())schedule("owner-auth-connected",150);});
+    window.addEventListener("online",()=>{if(mainReady())schedule("online",1200);});
+    // No farm-sync-ready/startup publish. If nothing changed, the existing public
+    // snapshot is already current and there is no reason to start a second Firebase app.
   }
 
-  window.FarmPublicCustomerPublisherV1={version:4,publishNow,schedule,buildPreview:build,last:()=>lastResult,ownerUid:()=>OWNER_UID};
+  window.FarmPublicCustomerPublisherV1={version:5,publishNow,schedule,buildPreview:build,last:()=>lastResult,ownerUid:()=>OWNER_UID};
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",install,{once:true});else install();
 })();
