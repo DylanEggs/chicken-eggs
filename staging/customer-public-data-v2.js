@@ -9,6 +9,7 @@
   const KEYS={app2:"chickenEggApp2V1",inventory:"chickenEggInventoryV2",entries:"chickenEggEntriesV102",settings:"chickenEggSettingsV102",weather:"chickenEggWeatherIntelligenceV2",deluxe:"chickenEggDeluxeV1",photos:"chickenEggLocalBirdPhotosV1",seed:"chickenEggStagingSeedV1"};
 
   function read(key,fallback){try{const raw=localStorage.getItem(PREFIX+key);return raw==null?fallback:JSON.parse(raw);}catch{return fallback;}}
+  function factDeck(old){const full=window.CustomerChickenFactsV1?.facts?.();return Array.isArray(full)&&full.length?full:(Array.isArray(old?.facts)?old.facts:legacy.facts?.()||[]);}
   function build(){
     const old=legacy.build();
     const photos=read(KEYS.photos,{});
@@ -23,6 +24,7 @@
     });
     const byId=new Map(out.flock.map(b=>[String(b.id),b]));
     const seed=read(KEYS.seed,{});
+    const facts=factDeck(old);
     return {
       schema:out.summary.schema,
       publicVersion:Number(out.summary.publicVersion)||2,
@@ -35,8 +37,8 @@
       weatherInsights:out.summary.weatherInsights,
       chickenOfTheDay:byId.get(String(out.summary.chickenOfTheDayId||""))||out.flock[0]||null,
       flock:out.flock,
-      facts:Array.isArray(old.facts)?old.facts:legacy.facts?.()||[],
-      factIndex:Number(old.factIndex)||0,
+      facts,
+      factIndex:facts.length?(Number(old.factIndex)||0)%facts.length:0,
       meta:{
         generatedAt:Date.now(),
         sourceSnapshotAt:Number(seed?.importedAt)||Number(old.meta?.sourceSnapshotAt)||0,
@@ -46,6 +48,6 @@
     };
   }
 
-  window.StagingCustomerPublicData={version:2,prefix:PREFIX,build,facts:()=>legacy.facts?.()||[]};
-  console.log("🧪 Customer preview v2 active — shared sanitized stats and weather insights");
+  window.StagingCustomerPublicData={version:2,prefix:PREFIX,build,facts:()=>factDeck(legacy.build?.()||{})};
+  console.log("🧪 Customer preview v2 active — shared sanitized stats, weather insights, and full fact deck");
 })();
