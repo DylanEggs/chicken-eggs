@@ -11,9 +11,10 @@
 
   function inject() {
     if (!document.body || document.getElementById("stagingSafetyBanner")) return;
+    const ownerMode = window.__ChickenEggsStagingOwnerMode === true;
     const style=document.createElement("style");
     style.textContent=`
-      #stagingSafetyBanner{position:sticky;top:0;z-index:100000;background:#7f1d1d;color:#fff;padding:9px 12px;box-shadow:0 3px 14px rgba(0,0,0,.25);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+      #stagingSafetyBanner{position:sticky;top:0;z-index:100000;background:${ownerMode?'#174c75':'#7f1d1d'};color:#fff;padding:9px 12px;box-shadow:0 3px 14px rgba(0,0,0,.25);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
       #stagingSafetyBanner .st-row{display:flex;align-items:center;justify-content:center;gap:7px;flex-wrap:wrap;font-weight:900;text-align:center}
       #stagingSafetyBanner button,#stagingSafetyBanner a{width:auto!important;margin:0!important;padding:7px 9px!important;border-radius:10px!important;border:1px solid rgba(255,255,255,.4)!important;background:#fff!important;color:#7f1d1d!important;font-size:11px!important;font-weight:900!important;text-decoration:none!important;line-height:1.1}
       #stagingSafetyBanner .st-customer{background:#fff3b8!important;color:#604800!important;border-color:#ffe06a!important}
@@ -26,16 +27,17 @@
     const bar=document.createElement("div");
     bar.id="stagingSafetyBanner";
     bar.innerHTML=`
-      <div class="st-row">🧪 TEST / STAGING — LIVE FARM DATA IS READ-ONLY
+      <div class="st-row">${ownerMode?'🔐 OWNER LOGIN STAGING':'🧪 TEST / STAGING'} — LIVE FIREBASE IS READ-ONLY
         <button id="stagingRefreshLive">🔄 Refresh Test Data From Live</button>
         <button id="stagingSaveBaseline">💾 Save Test Baseline</button>
         <button id="stagingRestoreBaseline">↩️ Restore Test Baseline</button>
         <button class="st-test" id="stagingRunFullTest">🧪 Run Full Sandbox Test</button>
         <a class="st-customer" href="staging/view/">👀 Customer Preview</a>
-        <a class="st-owner" href="staging/owner-login/">🔐 Test Owner Login</a>
+        <a class="st-owner" href="staging/owner-login/">🔎 Owner Login Check</a>
+        ${ownerMode?'<a class="st-owner" href="staging/">🧪 Regular Test Farm</a>':'<a class="st-owner" href="staging/owner-farm/">🔐 Owner-Gated Test Farm</a>'}
         <a href="./">Open LIVE App</a>
       </div>
-      <small>Anything you add, edit, delete, pay, restore, or photograph here stays in the sandbox.<span id="stagingBaselineState">${baselineLabel()}</span></small>`;
+      <small>${ownerMode?'The whole test farm is running behind your exact Firebase owner login. ':''}Anything you add, edit, delete, pay, restore, or photograph here stays in the sandbox.<span id="stagingBaselineState">${baselineLabel()}</span></small>`;
     document.body.prepend(bar);
 
     const state=()=>document.getElementById("stagingBaselineState");
