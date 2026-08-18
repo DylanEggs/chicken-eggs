@@ -3,8 +3,8 @@
   if (window.__publicCustomerSyncUiV1) return;
   window.__publicCustomerSyncUiV1 = true;
 
-  let busy=false,lastPublish=null;
-  const CUSTOMER_URL="view/?v=20260818-1830";
+  let busy=false,lastPublish=null,postMainInitStarted=false;
+  const CUSTOMER_URL="view/?v=20260818-1840";
 
   function status(){return window.PublicCustomerOwnerAuth?.status?.()||{ready:false,connected:false};}
   function APIsReady(){return !!window.PublicCustomerOwnerAuth && !!window.FarmPublicCustomerPublisherV1;}
@@ -16,11 +16,7 @@
     if(!sync)return;
     const backup=document.getElementById("completeSafetyBackupV3");
     const directHeader=Array.from(root.children||[]).find(el=>el.classList?.contains("screenTitle"));
-    if(directHeader){
-      directHeader.insertAdjacentElement("afterend",sync);
-    }else{
-      root.prepend(sync);
-    }
+    if(directHeader){directHeader.insertAdjacentElement("afterend",sync);}else{root.prepend(sync);}
     if(backup)sync.insertAdjacentElement("afterend",backup);
   }
 
@@ -74,14 +70,23 @@
     positionTopCards();
     const s=status();
     const wrap=document.getElementById("publicCustomerLoginWrap"),pub=document.getElementById("publicCustomerPublishNow"),disc=document.getElementById("publicCustomerDisconnect");
-    if(wrap)wrap.hidden=!!s.connected;if(pub)pub.hidden=!s.connected;if(disc)disc.hidden=!s.connected;
+    if(wrap)wrap.hidden=!s.ready||!!s.connected;
+    if(pub)pub.hidden=!s.connected;
+    if(disc)disc.hidden=!s.connected;
     if(busy){setStatus("Customer sync is working…","warn");return;}
     if(s.connected){
       if(lastPublish?.ok)setStatus(`Connected • customer page published ${lastPublish.writes||0} update${lastPublish.writes===1?"":"s"}. Future farm changes will update automatically.`,"good");
       else if(lastPublish&&!lastPublish.ok)setStatus(`Owner connected, but publish is waiting: ${lastPublish.error||"Firebase public rules may not be ready yet."}`,"warn");
       else setStatus(`Owner customer-sync session connected${s.email?` as ${s.email}`:""}.`,"good");
     }else if(s.ready)setStatus("Customer updates are not connected yet. Enter the owner Firebase email and password once to connect.","warn");
-    else setStatus("Customer sync will finish checking after the main Firebase connection completes.","warn");
+    else setStatus("Customer sync will check after the main Firebase connection finishes.","warn");
+  }
+
+  function initAfterMainReady(){
+    if(postMainInitStarted||!APIsReady())return;
+    if(!window.FarmSyncSafety?.isReady?.())return;
+    postMainInitStarted=true;
+    setTimeout(()=>window.PublicCustomerOwnerAuth.init?.().finally(render),1200);
   }
 
   async function connect(){
@@ -117,11 +122,12 @@
     [250,800,1800].forEach(ms=>setTimeout(positionTopCards,ms));
     const start=Date.now();
     const wait=()=>{
-      if(APIsReady()){render();return;}
+      if(APIsReady()){render();initAfterMainReady();return;}
       if(Date.now()-start<12000)setTimeout(wait,100);else setStatus("Customer sync modules did not finish loading.","bad");
     };wait();
   }
 
+  window.addEventListener("farm-sync-ready",()=>initAfterMainReady(),{once:true});
   window.addEventListener("public-customer-owner-auth-changed",render);
   window.addEventListener("customer-public-published",e=>{lastPublish=e.detail||null;render();});
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",()=>setTimeout(install,500),{once:true});else setTimeout(install,500);
