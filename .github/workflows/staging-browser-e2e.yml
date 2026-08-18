@@ -5,11 +5,14 @@ on:
     branches: [main]
     paths:
       - 'staging/**'
+      - 'view/**'
+      - 'customer-public-reader-v2.js'
       - 'qa/staging-browser-e2e.mjs'
       - 'qa/staging-controls-e2e.mjs'
       - 'qa/customer-year-browser-e2e.mjs'
       - 'qa/staging-profit-browser-e2e.mjs'
       - 'qa/customer-stats-browser-e2e.mjs'
+      - 'qa/public-firestore-boundary-browser.mjs'
       - '.github/workflows/staging-browser-e2e.yml'
   workflow_dispatch:
 
@@ -55,6 +58,10 @@ jobs:
         id: stats
         run: node qa/customer-stats-browser-e2e.mjs
 
+      - name: Verify deployed Firestore customer/private read boundary
+        id: boundary
+        run: node qa/public-firestore-boundary-browser.mjs
+
       - name: Report staging browser status
         if: always()
         env:
@@ -64,13 +71,14 @@ jobs:
           CONTROLS_OUTCOME: ${{ steps.controls.outcome }}
           YEAR_OUTCOME: ${{ steps.year.outcome }}
           STATS_OUTCOME: ${{ steps.stats.outcome }}
+          BOUNDARY_OUTCOME: ${{ steps.boundary.outcome }}
         run: |
-          if [ "$E2E_OUTCOME" = "success" ] && [ "$PROFIT_OUTCOME" = "success" ] && [ "$CONTROLS_OUTCOME" = "success" ] && [ "$YEAR_OUTCOME" = "success" ] && [ "$STATS_OUTCOME" = "success" ]; then
+          if [ "$E2E_OUTCOME" = "success" ] && [ "$PROFIT_OUTCOME" = "success" ] && [ "$CONTROLS_OUTCOME" = "success" ] && [ "$YEAR_OUTCOME" = "success" ] && [ "$STATS_OUTCOME" = "success" ] && [ "$BOUNDARY_OUTCOME" = "success" ]; then
             STATE=success
-            DESC="Staging browser E2E + customer stats passed"
+            DESC="Staging E2E + public Firestore boundary passed"
           else
             STATE=failure
-            DESC="Staging browser E2E failed"
+            DESC="Staging/browser/security gate failed"
           fi
           gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
             -f state="$STATE" \
