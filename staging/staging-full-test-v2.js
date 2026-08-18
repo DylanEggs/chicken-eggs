@@ -215,7 +215,7 @@
     if(!out)return;
     if(!report){out.innerHTML="No full sandbox test has run yet.";return;}
     const failures=(report.results||[]).filter(x=>!x.pass);
-    out.innerHTML=`<div style="font-weight:950;margin:8px 0">${report.failed===0?"✅":"❌"} ${report.passed}/${report.total} checks passed</div>${failures.length?failures.map(x=>`<div style="margin:5px 0">❌ ${String(x.name)}${x.detail?` — ${String(x.detail).slice(0,220)}`:""}</div>`).join(""):`<div>All destructive staging checks, visible business calculations, calculator math/state, and UI restoration checks passed. The staging baseline was restored.</div>`}`;
+    out.innerHTML=`<div style="font-weight:950;margin:8px 0">${report.failed===0?"✅":"❌"} ${report.passed}/${report.total} automated checks passed</div>${failures.length?failures.map(x=>`<div style="margin:5px 0">❌ ${String(x.name)}${x.detail?` — ${String(x.detail).slice(0,220)}`:""}</div>`).join(""):`<div>All covered automated checks passed: destructive staging workflows, visible business calculations, calculator math/state, and UI restoration. The staging baseline was restored.</div>`}<div style="margin-top:7px;opacity:.72">This result covers the checks listed here. It does not claim every possible app behavior has been tested.</div>`;
   }
 
   async function install(){
@@ -238,7 +238,8 @@
         const report={
           at:Date.now(),startedAt:first?.startedAt||Date.now(),durationMs:n(first?.durationMs),
           total:results.length,passed:results.length-failed.length,failed:failed.length,results,
-          suite:"staging-full-v2-visible-business"
+          suite:"staging-full-v2-visible-business",
+          scope:"Automated regression coverage for the listed checks; not a claim that every possible app behavior is tested."
         };
         try{localStorage.setItem(REPORT,JSON.stringify(report));}catch{}
         renderReport(report);
@@ -263,7 +264,7 @@
       event.preventDefault();
       event.stopImmediatePropagation();
       if(running)return;
-      btn.disabled=true;btn.textContent="Testing everything + visible totals…";
+      btn.disabled=true;btn.textContent="Testing covered workflows + visible totals…";
       try{const report=await run();renderReport(report);}finally{btn.disabled=false;btn.textContent="Run Full Sandbox Test";}
     },true);
 
