@@ -1,7 +1,5 @@
-// Rose Family Poultry Firestore rules template
-// IMPORTANT: Replace REPLACE_WITH_OWNER_UID with the UID of the one Firebase owner account
-// before publishing these rules in Firebase Console.
-//
+// Rose Family Poultry Firestore rules
+// Owner UID is fixed to the one Firebase email/password owner account.
 // Public customer data is intentionally limited to two dedicated collections.
 // Every other Firestore document remains private to the owner UID.
 
@@ -10,7 +8,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
     function isOwner() {
       return request.auth != null
-        && request.auth.uid == "REPLACE_WITH_OWNER_UID";
+        && request.auth.uid == "aLvjMpXgMJf5W3YUjQM6wqKagLo2";
     }
 
     // Small sanitized customer summary: availability, forecasts, weather, public metadata.
