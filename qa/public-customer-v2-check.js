@@ -1,0 +1,38 @@
+const fs=require('fs');
+const path=require('path');
+const vm=require('vm');
+const root=path.resolve(__dirname,'..');
+const failures=[];const check=(name,ok,detail='')=>{console.log(ok?'PASS':'FAIL',name,detail);if(!ok)failures.push(name);};
+const window={};const context=vm.createContext({window,Date,Number,String,Math,JSON,Array,Object,RegExp,Set,Map,console});
+vm.runInContext(fs.readFileSync(path.join(root,'customer-public-builder-v1.js'),'utf8'),context);
+vm.runInContext(fs.readFileSync(path.join(root,'customer-public-builder-v2.js'),'utf8'),context);
+const api=window.FarmPublicCustomerBuilderV2;check('Public v2 builder initializes',!!api?.build);
+const entries=[],history={};const start=new Date('2026-07-01T12:00:00');
+for(let i=0;i<45;i++){const d=new Date(start);d.setDate(start.getDate()+i);const date=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;entries.push({id:`e${i}`,type:'eggs',date,eggs:i%2?14:9});history[date]={max:i%2?94:82,humidity:i%3?62:80,cloud:i%4?35:82,rain:i%5?0:.2};}
+entries.push({id:'sale-secret',type:'sale',date:'2026-08-10',dozenSold:2,dozenPrice:999,buyer:'SECRET BUYER',note:'PRIVATE SALE'});
+const input={app2:{customers:[{name:'SECRET CUSTOMER',contact:'555-1212'}],orders:[{status:'pending',dozen:1,packs18:0,notes:'SECRET ORDER'}],expenses:[{amount:777,description:'SECRET EXPENSE'}],saleMeta:{x:{paid:false,note:'SECRET OWES'}},flock:[{id:'hen1',name:'Public Hen',breed:'Barred Rock',sex:'Hen',hatchDate:'2026-04-01',status:'Active',notes:'SECRET BIRD NOTE'}]},inventory:{dozens:4,packs18:0,loose:0,adjustments:[{details:'SECRET INVENTORY'}]},entries,settings:{farmName:'Rose Family Poultry',hens:30,dozenPrice:999,packPrice:888},weather:{location:'High Point, NC',latitude:35.9,longitude:-80,history,current:{temperature:81,humidity:60,code:1},forecast:{}},deluxe:{birdPhotoUrls:{secret:'PRIVATE PHOTO MAP'}},photoResolver:()=>''};
+const out=api.build(input),text=JSON.stringify(out);
+check('Public v2 marks version 2',out.summary.publicVersion===2);
+check('Daily chart has exactly 30 safe points',out.summary.stats.daily30.length===30);
+check('Weekly chart has exactly 8 safe points',out.summary.stats.weekly8.length===8);
+check('Monthly chart has exactly 12 safe points',out.summary.stats.monthly12.length===12);
+check('Lifetime egg record ignores sales money',out.summary.stats.records.lifetimeEggs===entries.filter(e=>e.type==='eggs').reduce((s,e)=>s+e.eggs,0));
+check('Weather insight has matched samples',out.summary.weatherInsights.samples>0,String(out.summary.weatherInsights.samples));
+check('Weather factors are capped at four',out.summary.weatherInsights.factors.length<=4);
+check('Pending reservation still reduces customer availability',out.summary.availability.eggs===36,JSON.stringify(out.summary.availability));
+const forbiddenValues=['SECRET CUSTOMER','555-1212','SECRET ORDER','SECRET EXPENSE','SECRET OWES','SECRET BIRD NOTE','SECRET BUYER','PRIVATE SALE','SECRET INVENTORY','PRIVATE PHOTO MAP'];
+for(const value of forbiddenValues)check(`Private value absent: ${value}`,!text.includes(value));
+const forbiddenKeys=new Set(['customers','orders','expenses','saleMeta','notes','contact','buyer','paid','dozenPrice','packPrice','price','revenue','profit','loss','adjustments','latitude','longitude','history']);
+function walk(value,p='root'){if(!value||typeof value!=='object')return;for(const [k,v] of Object.entries(value)){check(`Forbidden public key absent at ${p}.${k}`,!forbiddenKeys.has(k));walk(v,`${p}.${k}`);}}
+walk(out);
+const publisher=fs.readFileSync(path.join(root,'public-customer-publisher-v1.js'),'utf8');
+check('Publisher prefers v2 sanitizer',publisher.includes('FarmPublicCustomerBuilderV2'));
+check('Publisher republishes after inventory changes',publisher.includes('inventory-authority-changed'));
+check('Publisher republishes after weather changes',publisher.includes('weather-intelligence-updated'));
+check('Publisher remains owner UID gated',publisher.includes('aLvjMpXgMJf5W3YUjQM6wqKagLo2'));
+check('Publisher writes only public customer/flock collections',publisher.includes('"public_customer","current"')&&publisher.includes('"public_flock",safeDocId')&&!/setDoc\([^\n]*(?:"entries"|"farm_app_2_v1"|"farm_inventory_v2"|"farm_business_v1")/.test(publisher));
+const reader=fs.readFileSync(path.join(root,'customer-public-reader-v2.js'),'utf8');
+check('Reader v2 imports no auth API',!reader.includes('firebase-auth.js')&&!/getAuth|signIn|signOut/.test(reader));
+check('Reader v2 imports no write API',!/(setDoc|addDoc|updateDoc|deleteDoc|runTransaction|writeBatch)/.test(reader));
+check('Reader v2 reads only dedicated public collections',reader.includes('"public_customer","current"')&&reader.includes('"public_flock"')&&!reader.includes('"entries"')&&!reader.includes('farm_app_2_v1'));
+if(failures.length){console.error(`Public customer v2 checks failed: ${failures.join(', ')}`);process.exit(1);}console.log('All public customer v2 stats/privacy checks passed.');
