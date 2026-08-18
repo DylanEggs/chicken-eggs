@@ -14,7 +14,7 @@
     const s=document.createElement("style");s.id="publicCustomerSyncUiCss";s.textContent=`
       .pubsync-status{padding:11px 12px;border-radius:14px;background:rgba(31,122,58,.08);font-size:13px;font-weight:850;line-height:1.35;margin:10px 0}
       .pubsync-status.good{background:rgba(31,122,58,.12);color:#176b31}.pubsync-status.warn{background:rgba(245,185,28,.14);color:#8a6400}.pubsync-status.bad{background:rgba(217,59,59,.1);color:#a52d2d}
-      .pubsync-row{display:flex;gap:9px;flex-wrap:wrap}.pubsync-row button{width:auto;flex:1 1 160px}.pubsync-login{display:grid;gap:8px;margin:10px 0}.pubsync-login input{width:100%}
+      .pubsync-row{display:flex;gap:9px;flex-wrap:wrap}.pubsync-row button{width:auto;flex:1 1 160px}.pubsync-login{display:grid;gap:8px;margin:10px 0}.pubsync-login[hidden]{display:none!important}.pubsync-login input{width:100%}
       .farm2-dark .pubsync-status.good{color:#8ae7a3}.farm2-dark .pubsync-status.warn{color:#ffd978}.farm2-dark .pubsync-status.bad{color:#ff9b9b}
     `;document.head.appendChild(s);
   }
