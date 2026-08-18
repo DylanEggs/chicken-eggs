@@ -146,7 +146,13 @@
       const details=document.querySelector("#bizHome details");
       if(details)details.open=true;
       const calcValues={bizCalcEgg:"111.11",bizCalcChicken:"22.22",bizCalcFeed:"33.33",bizCalcSupplies:"44.44"};
-      for(const [id,value] of Object.entries(calcValues)){const el=element(id);if(el)el.value=value;}
+      for(const [id,value] of Object.entries(calcValues)){
+        const el=element(id);
+        if(el){
+          el.value=value;
+          el.dispatchEvent(new Event("input",{bubbles:true}));
+        }
+      }
 
       await window.InventorySystemV6?.commitExact?.(5,3,20);
       await sleep(100);
