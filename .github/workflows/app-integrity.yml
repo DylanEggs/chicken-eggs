@@ -41,6 +41,9 @@ jobs:
       - name: Run staging shell transform check
         run: node qa/staging-shell-transform-check.js
 
+      - name: Run staging visible profit regression checks
+        run: node qa/staging-profit-regression-check.js
+
       - name: Run customer preview privacy checks
         run: node qa/customer-view-staging-check.js
 
