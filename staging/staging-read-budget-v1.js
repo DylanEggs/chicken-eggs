@@ -91,6 +91,42 @@
     return { total:checks.length, passed:checks.length-failed.length, failed:failed.length, checks };
   }
 
+  function reportText(result) {
+    if (!result.failed) return `✅ Low-read sync test passed ${result.passed}/${result.total} checks.\n\nThe v10 engine is still NOT live.`;
+    const failed = result.checks.filter(x=>!x.pass).map((x,i)=>`${i+1}. ${x.name}${x.detail?`\n   ${x.detail}`:""}`).join("\n\n");
+    return `❌ Low-read sync test: ${result.passed}/${result.total} passed, ${result.failed} failed.\n\n${failed}\n\nThe v10 engine was NOT switched live.`;
+  }
+
+  function injectButton() {
+    const row = document.querySelector("#stagingSafetyBanner .st-row");
+    if (!row || document.getElementById("stagingReadBudgetTest")) return false;
+    const btn = document.createElement("button");
+    btn.id = "stagingReadBudgetTest";
+    btn.className = "st-test";
+    btn.textContent = "📉 Test Low-Read Sync";
+    btn.addEventListener("click", async () => {
+      btn.disabled = true;
+      btn.textContent = "Testing low-read sync…";
+      try {
+        const result = await run();
+        window.__lastStagingReadBudgetResult = result;
+        alert(reportText(result));
+      } catch (error) {
+        console.error(error);
+        alert("Low-read sync test could not complete. The live app was not changed.");
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "📉 Test Low-Read Sync";
+      }
+    });
+    const full = document.getElementById("stagingRunFullTest");
+    if (full?.nextSibling) row.insertBefore(btn, full.nextSibling);
+    else row.appendChild(btn);
+    return true;
+  }
+
   window.StagingReadBudgetV1 = { version:1, run, simulateApply };
+  const install = () => { if (!injectButton()) setTimeout(install,120); };
+  setTimeout(install,200);
   console.log("📉 STAGING low-read sync regression ready");
 })();
