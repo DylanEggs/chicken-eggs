@@ -4,6 +4,7 @@
   window.__publicCustomerSyncUiV1 = true;
 
   let busy=false,lastPublish=null;
+  const CUSTOMER_URL="view/?v=20260818-1830";
 
   function status(){return window.PublicCustomerOwnerAuth?.status?.()||{ready:false,connected:false};}
   function APIsReady(){return !!window.PublicCustomerOwnerAuth && !!window.FarmPublicCustomerPublisherV1;}
@@ -60,7 +61,7 @@
     positionTopCards(root);
     card.querySelector("#publicCustomerConnect")?.addEventListener("click",connect);
     card.querySelector("#publicCustomerPublishNow")?.addEventListener("click",()=>publish("manual-button"));
-    card.querySelector("#publicCustomerOpen")?.addEventListener("click",()=>window.open("view/","_blank","noopener"));
+    card.querySelector("#publicCustomerOpen")?.addEventListener("click",()=>window.open(CUSTOMER_URL,"_blank","noopener"));
     card.querySelector("#publicCustomerDisconnect")?.addEventListener("click",disconnect);
     render();return true;
   }
@@ -80,7 +81,7 @@
       else if(lastPublish&&!lastPublish.ok)setStatus(`Owner connected, but publish is waiting: ${lastPublish.error||"Firebase public rules may not be ready yet."}`,"warn");
       else setStatus(`Owner customer-sync session connected${s.email?` as ${s.email}`:""}.`,"good");
     }else if(s.ready)setStatus("Customer updates are not connected yet. Enter the owner Firebase email and password once to connect.","warn");
-    else setStatus("Preparing the separate customer-sync session…","warn");
+    else setStatus("Customer sync will finish checking after the main Firebase connection completes.","warn");
   }
 
   async function connect(){
@@ -116,7 +117,7 @@
     [250,800,1800].forEach(ms=>setTimeout(positionTopCards,ms));
     const start=Date.now();
     const wait=()=>{
-      if(APIsReady()){window.PublicCustomerOwnerAuth.init?.().finally(render);render();return;}
+      if(APIsReady()){render();return;}
       if(Date.now()-start<12000)setTimeout(wait,100);else setStatus("Customer sync modules did not finish loading.","bad");
     };wait();
   }
