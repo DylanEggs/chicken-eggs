@@ -59,21 +59,28 @@
 
   window.StagingLiveFirebaseProbeV1 = { version: 1, run };
 
-  // Keep the isolated torture-test copy small enough that Chrome storage quota
-  // does not hide the Firebase result behind copied full-resolution flock photos.
-  // This loads only inside staging and never removes anything from the live app.
-  try {
-    const current = document.currentScript?.src || location.href;
-    const trimUrl = new URL("staging-test-storage-trim-v1.js", current);
-    if (!document.querySelector('script[data-staging-storage-trim="1"]')) {
+  function loadHelper(file, marker) {
+    try {
+      const current = document.currentScript?.src || location.href;
+      const url = new URL(file, current);
+      if (document.querySelector(`script[data-${marker}="1"]`)) return;
       const script = document.createElement("script");
-      script.src = trimUrl.href;
-      script.dataset.stagingStorageTrim = "1";
+      script.src = url.href;
+      script.dataset[marker] = "1";
       document.head.appendChild(script);
+    } catch (error) {
+      console.warn(`STAGING helper ${file} did not load:`, error);
     }
-  } catch (error) {
-    console.warn("STAGING storage trim helper did not load:", error);
   }
 
-  console.log("🧪 STAGING live Firebase anonymous read probe ready — read-only");
+  // Keep the isolated torture-test copy below Chrome storage quota.
+  loadHelper("staging-test-storage-trim-v1.js", "stagingStorageTrim");
+
+  // Explicit, user-triggered temporary write diagnostic. It never runs on its own.
+  if (!window.__ChickenEggsStagingOwnerMode) {
+    loadHelper("staging-live-firebase-write-probe-v1.js", "stagingWriteProbe");
+    loadHelper("staging-write-probe-ui-v1.js", "stagingWriteProbeUi");
+  }
+
+  console.log("🧪 STAGING live Firebase anonymous read probe ready — read-only unless explicit write diagnostic is clicked");
 })();
