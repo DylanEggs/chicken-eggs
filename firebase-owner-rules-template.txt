@@ -1,0 +1,33 @@
+// Rose Family Poultry Firestore rules template
+// IMPORTANT: Replace REPLACE_WITH_OWNER_UID with the UID of the one Firebase owner account
+// before publishing these rules in Firebase Console.
+//
+// Public customer data is intentionally limited to two dedicated collections.
+// Every other Firestore document remains private to the owner UID.
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isOwner() {
+      return request.auth != null
+        && request.auth.uid == "REPLACE_WITH_OWNER_UID";
+    }
+
+    // Small sanitized customer summary: availability, forecasts, weather, public metadata.
+    match /public_customer/{document=**} {
+      allow read: if true;
+      allow write: if isOwner();
+    }
+
+    // Sanitized flock profiles/photos only. No private notes, customers, sales, expenses, or orders.
+    match /public_flock/{document=**} {
+      allow read: if true;
+      allow write: if isOwner();
+    }
+
+    // Everything else in the project is private farm data.
+    match /{document=**} {
+      allow read, write: if isOwner();
+    }
+  }
+}
