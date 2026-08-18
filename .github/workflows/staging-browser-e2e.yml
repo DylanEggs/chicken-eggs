@@ -6,6 +6,7 @@ on:
     paths:
       - 'staging/**'
       - 'qa/staging-browser-e2e.mjs'
+      - 'qa/staging-controls-e2e.mjs'
       - 'qa/customer-year-browser-e2e.mjs'
       - '.github/workflows/staging-browser-e2e.yml'
   workflow_dispatch:
@@ -36,6 +37,10 @@ jobs:
         id: e2e
         run: node qa/staging-browser-e2e.mjs
 
+      - name: Run manual controls and owner gate in real Chromium
+        id: controls
+        run: node qa/staging-controls-e2e.mjs
+
       - name: Run customer yearly forecast in real Chromium
         id: year
         run: node qa/customer-year-browser-e2e.mjs
@@ -45,9 +50,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           E2E_OUTCOME: ${{ steps.e2e.outcome }}
+          CONTROLS_OUTCOME: ${{ steps.controls.outcome }}
           YEAR_OUTCOME: ${{ steps.year.outcome }}
         run: |
-          if [ "$E2E_OUTCOME" = "success" ] && [ "$YEAR_OUTCOME" = "success" ]; then
+          if [ "$E2E_OUTCOME" = "success" ] && [ "$CONTROLS_OUTCOME" = "success" ] && [ "$YEAR_OUTCOME" = "success" ]; then
             STATE=success
             DESC="Staging browser E2E passed"
           else
