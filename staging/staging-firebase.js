@@ -36,7 +36,21 @@ if (!window.__ChickenEggsStagingFirebase) {
     try { return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback)); }
     catch { return fallback; }
   };
-  const write = (key, value) => localStorage.setItem(key, JSON.stringify(value));
+  function write(key, value) {
+    const doWrite = () => localStorage.setItem(key, JSON.stringify(value));
+    const oldRemote = window.__farmApplyingRemote;
+    window.__farmApplyingRemote = true;
+    try {
+      const pre = window.FarmBootstrapSafety;
+      if (pre?.runBypass) return pre.runBypass(doWrite);
+      return doWrite();
+    } finally {
+      window.__farmApplyingRemote = oldRemote;
+    }
+  }
+  function unlockSandbox() {
+    try { window.FarmBootstrapSafety?.unlock?.(); } catch {}
+  }
   const setStatus = text => {
     try {
       if (typeof window.setSyncStatus === "function") window.setSyncStatus(text);
@@ -69,6 +83,7 @@ if (!window.__ChickenEggsStagingFirebase) {
     if (importPromise) return importPromise;
     if (!force && read(SEED_META, null)?.completed) {
       readyState = true;
+      unlockSandbox();
       return true;
     }
 
@@ -145,6 +160,7 @@ if (!window.__ChickenEggsStagingFirebase) {
       });
 
       readyState = true;
+      unlockSandbox();
       setStatus("STAGING • isolated sandbox ready");
       window.dispatchEvent(new CustomEvent("core-data-synced", { detail:{ staging:true, imported:true } }));
       window.dispatchEvent(new CustomEvent("farm-data-synced", { detail:{ staging:true, imported:true } }));
@@ -154,6 +170,7 @@ if (!window.__ChickenEggsStagingFirebase) {
     })().catch(error => {
       console.error("STAGING live snapshot import failed; using isolated browser copy:", error);
       readyState = true;
+      unlockSandbox();
       setStatus("STAGING • local sandbox ready (live refresh unavailable)");
       window.dispatchEvent(new CustomEvent("farm-sync-ready", { detail:{ staging:true, localOnly:true } }));
       return false;
@@ -164,6 +181,7 @@ if (!window.__ChickenEggsStagingFirebase) {
 
   async function localSync() {
     readyState = true;
+    unlockSandbox();
     setStatus("STAGING • isolated sandbox saved");
     window.dispatchEvent(new CustomEvent("farm-data-synced", { detail:{ staging:true, localOnly:true } }));
     return true;
@@ -174,7 +192,7 @@ if (!window.__ChickenEggsStagingFirebase) {
     isReady: () => readyState,
     refresh: localSync,
     getDirtyKeys: () => [],
-    version: "STAGING-READONLY-1"
+    version: "STAGING-READONLY-2"
   };
   window.EggSyncAuthorityReady = () => importLive(false);
   window.syncFarmNow = localSync;
