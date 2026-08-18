@@ -27,7 +27,7 @@ async function fetchText(file){
   }
   if(live!==expected)throw new Error(`Staging build ${expected} did not deploy; live=${live}`);
 
-  const assets=['index.html','staging-storage.js','staging-firebase.js','staging-database.js','staging-app2.js','staging-photo-service.js','staging-banner.js','staging-diagnostics.js','staging-full-test.js','staging-backup-test.js','customer-public-data-v1.js','view/index.html','view/view.css','view/view.js','view/year-forecast-v1.js','owner-login/index.html','owner-login/owner-login.js'];
+  const assets=['index.html','staging-storage.js','staging-firebase.js','staging-owner-firebase.js','staging-database.js','staging-app2.js','staging-photo-service.js','staging-banner.js','staging-manual-snapshots.js','staging-diagnostics.js','staging-full-test.js','staging-backup-test.js','customer-public-data-v1.js','view/index.html','view/view.css','view/view.js','view/year-forecast-v1.js','owner-login/index.html','owner-login/owner-login.js','owner-farm/index.html'];
   const loaded={};
   for(const file of assets){
     loaded[file]=await fetchText(file);
@@ -38,6 +38,7 @@ async function fetchText(file){
   if(!loaded['index.html'].includes('TEST / STAGING')&&!loaded['index.html'].includes('Chicken Eggs — STAGING'))throw new Error('Staging shell identity missing');
   if(!loaded['index.html'].includes('staging/staging-firebase.js'))throw new Error('Staging shell does not swap Firebase entrypoint');
   if(!loaded['index.html'].includes('staging/staging-database.js'))throw new Error('Staging shell does not swap database adapter');
+  if(!loaded['index.html'].includes('staging/staging-manual-snapshots.js'))throw new Error('Staging shell does not load manual baseline controls');
   if(!loaded['index.html'].includes('staging/staging-full-test.js'))throw new Error('Staging shell does not load destructive sandbox test runner');
   if(!loaded['index.html'].includes('staging/staging-backup-test.js'))throw new Error('Staging shell does not load backup/restore test runner');
   if(!loaded['index.html'].includes('Safety stop: live firebase.js remained in staging shell'))throw new Error('Staging runtime cloud safety stop missing');
@@ -47,9 +48,16 @@ async function fetchText(file){
   if(!loaded['staging-firebase.js'].includes('window.__farmApplyingRemote = true'))throw new Error('Staging live seed is not marked authoritative for inventory firewall');
   if(!loaded['staging-firebase.js'].includes('FarmBootstrapSafety?.unlock?.()'))throw new Error('Staging cannot release normal startup write lock');
   if(loaded['staging-photo-service.js'].includes('firebasejs')||loaded['staging-photo-service.js'].includes('FirestoreDB'))throw new Error('Staging photo service can reach Firebase');
-  if(!loaded['staging-banner.js'].includes('LIVE FARM DATA IS READ-ONLY'))throw new Error('Staging safety banner missing');
+  if(!loaded['staging-banner.js'].includes('LIVE FIREBASE IS READ-ONLY'))throw new Error('Staging safety banner missing');
+  if(!loaded['staging-banner.js'].includes('Refresh Test Data From Live'))throw new Error('Staging live-to-test refresh control missing');
+  if(!loaded['staging-banner.js'].includes('Save Test Baseline')||!loaded['staging-banner.js'].includes('Restore Test Baseline'))throw new Error('Staging manual baseline controls missing');
+  if(!loaded['staging-banner.js'].includes('Run Full Sandbox Test'))throw new Error('Staging full-test button missing');
   if(!loaded['staging-banner.js'].includes('staging/view/'))throw new Error('Staging customer preview link missing');
   if(!loaded['staging-banner.js'].includes('staging/owner-login/'))throw new Error('Staging owner-login verification link missing');
+  if(!loaded['staging-banner.js'].includes('staging/owner-farm/'))throw new Error('Owner-gated full staging farm link missing');
+  if(!loaded['staging-manual-snapshots.js'].includes('refreshFromLiveAndSaveBaseline'))throw new Error('Manual snapshot live refresh helper missing');
+  if(!loaded['staging-manual-snapshots.js'].includes('restoreBaseline'))throw new Error('Manual snapshot restore helper missing');
+  if(/Firestore|firebasejs|setDoc|addDoc|updateDoc|deleteDoc/.test(loaded['staging-manual-snapshots.js']))throw new Error('Manual snapshot module unexpectedly reaches Firebase');
   if(!loaded['staging-full-test.js'].includes('restore(snap)'))throw new Error('Full staging runner does not restore staging baseline');
   if(!loaded['staging-full-test.js'].includes('Mark Paid does not change inventory'))throw new Error('Full staging runner is missing payment/inventory regression check');
   if(!loaded['staging-backup-test.js'].includes('chicken-eggs-full-backup-v8'))throw new Error('Backup test does not verify current backup format');
@@ -73,5 +81,13 @@ async function fetchText(file){
   if(/\b(setDoc|addDoc|updateDoc|deleteDoc|runTransaction|writeBatch)\b/.test(ownerLogin))throw new Error('Owner login verification unexpectedly contains Firestore write APIs');
   if(/localStorage\.(setItem|removeItem|clear)/.test(ownerLogin))throw new Error('Owner login verification stores credentials or state in localStorage');
 
-  console.log(`PASS Staging live smoke — ${expected}, ${assets.length} isolated assets verified including customer preview, yearly forecast, and read-only owner login verifier`);
+  const ownerFirebase=loaded['staging-owner-firebase.js'];
+  if(!loaded['owner-farm/index.html'].includes('OWNER LOGIN Test Farm'))throw new Error('Owner-gated staging farm identity missing');
+  if(!loaded['owner-farm/index.html'].includes('staging/staging-owner-firebase.js'))throw new Error('Owner-gated staging farm does not swap to owner Firebase adapter');
+  if(!ownerFirebase.includes('FarmOwnerAuth')||!ownerFirebase.includes('requireSignIn'))throw new Error('Owner-gated staging Firebase does not require owner login');
+  if(!ownerFirebase.includes('aLvjMpXgMJf5W3YUjQM6wqKagLo2'))throw new Error('Owner-gated staging Firebase does not verify exact owner UID');
+  if(/\b(setDoc|addDoc|updateDoc|deleteDoc|runTransaction|writeBatch|onSnapshot)\b/.test(ownerFirebase))throw new Error('Owner-gated staging Firebase unexpectedly contains Firestore write/listener APIs');
+  if(ownerFirebase.includes('window.FirestoreDB =')||ownerFirebase.includes('window.FirebaseUser ='))throw new Error('Owner-gated staging exposes live Firestore handles');
+
+  console.log(`PASS Staging live smoke — ${expected}, ${assets.length} isolated assets verified including customer preview, manual bash/restore controls, yearly forecast, and owner-gated test farm`);
 })().catch(error=>{console.error('STAGING LIVE SMOKE FAILED:',error);process.exit(1);});
