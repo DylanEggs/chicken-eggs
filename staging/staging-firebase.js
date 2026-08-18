@@ -51,6 +51,12 @@ if (!window.__ChickenEggsStagingFirebase) {
   function unlockSandbox() {
     try { window.FarmBootstrapSafety?.unlock?.(); } catch {}
   }
+  function refreshAppMemory() {
+    try { window.loadLocal?.(); } catch {}
+    try { window.loadFarmSettings?.(); } catch {}
+    try { window.__reloadFarm2Memory?.(); } catch {}
+    try { window.updateApp?.(); } catch {}
+  }
   const setStatus = text => {
     try {
       if (typeof window.setSyncStatus === "function") window.setSyncStatus(text);
@@ -83,6 +89,7 @@ if (!window.__ChickenEggsStagingFirebase) {
     if (importPromise) return importPromise;
     if (!force && read(SEED_META, null)?.completed) {
       readyState = true;
+      refreshAppMemory();
       unlockSandbox();
       return true;
     }
@@ -160,6 +167,7 @@ if (!window.__ChickenEggsStagingFirebase) {
       });
 
       readyState = true;
+      refreshAppMemory();
       unlockSandbox();
       setStatus("STAGING • isolated sandbox ready");
       window.dispatchEvent(new CustomEvent("core-data-synced", { detail:{ staging:true, imported:true } }));
@@ -170,6 +178,7 @@ if (!window.__ChickenEggsStagingFirebase) {
     })().catch(error => {
       console.error("STAGING live snapshot import failed; using isolated browser copy:", error);
       readyState = true;
+      refreshAppMemory();
       unlockSandbox();
       setStatus("STAGING • local sandbox ready (live refresh unavailable)");
       window.dispatchEvent(new CustomEvent("farm-sync-ready", { detail:{ staging:true, localOnly:true } }));
@@ -192,7 +201,7 @@ if (!window.__ChickenEggsStagingFirebase) {
     isReady: () => readyState,
     refresh: localSync,
     getDirtyKeys: () => [],
-    version: "STAGING-READONLY-2"
+    version: "STAGING-READONLY-3"
   };
   window.EggSyncAuthorityReady = () => importLive(false);
   window.syncFarmNow = localSync;
