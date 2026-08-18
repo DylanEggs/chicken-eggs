@@ -3,8 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#f7b928" />
+  <meta name="theme-color" content="#1f7a3a" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Rose Poultry" />
+  <meta name="application-name" content="Rose Family Poultry" />
   <title>Rose Family Poultry — Farm View</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="app-icon.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="view.css" />
 </head>
 <body>
@@ -58,7 +64,25 @@
       <div class="flock-grid" id="flockGrid"></div><div class="empty-flock" id="emptyFlock" hidden>No flock profiles match this view yet.</div>
     </section>
 
-    <footer class="site-footer"><div class="footer-chicken">🐓</div><strong id="footerFarmName">Rose Family Poultry</strong><span>Fresh eggs and real flock updates from High Point, NC.</span><small>This page is view-only. It intentionally does not contain customer history, sales prices, expenses, revenue, profit or loss information.</small></footer>
+    <section class="install-card" id="installApp" aria-labelledby="installAppTitle">
+      <div class="install-heading">
+        <div class="install-icon" aria-hidden="true">📲</div>
+        <div><div class="section-kicker">Keep the flock one tap away</div><h2 id="installAppTitle">Add Rose Family Poultry to your Home Screen</h2><p>Save this live farm page like an app. It will open directly to the current egg availability, flock and stats.</p></div>
+      </div>
+      <div class="install-grid">
+        <article class="install-device">
+          <div class="install-device-title"><span>🍎</span><strong>iPhone / iPad</strong></div>
+          <ol><li>Open this page in <strong>Safari</strong>.</li><li>Tap the <strong>Share</strong> button <span class="install-symbol">⬆️</span>.</li><li>Choose <strong>Add to Home Screen</strong>.</li><li>Tap <strong>Add</strong>.</li></ol>
+        </article>
+        <article class="install-device">
+          <div class="install-device-title"><span>🤖</span><strong>Android</strong></div>
+          <ol><li>Open this page in <strong>Chrome</strong>.</li><li>Tap the <strong>⋮ menu</strong>.</li><li>Choose <strong>Add to Home screen</strong> or <strong>Install app</strong>.</li><li>Confirm <strong>Add / Install</strong>.</li></ol>
+        </article>
+      </div>
+      <div class="install-note">✨ After that, just tap the Rose Poultry icon on your Home Screen whenever you want to check the flock.</div>
+    </section>
+
+    <footer class="site-footer"><div class="footer-chicken">🐓</div><strong id="footerFarmName">Rose Family Poultry</strong><span>Fresh eggs and real flock updates from High Point, NC.</span><a class="install-footer-link" href="#installApp">📲 Add this farm to your Home Screen</a><small>This page is view-only. It intentionally does not contain customer history, sales prices, expenses, revenue, profit or loss information.</small></footer>
   </main>
 
   <div class="profile-modal" id="profileModal" hidden><div class="modal-backdrop" data-close-profile></div><article class="profile-sheet" role="dialog" aria-modal="true" aria-labelledby="profileName"><button type="button" class="modal-close" data-close-profile aria-label="Close chicken profile">×</button><div class="profile-photo" id="profilePhoto"><span>🐔</span></div><div class="section-kicker">Flock profile</div><h2 id="profileName">Chicken</h2><div class="profile-facts" id="profileFacts"></div><div class="profile-signoff">🐾 Certified member of the feathered production team.</div></article></div>
