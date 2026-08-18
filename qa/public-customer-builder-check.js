@@ -5,6 +5,8 @@ const root=path.resolve(__dirname,'..');
 const builder=fs.readFileSync(path.join(root,'customer-public-builder-v1.js'),'utf8');
 const publisher=fs.readFileSync(path.join(root,'public-customer-publisher-v1.js'),'utf8');
 const reader=fs.readFileSync(path.join(root,'customer-public-reader-v1.js'),'utf8');
+const publicAuth=fs.readFileSync(path.join(root,'public-customer-owner-auth-v1.js'),'utf8');
+const liveApp=fs.readFileSync(path.join(root,'app2.js'),'utf8');
 const failures=[];const check=(name,ok,detail='')=>{console.log(ok?'PASS':'FAIL',name,detail);if(!ok)failures.push(name);};
 const window={};
 vm.runInContext(builder,vm.createContext({window,Date,Number,String,Math,JSON,Array,Object,RegExp,Set,Map,console}));
@@ -41,9 +43,21 @@ check('Publisher writes public summary collection only',publisher.includes('"pub
 check('Publisher writes public flock collection only',publisher.includes('"public_flock",safeDocId'));
 check('Publisher never targets private farm collections with setDoc',!/setDoc\([^\n]*(?:"entries"|"farm"|"farm_app_2_v1"|"farm_inventory_v2"|"farm_business_v1")/.test(publisher));
 check('Publisher stores hashes only, not customer credentials',!publisher.toLowerCase().includes('password')&&!publisher.toLowerCase().includes('customjeepyj@gmail.com'));
+check('Public owner auth uses separate named Firebase app',publicAuth.includes('rose-family-public-publisher')&&publicAuth.includes('initializeApp(firebaseConfig,APP_NAME)'));
+check('Public owner auth uses email/password and exact UID',publicAuth.includes('signInWithEmailAndPassword')&&publicAuth.includes('OWNER_UID')&&publicAuth.includes('!isOwner(user)'));
+check('Public owner auth does not hard-code owner email',!publicAuth.toLowerCase().includes('customjeepyj@gmail.com'));
+check('Public owner auth never writes credentials to browser storage',!/(localStorage|sessionStorage)\.(setItem|removeItem|clear)/.test(publicAuth));
 check('Public reader does not import Firebase Authentication',!reader.includes('firebase-auth.js')&&!/getAuth|signIn|signOut/.test(reader));
 check('Public reader imports no Firestore write API',!/(setDoc|addDoc|updateDoc|deleteDoc|runTransaction|writeBatch)/.test(reader));
 check('Public reader reads only dedicated public collections',reader.includes('"public_customer","current"')&&reader.includes('"public_flock"')&&!reader.includes('"entries"')&&!reader.includes('"farm","settings"'));
 check('Public reader writes no browser storage',!/localStorage\.(setItem|removeItem|clear)/.test(reader));
-check('Publisher/owner auth are not yet loaded by live app',!fs.readFileSync(path.join(root,'app2.js'),'utf8').includes('public-customer-publisher-v1.js')&&!fs.readFileSync(path.join(root,'firebase.js'),'utf8').includes('firebase-owner-auth-v1.js'));
+const publisherLoaded=liveApp.includes('public-customer-publisher-v1.js');
+if(publisherLoaded){
+  const required=['customer-public-builder-v1.js','customer-public-builder-v2.js','public-customer-owner-auth-v1.js','public-customer-publisher-v1.js','public-customer-sync-ui-v1.js'];
+  for(const file of required)check(`Live publisher rollout loads ${file}`,liveApp.includes(file));
+  check('Live publisher load order puts sanitizer before publisher',liveApp.indexOf('customer-public-builder-v1.js')<liveApp.indexOf('public-customer-publisher-v1.js')&&liveApp.indexOf('customer-public-builder-v2.js')<liveApp.indexOf('public-customer-publisher-v1.js'));
+  check('Live publisher load order puts isolated owner auth before publisher',liveApp.indexOf('public-customer-owner-auth-v1.js')<liveApp.indexOf('public-customer-publisher-v1.js'));
+}else{
+  check('Live publisher remains safely disabled until rollout wiring is complete',true);
+}
 if(failures.length){console.error(`Public customer snapshot checks failed: ${failures.join(', ')}`);process.exit(1);}console.log('All public customer snapshot privacy checks passed.');
