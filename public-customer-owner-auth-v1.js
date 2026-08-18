@@ -3,7 +3,6 @@
   if (window.PublicCustomerOwnerAuth) return;
 
   const OWNER_UID="aLvjMpXgMJf5W3YUjQM6wqKagLo2";
-  const OWNER_EMAIL="customjeepyj@gmail.com";
   const APP_NAME="rose-family-public-publisher";
   const firebaseConfig={
     apiKey:"AIzaSyCSruU8Sae0mFI16N2tcIh2GRLartzYhHE",
@@ -41,12 +40,15 @@
   }
 
   function isOwner(u=user){return !!u&&!u.isAnonymous&&String(u.uid||"")===OWNER_UID;}
-  function status(){return {ready:!!auth,connected:isOwner(),uid:user?.uid||"",email:user?.email||"",ownerUid:OWNER_UID,ownerEmail:OWNER_EMAIL};}
+  function status(){return {ready:!!auth,connected:isOwner(),uid:user?.uid||"",email:user?.email||"",ownerUid:OWNER_UID};}
   async function currentOwner(){await init();return isOwner()?user:null;}
-  async function signIn(password,email=OWNER_EMAIL){
+  async function signIn(email,password){
     await init();
+    email=String(email||"").trim();
+    password=String(password||"");
+    if(!email)throw new Error("Owner email is required");
     if(!password)throw new Error("Owner password is required");
-    const credential=await api.authSdk.signInWithEmailAndPassword(auth,String(email||OWNER_EMAIL).trim(),String(password));
+    const credential=await api.authSdk.signInWithEmailAndPassword(auth,email,password);
     user=credential.user||null;
     if(!isOwner(user)){
       try{await api.authSdk.signOut(auth);}catch{}
@@ -59,6 +61,6 @@
   async function disconnect(){await init();await api.authSdk.signOut(auth);user=null;window.dispatchEvent(new CustomEvent("public-customer-owner-auth-changed",{detail:status()}));return status();}
   async function publisherDb(){await init();return db;}
 
-  window.PublicCustomerOwnerAuth={version:1,init,status,currentOwner,signIn,disconnect,publisherDb,ownerUid:()=>OWNER_UID,ownerEmail:()=>OWNER_EMAIL};
+  window.PublicCustomerOwnerAuth={version:2,init,status,currentOwner,signIn,disconnect,publisherDb,ownerUid:()=>OWNER_UID};
   void init();
 })();
