@@ -1,5 +1,7 @@
 (() => {
   "use strict";
+  if (window.__whoOwesV2) return;
+  window.__whoOwesV2 = true;
 
   const APP2_KEY = "chickenEggApp2V1";
   const ENTRIES_KEY = "chickenEggEntriesV102";
@@ -8,7 +10,6 @@
     try { return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback)); }
     catch { return fallback; }
   }
-
   function num(v) { return Number(v) || 0; }
   function money(v) { return "$" + num(v).toFixed(2); }
   function escapeHTML(v) {
@@ -16,7 +17,6 @@
       "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#039;"
     }[ch]));
   }
-
   function saleAmount(entry) {
     return num(entry.dozenSold) * num(entry.dozenPrice)
       + num(entry.packSold) * num(entry.packPrice);
@@ -112,44 +112,64 @@
         </div>`).join("")}`;
 
     card.querySelectorAll(".who-owes-paid").forEach(button => {
-      button.addEventListener("click", () => markPaid(button.dataset.saleId));
+      button.addEventListener("click", () => void markPaid(button.dataset.saleId));
     });
   }
 
-  function markPaid(id) {
-    if (!unpaidRows().some(row => row.id === String(id))) return;
+  async function markPaid(id) {
+    id = String(id || "");
+    if (!id || !unpaidRows().some(row => row.id === id)) return;
 
-    if (typeof window.editEntry !== "function" || typeof window.saveSale !== "function") {
-      alert("Payment update is not ready yet. Try again in a moment.");
+    const farm = read(APP2_KEY, { saleMeta:{}, customers:[], activity:[] });
+    farm.saleMeta = farm.saleMeta && typeof farm.saleMeta === "object" ? farm.saleMeta : {};
+    const existing = farm.saleMeta[id];
+    if (!existing || existing.paid !== false) return;
+
+    const rows = unpaidRows();
+    const row = rows.find(x => x.id === id);
+    farm.saleMeta[id] = { ...existing, paid:true, updatedAt:Date.now() };
+    farm.updatedAt = Date.now();
+
+    try {
+      localStorage.setItem(APP2_KEY, JSON.stringify(farm));
+    } catch (error) {
+      console.error("Who Owes payment save failed:", error);
+      alert("Could not mark this payment as paid yet. Your sale was not changed.");
       return;
     }
 
-    window.editEntry(String(id));
+    window.dispatchEvent(new CustomEvent("farm-local-data-changed", { detail:{ key:APP2_KEY, whoOwes:true } }));
+    render();
 
-    setTimeout(() => {
-      const paid = document.getElementById("farm2SalePaid");
-      if (!paid) {
-        alert("Payment controls are not ready yet.");
-        return;
-      }
+    try {
+      if (typeof window.syncFarmNow === "function") await window.syncFarmNow();
+    } catch (error) {
+      console.warn("Who Owes payment sync waiting:", error);
+    }
 
-      paid.value = "paid";
-      window.saveSale();
+    window.dispatchEvent(new CustomEvent("who-owes-changed", { detail:{ saleId:id, amount:row?.amount || 0 } }));
+    render();
+  }
 
-      setTimeout(() => {
-        if (typeof window.showScreen === "function") window.showScreen("dashboard");
-        render();
-      }, 100);
-    }, 100);
+  let queued = false;
+  function scheduleRender() {
+    if (queued) return;
+    queued = true;
+    setTimeout(() => { queued = false; render(); }, 40);
   }
 
   function init() {
     render();
-    setInterval(render, 1200);
+    ["farm-data-synced","farm-local-data-changed","core-data-synced","farm-sync-ready","who-owes-changed"]
+      .forEach(name => window.addEventListener(name, scheduleRender));
+    window.addEventListener("focus", scheduleRender);
+    window.addEventListener("pageshow", scheduleRender);
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) scheduleRender(); });
+    console.log("✅ Who Owes v2 active — Home unpaid balances are event-driven");
   }
 
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", () => setTimeout(init, 350));
+    document.addEventListener("DOMContentLoaded", () => setTimeout(init, 350), { once:true });
   } else {
     setTimeout(init, 350);
   }
