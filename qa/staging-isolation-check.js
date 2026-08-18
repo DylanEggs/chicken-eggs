@@ -19,11 +19,11 @@ check('Staging swaps out live Firebase entrypoint',index.includes('staging/stagi
 check('Staging swaps out live database adapter',index.includes('staging/staging-database.js'));
 check('Staging swaps out live app2 loader',index.includes('staging/staging-app2.js'));
 check('Staging localStorage is namespaced',storage.includes('__chicken_eggs_staging__::'));
-check('Staging clear only removes staging keys',storage.includes('key.startsWith(PREFIX)')&&!storage.includes('return native.clear.call(this);\n    for'));
+check('Staging clear is guarded and staging-only',storage.includes('if (!isStagingLocal(this)) return native.clear.call(this);')&&storage.includes('key.startsWith(PREFIX) && key !== INIT'));
 check('Staging database has no Firebase imports',!database.includes('firebasejs')&&!database.includes('FirestoreDB'));
 check('Staging photo service has no Firebase imports',!photos.includes('firebasejs')&&!photos.includes('FirestoreDB'));
-check('Staging app2 removes live photo service',app2.includes('replace(\'load("bird-photo-service-v4.js");\', \'load("staging/staging-photo-service.js");\')'));
-check('Staging app2 removes live photo recovery',app2.includes('replace(\'load("bird-photo-recovery-v2.js");\', \'\')'));
+check('Staging app2 removes live photo service',app2.includes('.replace(\'load("bird-photo-service-v4.js");\', \'load("staging/staging-photo-service.js");\')'));
+check('Staging app2 removes live photo recovery',app2.includes('.replace(\'load("bird-photo-recovery-v2.js");\', \'\')'));
 check('Staging banner clearly identifies test mode',banner.includes('TEST / STAGING')&&banner.includes('LIVE FARM DATA IS READ-ONLY'));
 check('Staging Firebase imports reads only',firebase.includes('getDoc')&&firebase.includes('getDocs')&&firebase.includes('where'));
 check('Staging Firebase has no Firestore write API imports',!/(setDoc|addDoc|updateDoc|deleteDoc|runTransaction|writeBatch|onSnapshot)\s*[,}]/.test(firebase));
