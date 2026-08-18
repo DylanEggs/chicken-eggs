@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const BUILD = String(window.__ChickenEggsBuild || "20260818-1760");
+  const BUILD = String(window.__ChickenEggsBuild || "20260818-1770");
   const load = (src, module = false) => document.write(`<script${module?' type="module"':''} src="${src}?v=${encodeURIComponent(BUILD)}"><\/script>`);
 
   load("sync-safety-preload-v1.js");
@@ -35,6 +35,11 @@
   load("farm-diagnostics-v1.js");
   load("farm-diagnostics-photo-v2.js");
   load("app-self-test-v1.js");
+
+  // Read-only until the user explicitly downloads/restores a file. This gives
+  // the live farm a complete off-device backup path before customer publishing
+  // is enabled.
+  load("complete-safety-backup-v3.js");
 
   let chickenSalesReturn = "farm2Hub";
   function activeScreenId(){return document.querySelector(".screen.active")?.id||"dashboard";}
