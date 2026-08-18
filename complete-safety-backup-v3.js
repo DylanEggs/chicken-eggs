@@ -106,7 +106,10 @@
   function applyBackup(backup) {
     const check=validate(backup);
     if (!check.ok) throw new Error(check.errors.join("\n"));
+    const oldComplete=window.__completeSafetyRestoreV3;
+    const oldInventory=window.__inventoryRestoreV6;
     window.__completeSafetyRestoreV3=true;
+    window.__inventoryRestoreV6=true;
     try {
       for (const [key,value] of Object.entries(backup.datasets)) {
         if (!key.startsWith(PREFIX)) continue;
@@ -114,7 +117,8 @@
         else localStorage.setItem(key,value);
       }
     } finally {
-      window.__completeSafetyRestoreV3=false;
+      window.__completeSafetyRestoreV3=oldComplete;
+      window.__inventoryRestoreV6=oldInventory;
     }
     return true;
   }
