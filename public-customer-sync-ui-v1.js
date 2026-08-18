@@ -9,6 +9,20 @@
   function APIsReady(){return !!window.PublicCustomerOwnerAuth && !!window.FarmPublicCustomerPublisherV1;}
   function target(){return document.getElementById("farm2Settings")||document.getElementById("farm");}
 
+  function positionTopCards(root=target()){
+    if(!root)return;
+    const sync=document.getElementById("publicCustomerSyncCardV1");
+    if(!sync)return;
+    const backup=document.getElementById("completeSafetyBackupV3");
+    const directHeader=Array.from(root.children||[]).find(el=>el.classList?.contains("screenTitle"));
+    if(directHeader){
+      directHeader.insertAdjacentElement("afterend",sync);
+    }else{
+      root.prepend(sync);
+    }
+    if(backup)sync.insertAdjacentElement("afterend",backup);
+  }
+
   function css(){
     if(document.getElementById("publicCustomerSyncUiCss"))return;
     const s=document.createElement("style");s.id="publicCustomerSyncUiCss";s.textContent=`
@@ -21,7 +35,8 @@
 
   function ensure(){
     css();
-    if(document.getElementById("publicCustomerSyncCardV1"))return true;
+    const existing=document.getElementById("publicCustomerSyncCardV1");
+    if(existing){positionTopCards();return true;}
     const root=target();if(!root)return false;
     const card=document.createElement("div");card.id="publicCustomerSyncCardV1";card.className="farm2-card";
     card.innerHTML=`
@@ -42,6 +57,7 @@
       </div>
       <div class="farm2-subtle" style="margin-top:9px">Once connected, safe customer data republishes automatically when eggs, inventory, flock/photos, weather, or predictions change. Your email and password are never written to farm storage.</div>`;
     root.appendChild(card);
+    positionTopCards(root);
     card.querySelector("#publicCustomerConnect")?.addEventListener("click",connect);
     card.querySelector("#publicCustomerPublishNow")?.addEventListener("click",()=>publish("manual-button"));
     card.querySelector("#publicCustomerOpen")?.addEventListener("click",()=>window.open("view/","_blank","noopener"));
@@ -54,6 +70,7 @@
   }
   function render(){
     if(!ensure())return;
+    positionTopCards();
     const s=status();
     const wrap=document.getElementById("publicCustomerLoginWrap"),pub=document.getElementById("publicCustomerPublishNow"),disc=document.getElementById("publicCustomerDisconnect");
     if(wrap)wrap.hidden=!!s.connected;if(pub)pub.hidden=!s.connected;if(disc)disc.hidden=!s.connected;
@@ -96,6 +113,7 @@
     if(!ensure()){
       const o=new MutationObserver(()=>{if(ensure())o.disconnect();});o.observe(document.documentElement,{childList:true,subtree:true});setTimeout(()=>o.disconnect(),15000);
     }
+    [250,800,1800].forEach(ms=>setTimeout(positionTopCards,ms));
     const start=Date.now();
     const wait=()=>{
       if(APIsReady()){window.PublicCustomerOwnerAuth.init?.().finally(render);render();return;}
