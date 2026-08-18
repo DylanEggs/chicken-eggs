@@ -44,22 +44,27 @@ jobs:
 
       - name: Run visible egg-sale profit regression in real Chromium
         id: profit
+        if: always()
         run: node qa/staging-profit-browser-e2e.mjs
 
       - name: Run manual controls and owner gate in real Chromium
         id: controls
+        if: always()
         run: node qa/staging-controls-e2e.mjs
 
       - name: Run customer yearly forecast in real Chromium
         id: year
+        if: always()
         run: node qa/customer-year-browser-e2e.mjs
 
       - name: Run customer egg stats in real Chromium
         id: stats
+        if: always()
         run: node qa/customer-stats-browser-e2e.mjs
 
       - name: Verify deployed Firestore customer/private read boundary
         id: boundary
+        if: always()
         run: node qa/public-firestore-boundary-browser.mjs
 
       - name: Report staging browser status
