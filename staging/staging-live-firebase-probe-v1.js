@@ -6,11 +6,11 @@
   const APP_NAME = "chicken-eggs-staging-anon-read-probe";
   const firebaseConfig = {
     apiKey: "AIzaSyCSruU8Sae0mFI16N2tcIh2GRLartzYhHE",
-    authDomain: "chicken-eggs-53358.firebaseapp.com",
-    projectId: "chicken-eggs-53358",
-    storageBucket: "chicken-eggs-53358.firebasestorage.app",
-    messagingSenderId: "461720066101",
-    appId: "1:461720066101:web:6b19a7c4d245f399cf797c"
+    authDomain:"chicken-eggs-53358.firebaseapp.com",
+    projectId:"chicken-eggs-53358",
+    storageBucket:"chicken-eggs-53358.firebasestorage.app",
+    messagingSenderId:"461720066101",
+    appId:"1:461720066101:web:6b19a7c4d245f399cf797c"
   };
 
   let running = null;
@@ -58,5 +58,22 @@
   }
 
   window.StagingLiveFirebaseProbeV1 = { version: 1, run };
+
+  // Keep the isolated torture-test copy small enough that Chrome storage quota
+  // does not hide the Firebase result behind copied full-resolution flock photos.
+  // This loads only inside staging and never removes anything from the live app.
+  try {
+    const current = document.currentScript?.src || location.href;
+    const trimUrl = new URL("staging-test-storage-trim-v1.js", current);
+    if (!document.querySelector('script[data-staging-storage-trim="1"]')) {
+      const script = document.createElement("script");
+      script.src = trimUrl.href;
+      script.dataset.stagingStorageTrim = "1";
+      document.head.appendChild(script);
+    }
+  } catch (error) {
+    console.warn("STAGING storage trim helper did not load:", error);
+  }
+
   console.log("🧪 STAGING live Firebase anonymous read probe ready — read-only");
 })();
