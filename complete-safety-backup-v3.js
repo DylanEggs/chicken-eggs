@@ -4,15 +4,17 @@
 
   const FORMAT = "chicken-eggs-complete-safety-backup-v3";
   const PREFIX = "chickenEgg";
+  const PHOTO_KEY = "chickenEggLocalBirdPhotosV1";
+  const APP2_KEY = "chickenEggApp2V1";
   const IMPORTANT = [
     "chickenEggEntriesV102",
     "chickenEggSettingsV102",
-    "chickenEggApp2V1",
+    APP2_KEY,
     "chickenEggInventoryV2",
     "chickenEggBusinessV1",
     "chickenEggWeatherIntelligenceV2",
     "chickenEggDeluxeV1",
-    "chickenEggLocalBirdPhotosV1",
+    PHOTO_KEY,
     "chickenEggBirdPhotoMetaV4",
     "chickenEggApp2SnapshotsV1",
     "chickenEggFunV1"
@@ -40,7 +42,7 @@
     return out;
   }
   function photoSummary(datasets) {
-    const raw=datasets.chickenEggLocalBirdPhotosV1;
+    const raw=datasets[PHOTO_KEY];
     const map=safeParse(raw);
     if (!map || typeof map !== "object" || Array.isArray(map)) return {count:0,bytes:0};
     let count=0,bytes=0;
@@ -70,6 +72,36 @@
       datasets
     };
   }
+
+  async function buildComplete(reason="manual") {
+    const backup=build(reason);
+    const service=window.FarmBirdPhotosV4||window.FarmBirdPhotosV3||window.FarmBirdPhotosV2;
+    try { await service?.ready?.(); } catch {}
+    try { await service?.flush?.(); } catch {}
+
+    const app2=safeParse(backup.datasets[APP2_KEY])||{};
+    const flock=Array.isArray(app2?.flock)?app2.flock.filter(Boolean):[];
+    const photoMap=safeParse(backup.datasets[PHOTO_KEY]);
+    const merged=photoMap&&typeof photoMap==="object"&&!Array.isArray(photoMap)?{...photoMap}:{};
+    let servicePhotos=0;
+    for (const bird of flock) {
+      const id=String(bird?.id||"");
+      if (!id) continue;
+      let src="";
+      try { src=String(service?.get?.(id)||""); } catch {}
+      if (!src) continue;
+      merged[id]=src;
+      servicePhotos++;
+    }
+    backup.datasets[PHOTO_KEY]=JSON.stringify(merged);
+    if (!backup.important.present.includes(PHOTO_KEY)) backup.important.present.push(PHOTO_KEY);
+    backup.important.missing=backup.important.missing.filter(k=>k!==PHOTO_KEY);
+    backup.datasetCount=Object.keys(backup.datasets).length;
+    backup.photos=photoSummary(backup.datasets);
+    backup.photoCoverage={flockProfiles:flock.length,photosResolvedFromService:servicePhotos,photosCaptured:backup.photos.count};
+    return backup;
+  }
+
   function validate(backup) {
     const errors=[];
     if (!backup || typeof backup !== "object") errors.push("Backup file is not a valid object");
@@ -86,8 +118,8 @@
   function blobFor(backup) {
     return new Blob([JSON.stringify(backup,null,2)],{type:"application/json"});
   }
-  function downloadBackup(reason="manual", filename="") {
-    const backup=build(reason);
+  async function downloadBackup(reason="manual", filename="") {
+    const backup=await buildComplete(reason);
     const blob=blobFor(backup);
     const link=document.createElement("a");
     const url=URL.createObjectURL(blob);
@@ -134,7 +166,7 @@
     const when=String(backup.backupDate||"unknown date");
     if (!confirm(`Restore COMPLETE farm backup from ${when}?\n\nIt contains ${backup.datasetCount||Object.keys(backup.datasets).length} farm datasets and ${photos} saved flock photos.\n\nAn emergency backup of the current farm will download first.`)) return false;
 
-    downloadBackup("automatic-pre-restore",`chicken-eggs-PRE-RESTORE-${localDate()}.json`);
+    await downloadBackup("automatic-pre-restore",`chicken-eggs-PRE-RESTORE-${localDate()}.json`);
     if (!confirm("Emergency pre-restore backup downloaded. Continue restoring the farm now?")) return false;
 
     try {
@@ -156,15 +188,23 @@
     const card=document.createElement("div");
     card.id="completeSafetyBackupV3";
     card.className="farm2-card";
-    card.innerHTML=`<h3>🛡️ Complete Safety Backup</h3><p class="farm2-subtle">Includes egg/sale history, exact inventory, customers/orders/flock, expenses, weather history, business data, settings, milestones, and saved chicken photos.</p><button type="button" id="completeSafetyDownloadV3">💾 Download Complete Safety Backup</button><input type="file" id="completeSafetyRestoreFileV3" accept=".json,application/json" style="display:none"><button type="button" class="secondary" id="completeSafetyRestoreV3">📂 Restore Complete Safety Backup</button><div id="completeSafetyStatusV3" class="farm2-subtle" style="margin-top:9px"></div>`;
+    card.innerHTML=`<h3>🛡️ Complete Safety Backup</h3><p class="farm2-subtle">Includes egg/sale history, exact inventory, customers/orders/flock, expenses, weather history, business data, settings, milestones, and current chicken photos—including photos that are available from Firebase even if the browser has reclaimed its local copy.</p><button type="button" id="completeSafetyDownloadV3">💾 Download Complete Safety Backup</button><input type="file" id="completeSafetyRestoreFileV3" accept=".json,application/json" style="display:none"><button type="button" class="secondary" id="completeSafetyRestoreV3">📂 Restore Complete Safety Backup</button><div id="completeSafetyStatusV3" class="farm2-subtle" style="margin-top:9px"></div>`;
     settings.appendChild(card);
     const dl=card.querySelector("#completeSafetyDownloadV3");
     const restore=card.querySelector("#completeSafetyRestoreV3");
     const input=card.querySelector("#completeSafetyRestoreFileV3");
     const status=card.querySelector("#completeSafetyStatusV3");
-    dl?.addEventListener("click",()=>{
-      const backup=downloadBackup("manual-complete-safety-backup");
-      if (status) status.textContent=`Backup downloaded • ${backup.datasetCount} farm datasets • ${backup.photos.count} flock photos`;
+    dl?.addEventListener("click",async()=>{
+      if (dl.disabled) return;
+      dl.disabled=true;
+      if (status) status.textContent="Collecting farm data and current flock photos…";
+      try {
+        const backup=await downloadBackup("manual-complete-safety-backup");
+        if (status) status.textContent=`Backup downloaded • ${backup.datasetCount} farm datasets • ${backup.photos.count} flock photos`;
+      } catch (error) {
+        console.error("Complete backup download failed:",error);
+        if (status) status.textContent="Backup could not be created. Nothing on the farm was changed.";
+      } finally { dl.disabled=false; }
     });
     restore?.addEventListener("click",()=>input?.click());
     input?.addEventListener("change",async()=>{
@@ -181,7 +221,7 @@
     setTimeout(()=>obs.disconnect(),15000);
   }
 
-  window.CompleteSafetyBackupV3={format:FORMAT,build,validate,applyBackup,downloadBackup,restoreFromFile,farmKeys,importantKeys:()=>IMPORTANT.slice()};
+  window.CompleteSafetyBackupV3={format:FORMAT,build,buildComplete,validate,applyBackup,downloadBackup,restoreFromFile,farmKeys,importantKeys:()=>IMPORTANT.slice()};
   if (document.readyState==="loading") document.addEventListener("DOMContentLoaded",()=>setTimeout(installUi,300),{once:true});
   else setTimeout(installUi,300);
 })();
