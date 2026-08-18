@@ -42,16 +42,34 @@ assert(raw('chickenEggEntriesV102')===liveEntries,'staging setItem overwrote liv
 assert(raw(PREFIX+'chickenEggEntriesV102').includes('TEST-ONLY'),'staging setItem did not update isolated copy');
 
 vm.runInContext(fs.readFileSync(path.join(root,'staging/staging-database.js'),'utf8'),context,{filename:'staging-database.js'});
+vm.runInContext(fs.readFileSync(path.join(root,'staging/staging-manual-snapshots.js'),'utf8'),context,{filename:'staging-manual-snapshots.js'});
 
 (async()=>{
   await window.ChickenEggsDB.saveEntry({id:'staging-sale',type:'sale',date:'2099-01-01',dozenSold:10,dozenPrice:99});
-  const staged=JSON.parse(store.getItem('chickenEggEntriesV102'));
+  let staged=JSON.parse(store.getItem('chickenEggEntriesV102'));
   assert(staged.some(x=>x.id==='staging-sale'),'staging database failed to create test sale');
   assert(raw('chickenEggEntriesV102')===liveEntries,'staging database save touched live entries');
 
   await window.ChickenEggsDB.deleteEntry('staging-sale');
   assert(!JSON.parse(store.getItem('chickenEggEntriesV102')).some(x=>x.id==='staging-sale'),'staging delete failed inside sandbox');
   assert(raw('chickenEggEntriesV102')===liveEntries,'staging database delete touched live entries');
+
+  // Human-testing baseline: save staged state, destroy it, restore it, and prove live keys never move.
+  store.setItem('chickenEggEntriesV102',JSON.stringify([{id:'BASELINE-ENTRY',type:'eggs',eggs:12}]));
+  store.setItem('chickenEggApp2V1',JSON.stringify({flock:[{id:'baseline-bird',name:'Baseline Bird'}]}));
+  const saved=await window.StagingManualSnapshots.saveBaseline('Isolation test baseline');
+  assert(saved?.saved===true&&saved.keys>=2,'manual staging baseline did not save');
+  const baselinePhysical=raw(PREFIX+'chickenEggManualStagingBaselineV1');
+  assert(!!baselinePhysical,'manual baseline was not kept inside staging namespace');
+
+  store.setItem('chickenEggEntriesV102',JSON.stringify([{id:'DESTROYED-TEST',type:'sale',dozenSold:99}]));
+  store.removeItem('chickenEggApp2V1');
+  await window.StagingManualSnapshots.restoreBaseline();
+  staged=JSON.parse(store.getItem('chickenEggEntriesV102'));
+  assert(staged.some(x=>x.id==='BASELINE-ENTRY')&&!staged.some(x=>x.id==='DESTROYED-TEST'),'manual baseline restore did not restore staged history');
+  assert(JSON.parse(store.getItem('chickenEggApp2V1')).flock[0].id==='baseline-bird','manual baseline restore did not restore staged farm state');
+  assert(raw('chickenEggEntriesV102')===liveEntries,'manual baseline restore touched live entries');
+  assert(raw('chickenEggApp2V1')===liveApp,'manual baseline restore touched live app state');
 
   store.removeItem('chickenEggApp2V1');
   assert(raw('chickenEggApp2V1')===liveApp,'staging removeItem deleted live app state');
@@ -61,5 +79,5 @@ vm.runInContext(fs.readFileSync(path.join(root,'staging/staging-database.js'),'u
   assert(raw('chickenEggApp2V1')===liveApp,'staging clear deleted live app state');
   assert(raw('unrelatedSiteKey')==='do-not-touch','staging clear touched unrelated live storage');
 
-  console.log('PASS Staging destructive isolation: seed, add, edit/write, delete, remove and clear cannot modify live localStorage');
+  console.log('PASS Staging destructive isolation: seed, add, edit/write, delete, manual baseline save/restore, remove and clear cannot modify live localStorage');
 })().catch(error=>{console.error('STAGING ISOLATION FAILED:',error);process.exit(1);});
