@@ -35,6 +35,12 @@ jobs:
       - name: Run inventory authority integration test
         run: node qa/inventory-system-v6-integration.js
 
+      - name: Run staging isolation architecture checks
+        run: node qa/staging-isolation-check.js
+
+      - name: Run destructive staging isolation test
+        run: node qa/staging-isolation-integration.js
+
       - name: Verify live GitHub Pages deployment
         run: node qa/live-pages-smoke.js
 
