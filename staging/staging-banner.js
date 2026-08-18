@@ -11,12 +11,13 @@
       #stagingSafetyBanner .st-row{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;font-weight:900;text-align:center}
       #stagingSafetyBanner button,#stagingSafetyBanner a{width:auto!important;margin:0!important;padding:7px 10px!important;border-radius:10px!important;border:1px solid rgba(255,255,255,.4)!important;background:#fff!important;color:#7f1d1d!important;font-size:12px!important;font-weight:900!important;text-decoration:none!important}
       #stagingSafetyBanner .st-customer{background:#fff3b8!important;color:#604800!important;border-color:#ffe06a!important}
+      #stagingSafetyBanner .st-owner{background:#e7f4ff!important;color:#174c75!important;border-color:#b9dcf7!important}
       #stagingSafetyBanner small{display:block;text-align:center;margin-top:4px;opacity:.9;font-weight:700}
     `;
     document.head.appendChild(style);
     const bar=document.createElement("div");
     bar.id="stagingSafetyBanner";
-    bar.innerHTML=`<div class="st-row">🧪 TEST / STAGING — LIVE FARM DATA IS READ-ONLY <button id="stagingResetLive">Reset Test Copy From Live</button><a class="st-customer" href="staging/view/">👀 Customer Preview</a><a href="./">Open LIVE App</a></div><small>Anything you add, edit, delete, pay, restore, or photograph here stays in the sandbox.</small>`;
+    bar.innerHTML=`<div class="st-row">🧪 TEST / STAGING — LIVE FARM DATA IS READ-ONLY <button id="stagingResetLive">Reset Test Copy From Live</button><a class="st-customer" href="staging/view/">👀 Customer Preview</a><a class="st-owner" href="staging/owner-login/">🔐 Test Owner Login</a><a href="./">Open LIVE App</a></div><small>Anything you add, edit, delete, pay, restore, or photograph here stays in the sandbox.</small>`;
     document.body.prepend(bar);
 
     document.getElementById("stagingResetLive")?.addEventListener("click", async()=>{
