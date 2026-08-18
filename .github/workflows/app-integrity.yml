@@ -47,6 +47,9 @@ jobs:
       - name: Run customer yearly forecast checks
         run: node qa/customer-year-forecast-check.js
 
+      - name: Run owner auth security checks
+        run: node qa/owner-auth-static-check.js
+
       - name: Run destructive staging isolation test
         run: node qa/staging-isolation-integration.js
 
