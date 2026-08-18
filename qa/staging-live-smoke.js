@@ -27,7 +27,7 @@ async function fetchText(file){
   }
   if(live!==expected)throw new Error(`Staging build ${expected} did not deploy; live=${live}`);
 
-  const assets=['index.html','staging-storage.js','staging-firebase.js','staging-database.js','staging-app2.js','staging-photo-service.js','staging-banner.js','staging-diagnostics.js','staging-full-test.js','staging-backup-test.js','customer-public-data-v1.js','view/index.html','view/view.css','view/view.js'];
+  const assets=['index.html','staging-storage.js','staging-firebase.js','staging-database.js','staging-app2.js','staging-photo-service.js','staging-banner.js','staging-diagnostics.js','staging-full-test.js','staging-backup-test.js','customer-public-data-v1.js','view/index.html','view/view.css','view/view.js','view/year-forecast-v1.js'];
   const loaded={};
   for(const file of assets){
     loaded[file]=await fetchText(file);
@@ -54,13 +54,15 @@ async function fetchText(file){
   if(!loaded['staging-backup-test.js'].includes('chicken-eggs-full-backup-v8'))throw new Error('Backup test does not verify current backup format');
   if(!loaded['staging-backup-test.js'].includes('Restore routes exact inventory through InventorySystemV6'))throw new Error('Backup test does not verify inventory restore authority');
 
-  const customerBundle=loaded['customer-public-data-v1.js']+loaded['view/index.html']+loaded['view/view.js'];
+  const customerBundle=loaded['customer-public-data-v1.js']+loaded['view/index.html']+loaded['view/view.js']+loaded['view/year-forecast-v1.js'];
   if(!loaded['view/index.html'].includes('CUSTOMER VIEW PREVIEW'))throw new Error('Customer preview identity missing');
   if(!loaded['view/index.html'].includes('../customer-public-data-v1.js'))throw new Error('Customer preview does not load sanitizer');
-  if(/(firebasejs|FirestoreDB|FirebaseUser|setDoc|addDoc|updateDoc|deleteDoc)/i.test(loaded['view/index.html']+loaded['view/view.js']))throw new Error('Customer preview can reach Firebase');
+  if(!loaded['view/index.html'].includes('year-forecast-v1.js'))throw new Error('Customer preview does not load yearly forecast');
+  if(/(firebasejs|FirestoreDB|FirebaseUser|setDoc|addDoc|updateDoc|deleteDoc)/i.test(loaded['view/index.html']+loaded['view/view.js']+loaded['view/year-forecast-v1.js']))throw new Error('Customer preview can reach Firebase');
   if(/localStorage\.(setItem|removeItem|clear)/.test(customerBundle))throw new Error('Customer preview contains a browser data writer');
   if(!loaded['customer-public-data-v1.js'].includes('customer-public-v1'))throw new Error('Customer public data contract missing');
   if(!loaded['view/index.html'].includes('Browse the flock')||!loaded['view/index.html'].includes('Chicken of the Day'))throw new Error('Customer preview core viewing features missing');
+  if(!loaded['view/year-forecast-v1.js'].includes('predicted this year'))throw new Error('Customer yearly forecast UI missing');
 
-  console.log(`PASS Staging live smoke — ${expected}, ${assets.length} isolated assets verified including customer preview`);
+  console.log(`PASS Staging live smoke — ${expected}, ${assets.length} isolated assets verified including customer preview and yearly forecast`);
 })().catch(error=>{console.error('STAGING LIVE SMOKE FAILED:',error);process.exit(1);});
