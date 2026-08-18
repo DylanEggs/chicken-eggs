@@ -48,12 +48,15 @@ try{
   if(report.failed)throw new Error(`Visible profit sandbox failed ${report.failed} of ${report.total} checks`);
 
   const required=[
+    'Profit/Loss Calculator computes typed values correctly',
     '$5 egg sale increases current-month egg revenue by exactly $5',
     '$5 egg sale improves current-month profit/loss by exactly $5',
     'Home Egg Sales visibly increases by exactly $5',
     'Home Net Profit/Loss visibly improves by exactly $5',
     'Open Profit/Loss Calculator does not freeze business totals',
+    'Open Profit/Loss Calculator stays open through business refresh',
     'Business refresh preserves calculator inputs',
+    'Business refresh preserves calculator result',
     'Deleting test sale restores current-month revenue and profit',
     'Deleting test sale restores visible Home business totals',
     'Deleting test sale restores the dozen to inventory',
@@ -78,7 +81,7 @@ try{
 
   const serious=errors.filter(x=>!/favicon|ResizeObserver/i.test(x));
   if(serious.length)throw new Error(`Profit browser console/page errors: ${serious.slice(0,5).join(' | ')}`);
-  console.log(`PASS Visible profit browser regression — ${report.passed}/${report.total}; sale revenue, Home profit/loss, calculator-open refresh, inventory reversal, and form restoration verified`);
+  console.log(`PASS Visible profit browser regression — ${report.passed}/${report.total}; calculator math/state, sale revenue, Home profit/loss, inventory reversal, and form restoration verified`);
 }finally{
   await browser.close();
 }
