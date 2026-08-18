@@ -28,23 +28,25 @@ try{
   await page.goto(`${base}?profit=${Date.now()}`,{waitUntil:'domcontentloaded',timeout:120000});
   await page.waitForFunction(()=>window.__ChickenEggsEnvironment==='staging',null,{timeout:30000});
   await page.waitForFunction(()=>window.FarmSyncSafety?.isReady?.()===true,null,{timeout:30000});
-  await page.waitForFunction(()=>window.StagingFullTest?.suite==='v2-visible-business'&&window.StagingBusinessDisplay?.refresh,null,{timeout:30000});
+  await page.waitForFunction(()=>window.StagingFullTest?.suite==='v2-visible-business'&&window.StagingFullTest?.__deepV3===true&&window.StagingBusinessDisplay?.refresh,null,{timeout:30000});
 
   const before=await page.evaluate(()=>({
     suite:window.StagingFullTest?.suite,
+    deepV3:window.StagingFullTest?.__deepV3===true,
     liveFirestore:!!window.FirestoreDB,
     liveUser:!!window.FirebaseUser,
     readOnly:window.__STAGING_FIREBASE_READONLY__===true
   }));
   console.log('PROFIT SUITE READY',JSON.stringify(before));
-  if(before.suite!=='v2-visible-business')throw new Error(`Wrong sandbox suite loaded: ${before.suite}`);
+  if(before.suite!=='v2-visible-business'||!before.deepV3)throw new Error(`Wrong sandbox suite loaded: ${JSON.stringify(before)}`);
   if(before.liveFirestore||before.liveUser||!before.readOnly)throw new Error('Profit E2E staging safety boundary is not intact');
 
   const report=await page.evaluate(()=>window.StagingFullTest.run());
   console.log(`VISIBLE PROFIT SUITE ${report.passed}/${report.total} passed; suite=${report.suite}`);
   for(const row of report.results||[])console.log(`${row.pass?'PASS':'FAIL'} ${row.name}${row.detail?` — ${row.detail}`:''}`);
 
-  if(report.suite!=='staging-full-v2-visible-business')throw new Error(`Full test returned obsolete suite ${report.suite||'unknown'}`);
+  const suiteName=String(report.suite||'');
+  if(!suiteName.includes('visible-business')||!suiteName.includes('deep-v3'))throw new Error(`Full test returned wrong suite ${suiteName||'unknown'}`);
   if(report.failed)throw new Error(`Visible profit sandbox failed ${report.failed} of ${report.total} checks`);
 
   const required=[
@@ -70,6 +72,19 @@ try{
     if(!row.pass)throw new Error(`Required visible-profit check failed: ${name} — ${row.detail||''}`);
   }
 
+  const deepRequired=[
+    'Sale equal to all available stock succeeds',
+    'Another sale at zero stock is blocked',
+    'Sale cannot consume eggs reserved for pending order',
+    'Deleting edited sale restores exact pre-sale mixed inventory',
+    'Public v2 snapshot contains no private customer/money values'
+  ];
+  for(const name of deepRequired){
+    const row=byName.get(name);
+    if(!row)throw new Error(`Required deep-v3 check is missing: ${name}`);
+    if(!row.pass)throw new Error(`Required deep-v3 check failed: ${name} — ${row.detail||''}`);
+  }
+
   const ui=await page.evaluate(()=>({
     saleDate:document.getElementById('saleDate')?.value||'',
     eggDate:document.getElementById('eggDate')?.value||'',
@@ -77,11 +92,12 @@ try{
     full:window.StagingFullTest.last?.()
   }));
   if(ui.saleDate==='2099-12-31'||ui.eggDate==='2099-12-31')throw new Error(`Sandbox left future test date behind in UI: ${JSON.stringify(ui)}`);
-  if(ui.full?.suite!=='staging-full-v2-visible-business')throw new Error('Saved full-test report is not the v2 visible-business suite');
+  const savedSuite=String(ui.full?.suite||'');
+  if(!savedSuite.includes('visible-business')||!savedSuite.includes('deep-v3'))throw new Error(`Saved full-test report is not the deep visible-business suite: ${savedSuite}`);
 
   const serious=errors.filter(x=>!/favicon|ResizeObserver/i.test(x));
   if(serious.length)throw new Error(`Profit browser console/page errors: ${serious.slice(0,5).join(' | ')}`);
-  console.log(`PASS Visible profit browser regression — ${report.passed}/${report.total}; calculator math/state, sale revenue, Home profit/loss, inventory reversal, and form restoration verified`);
+  console.log(`PASS Visible profit browser regression — ${report.passed}/${report.total}; calculator math/state, sale revenue, Home profit/loss, deep inventory/reservation checks, and form restoration verified`);
 }finally{
   await browser.close();
 }
