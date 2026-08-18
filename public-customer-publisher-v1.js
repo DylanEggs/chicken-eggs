@@ -25,18 +25,25 @@
     while(Date.now()-start<timeout){if(window.FarmPublicCustomerBuilderV2?.build||window.FarmPublicCustomerBuilderV1?.build)return true;await new Promise(r=>setTimeout(r,50));}
     return false;
   }
-  async function owner(){
-    if(window.FarmOwnerAuth?.requireSignIn){const user=await window.FarmOwnerAuth.requireSignIn();return user&&String(user.uid||"")===OWNER_UID?user:null;}
-    const user=window.FirebaseUser;
-    return user&&!user.isAnonymous&&String(user.uid||"")===OWNER_UID?user:null;
-  }
-  async function firestore(){
+  async function firestoreApi(){
     if(api)return api;
-    const start=Date.now();
-    while(Date.now()-start<10000){if(window.FirestoreDB)break;await new Promise(r=>setTimeout(r,75));}
-    if(!window.FirestoreDB)throw new Error("Private farm Firestore is not ready");
     api=await import("https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js");
     return api;
+  }
+  async function ownerContext(){
+    if(window.PublicCustomerOwnerAuth?.currentOwner){
+      const user=await window.PublicCustomerOwnerAuth.currentOwner();
+      if(user&&String(user.uid||"")===OWNER_UID){
+        const db=await window.PublicCustomerOwnerAuth.publisherDb?.();
+        if(db)return {user,db,source:"isolated-public-owner"};
+      }
+    }
+    if(window.FarmOwnerAuth?.requireSignIn){
+      const user=await window.FarmOwnerAuth.requireSignIn();
+      if(user&&String(user.uid||"")===OWNER_UID&&window.FirestoreDB)return {user,db:window.FirestoreDB,source:"farm-owner"};
+    }
+    const user=window.FirebaseUser;
+    return user&&!user.isAnonymous&&String(user.uid||"")===OWNER_UID&&window.FirestoreDB?{user,db:window.FirestoreDB,source:"farm-owner-current"}:null;
   }
   function build(){
     const builder=window.FarmPublicCustomerBuilderV2||window.FarmPublicCustomerBuilderV1;
@@ -50,25 +57,36 @@
     running=true;
     try{
       if(!(await waitBuilder()))throw new Error("Public customer sanitizer unavailable");
-      const user=await owner();
-      if(!user)throw new Error("Authorized owner login required before publishing customer data");
-      const f=await firestore();
+      const owner=await ownerContext();
+      if(!owner)throw new Error("Authorized owner publishing session required before customer data can sync");
+      const f=await firestoreApi();
+      const db=owner.db;
       const out=build();
       const hashes=readHashes();if(!hashes.flock||typeof hashes.flock!=="object")hashes.flock={};
       let writes=0;
       const summaryHash=hash(out.summary);
       if(hashes.summary!==summaryHash){
-        await f.setDoc(f.doc(window.FirestoreDB,"public_customer","current"),{...out.summary,publishedAt:Date.now(),serverUpdatedAt:f.serverTimestamp()});
+        await f.setDoc(f.doc(db,"public_customer","current"),{...out.summary,publishedAt:Date.now(),serverUpdatedAt:f.serverTimestamp()});
         hashes.summary=summaryHash;writes++;
       }
+
+      const activeKeys=new Set();
       for(const bird of out.flock){
         const birdHash=hash(bird),key=String(bird.id||"");
+        if(!key)continue;
+        activeKeys.add(key);
         if(hashes.flock[key]===birdHash)continue;
-        await f.setDoc(f.doc(window.FirestoreDB,"public_flock",safeDocId(key)),{...bird,birdId:key,publishedAt:Date.now(),serverUpdatedAt:f.serverTimestamp()});
+        await f.setDoc(f.doc(db,"public_flock",safeDocId(key)),{...bird,birdId:key,publishedAt:Date.now(),serverUpdatedAt:f.serverTimestamp()});
         hashes.flock[key]=birdHash;writes++;
       }
+      for(const key of Object.keys(hashes.flock)){
+        if(activeKeys.has(key))continue;
+        await f.deleteDoc(f.doc(db,"public_flock",safeDocId(key)));
+        delete hashes.flock[key];writes++;
+      }
+
       writeHashes(hashes);
-      lastResult={ok:true,writes,reason,flock:out.flock.length,available:out.summary.availability.eggs,publicVersion:Number(out.summary.publicVersion)||1,publishedAt:Date.now()};
+      lastResult={ok:true,writes,reason,flock:out.flock.length,available:out.summary.availability.eggs,publicVersion:Number(out.summary.publicVersion)||1,authSource:owner.source,publishedAt:Date.now()};
       window.dispatchEvent(new CustomEvent("customer-public-published",{detail:lastResult}));
       return lastResult;
     } catch(error){
@@ -81,10 +99,11 @@
   function install(){
     const events=["farm-sync-ready","core-data-synced","farm-data-synced","farm-local-data-changed","bird-photos-changed","weather-intelligence-updated","inventory-authority-changed"];
     for(const name of events)window.addEventListener(name,()=>schedule(name));
+    window.addEventListener("public-customer-owner-auth-changed",e=>{if(e.detail?.connected)schedule("owner-auth-connected",50);});
     window.addEventListener("online",()=>schedule("online",1000));
     setTimeout(()=>schedule("startup",0),2200);
   }
 
-  window.FarmPublicCustomerPublisherV1={version:2,publishNow,schedule,buildPreview:build,last:()=>lastResult,ownerUid:()=>OWNER_UID};
+  window.FarmPublicCustomerPublisherV1={version:3,publishNow,schedule,buildPreview:build,last:()=>lastResult,ownerUid:()=>OWNER_UID};
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",install,{once:true});else install();
 })();
