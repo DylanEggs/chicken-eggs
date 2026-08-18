@@ -59,6 +59,9 @@ jobs:
       - name: Run public customer stats v2 privacy checks
         run: node qa/public-customer-v2-check.js
 
+      - name: Run live customer page static privacy checks
+        run: node qa/public-view-static-check.js
+
       - name: Run destructive staging isolation test
         run: node qa/staging-isolation-integration.js
 
