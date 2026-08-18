@@ -11,11 +11,7 @@
   function readHashes(){const x=read(HASH_KEY,{});return x&&typeof x==="object"?x:{summary:"",flock:{}};}
   function writeHashes(value){try{localStorage.setItem(HASH_KEY,JSON.stringify(value));}catch{}}
   function stableString(value){try{return JSON.stringify(value);}catch{return "";}}
-  function hash(value){
-    const text=stableString(value);let h=2166136261;
-    for(let i=0;i<text.length;i++){h^=text.charCodeAt(i);h=Math.imul(h,16777619);}
-    return (h>>>0).toString(36);
-  }
+  function hash(value){const text=stableString(value);let h=2166136261;for(let i=0;i<text.length;i++){h^=text.charCodeAt(i);h=Math.imul(h,16777619);}return (h>>>0).toString(36);}
   function safeDocId(id){return String(id||"").replace(/[^A-Za-z0-9_-]/g,"_").slice(0,120)||"bird";}
   function photoResolver(id){
     const svc=window.FarmBirdPhotosV4||window.FarmBirdPhotosV3||window.FarmBirdPhotosV2;
@@ -26,7 +22,7 @@
   }
   async function waitBuilder(timeout=8000){
     const start=Date.now();
-    while(Date.now()-start<timeout){if(window.FarmPublicCustomerBuilderV1?.build)return true;await new Promise(r=>setTimeout(r,50));}
+    while(Date.now()-start<timeout){if(window.FarmPublicCustomerBuilderV2?.build||window.FarmPublicCustomerBuilderV1?.build)return true;await new Promise(r=>setTimeout(r,50));}
     return false;
   }
   async function owner(){
@@ -43,8 +39,9 @@
     return api;
   }
   function build(){
-    if(!window.FarmPublicCustomerBuilderV1?.build)throw new Error("Public customer builder is not ready");
-    return window.FarmPublicCustomerBuilderV1.build({
+    const builder=window.FarmPublicCustomerBuilderV2||window.FarmPublicCustomerBuilderV1;
+    if(!builder?.build)throw new Error("Public customer builder is not ready");
+    return builder.build({
       app2:read(KEYS.app2,{}),inventory:read(KEYS.inventory,{}),entries:read(KEYS.entries,[]),settings:read(KEYS.settings,{}),weather:read(KEYS.weather,{}),deluxe:read(KEYS.deluxe,{}),photoResolver
     });
   }
@@ -71,7 +68,7 @@
         hashes.flock[key]=birdHash;writes++;
       }
       writeHashes(hashes);
-      lastResult={ok:true,writes,reason,flock:out.flock.length,available:out.summary.availability.eggs,publishedAt:Date.now()};
+      lastResult={ok:true,writes,reason,flock:out.flock.length,available:out.summary.availability.eggs,publicVersion:Number(out.summary.publicVersion)||1,publishedAt:Date.now()};
       window.dispatchEvent(new CustomEvent("customer-public-published",{detail:lastResult}));
       return lastResult;
     } catch(error){
@@ -80,14 +77,14 @@
       return lastResult;
     } finally {running=false;}
   }
-  function schedule(reason="event",delay=900){clearTimeout(timer);timer=setTimeout(()=>void publishNow(reason),delay);}
+  function schedule(reason="event",delay=700){clearTimeout(timer);timer=setTimeout(()=>void publishNow(reason),delay);}
   function install(){
-    const events=["farm-sync-ready","core-data-synced","farm-data-synced","farm-local-data-changed","bird-photos-changed"];
+    const events=["farm-sync-ready","core-data-synced","farm-data-synced","farm-local-data-changed","bird-photos-changed","weather-intelligence-updated","inventory-authority-changed"];
     for(const name of events)window.addEventListener(name,()=>schedule(name));
-    window.addEventListener("online",()=>schedule("online",1200));
+    window.addEventListener("online",()=>schedule("online",1000));
     setTimeout(()=>schedule("startup",0),2200);
   }
 
-  window.FarmPublicCustomerPublisherV1={version:1,publishNow,schedule,buildPreview:build,last:()=>lastResult,ownerUid:()=>OWNER_UID};
+  window.FarmPublicCustomerPublisherV1={version:2,publishNow,schedule,buildPreview:build,last:()=>lastResult,ownerUid:()=>OWNER_UID};
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",install,{once:true});else install();
 })();
