@@ -15,9 +15,13 @@ const banner=read('staging/staging-banner.js');
 const liveApp2=read('app2.js');
 
 check('Staging has a separate URL shell',index.includes('Chicken Eggs — STAGING')&&index.includes('staging/staging-storage.js'));
-check('Staging swaps out live Firebase entrypoint',index.includes('staging/staging-firebase.js')&&index.includes('firebase.js?v=${build}'));
+check('Staging normalizes live Firebase shell URL before swap',index.includes('replaceAsset(html,"firebase.js","v=6",build)'));
+check('Staging normalizes live database shell URL before swap',index.includes('replaceAsset(html,"database.js","v=6",build)'));
+check('Staging normalizes live app2 shell URL before swap',index.includes('replaceAsset(html,"app2.js","v=1",build)'));
+check('Staging swaps out live Firebase entrypoint',index.includes('staging/staging-firebase.js')&&index.includes('type="module" src="firebase.js?v=${build}"'));
 check('Staging swaps out live database adapter',index.includes('staging/staging-database.js'));
 check('Staging swaps out live app2 loader',index.includes('staging/staging-app2.js'));
+check('Staging boot refuses to run if live cloud scripts remain',index.includes('Safety stop: live firebase.js remained in staging shell')&&index.includes('Safety stop: live database.js remained in staging shell')&&index.includes('Safety stop: live app2.js remained in staging shell'));
 check('Staging localStorage is namespaced',storage.includes('__chicken_eggs_staging__::'));
 check('Staging clear is guarded and staging-only',storage.includes('if (!isStagingLocal(this)) return native.clear.call(this);')&&storage.includes('key.startsWith(PREFIX) && key !== INIT'));
 check('Staging database has no Firebase imports',!database.includes('firebasejs')&&!database.includes('FirestoreDB'));
