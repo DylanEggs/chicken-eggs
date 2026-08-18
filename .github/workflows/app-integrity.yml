@@ -44,6 +44,9 @@ jobs:
       - name: Run customer preview privacy checks
         run: node qa/customer-view-staging-check.js
 
+      - name: Run customer yearly forecast checks
+        run: node qa/customer-year-forecast-check.js
+
       - name: Run destructive staging isolation test
         run: node qa/staging-isolation-integration.js
 
