@@ -5,10 +5,13 @@
   window.__StagingOversellRegressionV1 = true;
 
   const ENTRIES="chickenEggEntriesV102";
+  const APP2="chickenEggApp2V1";
+  const BUSINESS="chickenEggBusinessV1";
   const sleep=ms=>new Promise(r=>setTimeout(r,ms));
   const read=(key,fallback)=>{try{return JSON.parse(localStorage.getItem(key)||JSON.stringify(fallback));}catch{return fallback;}};
   const n=v=>Number(v)||0;
   const eggRevenue=e=>n(e?.dozenSold)*n(e?.dozenPrice)+n(e?.packSold??e?.packs18Sold)*n(e?.packPrice??e?.packs18Price);
+  const monthPrefix=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;};
 
   function snapshotStorage(){
     const out={};
@@ -56,6 +59,22 @@
     return read(ENTRIES,[]).filter(e=>e?.type==="sale").reduce((sum,e)=>sum+eggRevenue(e),0);
   }
 
+  function monthlyNet(){
+    const p=monthPrefix();
+    const egg=read(ENTRIES,[])
+      .filter(e=>e?.type==="sale"&&String(e.date||"").startsWith(p))
+      .reduce((sum,e)=>sum+eggRevenue(e),0);
+    const app=read(APP2,{expenses:[]});
+    const business=read(BUSINESS,{chickenSales:[]});
+    const chicken=(Array.isArray(business.chickenSales)?business.chickenSales:[])
+      .filter(e=>String(e.date||"").startsWith(p))
+      .reduce((sum,e)=>sum+n(e.total),0);
+    const costs=(Array.isArray(app.expenses)?app.expenses:[])
+      .filter(e=>String(e.date||"").startsWith(p))
+      .reduce((sum,e)=>sum+n(e.amount),0);
+    return egg+chicken-costs;
+  }
+
   async function runOversellRegression(){
     const results=[];
     const storage=snapshotStorage();
@@ -72,6 +91,7 @@
       const beforeRows=read(ENTRIES,[]);
       const beforeInv=inventoryShape();
       const beforeRevenue=revenueTotal();
+      const beforeNet=monthlyNet();
 
       const values={dozenSold:"2",dozenPrice:"5",packSold:"0",packPrice:"8",farm2SalePaid:"paid",farm2SaleCustomer:"",farm2SaleNote:"STAGING impossible oversell"};
       for(const [id,value] of Object.entries(values)){const el=document.getElementById(id);if(el)el.value=value;}
@@ -82,10 +102,12 @@
       const afterRows=read(ENTRIES,[]);
       const afterInv=inventoryShape();
       const afterRevenue=revenueTotal();
+      const afterNet=monthlyNet();
 
       check("Oversized egg sale is blocked before history is written",afterRows.length===beforeRows.length,`${beforeRows.length} -> ${afterRows.length}`);
       check("Blocked oversized sale leaves inventory unchanged",JSON.stringify(afterInv)===JSON.stringify(beforeInv),JSON.stringify({beforeInv,afterInv}));
       check("Blocked oversized sale leaves revenue unchanged",Math.abs(afterRevenue-beforeRevenue)<0.005,`${beforeRevenue} -> ${afterRevenue}`);
+      check("Blocked oversized sale leaves profit/loss unchanged",Math.abs(afterNet-beforeNet)<0.005,`${beforeNet} -> ${afterNet}`);
       check("Oversized sale explains available-stock problem",/sale blocked/i.test(alertText)&&/available/i.test(alertText),alertText);
     } catch(error){
       check("Oversell protection regression completed without exception",false,String(error?.stack||error));
@@ -117,7 +139,7 @@
       __oversellRegressionV1:true
     };
     window.StagingFullTest=wrapped;
-    console.log("🧪 STAGING oversell regression active — impossible sales must leave history, inventory, and revenue unchanged");
+    console.log("🧪 STAGING oversell regression active — impossible sales must leave history, inventory, revenue, and profit unchanged");
   }
 
   install();
