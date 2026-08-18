@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const BUILD = String(window.__ChickenEggsBuild || "20260818-1790");
+  const BUILD = String(window.__ChickenEggsBuild || "20260818-1860");
   const load = (src, module = false) => document.write(`<script${module?' type="module"':''} src="${src}?v=${encodeURIComponent(BUILD)}"><\/script>`);
 
   load("sync-safety-preload-v1.js");
@@ -28,7 +28,9 @@
   load("prediction-fix-v1.js");
   load("weather-intelligence-v2.js");
   load("bird-photo-service-v4.js");
-  load("bird-photo-recovery-v2.js");
+  // Historical photo recovery remains in the repository for manual recovery,
+  // but is no longer auto-loaded on every owner-app startup. The current photo
+  // service already owns normal photo sync and avoids duplicate scans/listeners.
   load("flock-manager-v7.js");
   load("insights-calendar-v2.js");
   load("flock-photo-viewer-v1.js");
