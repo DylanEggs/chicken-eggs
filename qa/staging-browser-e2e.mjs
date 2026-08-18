@@ -22,7 +22,11 @@ const browser=await chromium.launch({headless:true});
 const context=await browser.newContext({viewport:{width:390,height:844},locale:'en-US',timezoneId:'America/New_York'});
 const errors=[];
 function watch(page,label){
-  page.on('pageerror',e=>errors.push(`${label} pageerror: ${e.message}`));
+  page.on('pageerror',e=>{
+    const detail=String(e?.stack||e?.message||e);
+    errors.push(`${label} pageerror: ${detail}`);
+    console.log(`[${label} pageerror] ${detail}`);
+  });
   page.on('console',m=>{if(m.type()==='error')errors.push(`${label} console: ${m.text()}`);else if(['warning','log'].includes(m.type()))console.log(`[${label} ${m.type()}] ${m.text()}`);});
 }
 
@@ -72,9 +76,6 @@ try{
   await customer.goto(`${base}view/?e2e=${Date.now()}`,{waitUntil:'domcontentloaded',timeout:120000});
   await customer.waitForFunction(()=>window.CustomerViewStaging?.getData?.()?.schema==='customer-public-v1',null,{timeout:30000});
 
-  // Instrument this document's Storage prototype. Other staging tabs share the same
-  // origin/storage values, but run in different JS realms, so their legitimate
-  // background writes cannot be misattributed to this read-only customer page.
   await customer.evaluate(()=>{
     window.__customerStorageWrites=[];
     const proto=Storage.prototype;
