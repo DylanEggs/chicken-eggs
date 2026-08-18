@@ -8,6 +8,7 @@ on:
       - 'qa/staging-browser-e2e.mjs'
       - 'qa/staging-controls-e2e.mjs'
       - 'qa/customer-year-browser-e2e.mjs'
+      - 'qa/staging-profit-browser-e2e.mjs'
       - '.github/workflows/staging-browser-e2e.yml'
   workflow_dispatch:
 
@@ -18,7 +19,7 @@ permissions:
 jobs:
   browser-test:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -37,6 +38,10 @@ jobs:
         id: e2e
         run: node qa/staging-browser-e2e.mjs
 
+      - name: Run visible egg-sale profit regression in real Chromium
+        id: profit
+        run: node qa/staging-profit-browser-e2e.mjs
+
       - name: Run manual controls and owner gate in real Chromium
         id: controls
         run: node qa/staging-controls-e2e.mjs
@@ -50,12 +55,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           E2E_OUTCOME: ${{ steps.e2e.outcome }}
+          PROFIT_OUTCOME: ${{ steps.profit.outcome }}
           CONTROLS_OUTCOME: ${{ steps.controls.outcome }}
           YEAR_OUTCOME: ${{ steps.year.outcome }}
         run: |
-          if [ "$E2E_OUTCOME" = "success" ] && [ "$CONTROLS_OUTCOME" = "success" ] && [ "$YEAR_OUTCOME" = "success" ]; then
+          if [ "$E2E_OUTCOME" = "success" ] && [ "$PROFIT_OUTCOME" = "success" ] && [ "$CONTROLS_OUTCOME" = "success" ] && [ "$YEAR_OUTCOME" = "success" ]; then
             STATE=success
-            DESC="Staging browser E2E passed"
+            DESC="Staging browser E2E + visible profit regression passed"
           else
             STATE=failure
             DESC="Staging browser E2E failed"
