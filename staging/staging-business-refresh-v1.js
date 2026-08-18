@@ -7,7 +7,9 @@
   const ENTRIES="chickenEggEntriesV102";
   const APP2="chickenEggApp2V1";
   const BUSINESS="chickenEggBusinessV1";
+  const CALC_IDS=["bizCalcEgg","bizCalcChicken","bizCalcFeed","bizCalcSupplies"];
   let queued=false;
+  let pendingCalc=null;
 
   const read=(key,fallback)=>{try{return JSON.parse(localStorage.getItem(key)||JSON.stringify(fallback));}catch{return fallback;}};
   const n=v=>Number(v)||0;
@@ -30,6 +32,40 @@
     return {egg,chicken,feed,supplies,revenue:egg+chicken,costs:feed+supplies,net:egg+chicken-feed-supplies};
   }
 
+  function captureCalc(){
+    const details=document.querySelector("#bizHome details");
+    if(!details)return null;
+    const fields={};
+    for(const id of CALC_IDS){
+      const el=document.getElementById(id);
+      if(el)fields[id]=el.value;
+    }
+    return {open:!!details.open,fields,activeId:document.activeElement?.id||""};
+  }
+
+  function rememberCalc(snapshot){
+    if(!snapshot)return;
+    if(!pendingCalc){pendingCalc=snapshot;return;}
+    pendingCalc={
+      open:pendingCalc.open||snapshot.open,
+      fields:{...pendingCalc.fields,...snapshot.fields},
+      activeId:snapshot.activeId||pendingCalc.activeId||""
+    };
+  }
+
+  function restoreCalc(snapshot){
+    if(!snapshot)return;
+    const details=document.querySelector("#bizHome details");
+    if(details&&snapshot.open)details.open=true;
+    for(const [id,value] of Object.entries(snapshot.fields||{})){
+      const el=document.getElementById(id);
+      if(el&&el.value!==String(value??""))el.value=String(value??"");
+    }
+    if(snapshot.activeId&&document.getElementById(snapshot.activeId)&&document.activeElement?.id!==snapshot.activeId){
+      try{document.getElementById(snapshot.activeId).focus({preventScroll:true});}catch{}
+    }
+  }
+
   function findStat(home,label){
     return [...home.querySelectorAll(".biz-stat")].find(card=>(card.querySelector("span")?.textContent||"").trim()===label)||null;
   }
@@ -38,8 +74,9 @@
     if(target)target.textContent=money(value);
   }
 
-  function render(){
+  function render(snapshot=pendingCalc){
     queued=false;
+    pendingCalc=null;
     const home=document.getElementById("bizHome");
     if(!home)return false;
     const s=stats();
@@ -62,24 +99,29 @@
       net.classList.toggle("biz-bad",s.net<0);
       net.textContent=`${s.net>=0?"+":""}${money(s.net)}`;
     }
-    window.dispatchEvent(new CustomEvent("staging-business-display-refreshed",{detail:{...s,at:Date.now()}}));
+    restoreCalc(snapshot);
+    window.dispatchEvent(new CustomEvent("staging-business-display-refreshed",{detail:{...s,calculatorOpen:!!document.querySelector("#bizHome details")?.open,at:Date.now()}}));
     return true;
   }
 
   function schedule(){
+    rememberCalc(captureCalc());
     if(queued)return;
     queued=true;
-    requestAnimationFrame(render);
+    requestAnimationFrame(()=>render(pendingCalc));
   }
 
-  ["core-data-synced","farm-data-synced","farm-local-data-changed","inventory-authority-changed"].forEach(name=>window.addEventListener(name,schedule));
+  ["core-data-synced","farm-data-synced","farm-local-data-changed","inventory-authority-changed"].forEach(name=>window.addEventListener(name,schedule,true));
   document.addEventListener("click",event=>{
     const button=event.target?.closest?.("button");
-    if(button&&(/save sale/i.test(button.textContent||"")||/mark paid/i.test(button.textContent||"")))setTimeout(schedule,0);
+    if(button&&(/save sale/i.test(button.textContent||"")||/mark paid/i.test(button.textContent||""))){
+      rememberCalc(captureCalc());
+      setTimeout(()=>render(pendingCalc),0);
+    }
   },true);
 
-  window.StagingBusinessDisplay={stats,refresh:render};
-  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",()=>setTimeout(render,900),{once:true});
-  else setTimeout(render,900);
-  console.log("🧪 STAGING business display bridge active — summary refreshes without replacing calculator inputs");
+  window.StagingBusinessDisplay={stats,refresh:()=>render(captureCalc()),captureCalculator:captureCalc};
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",()=>setTimeout(()=>render(captureCalc()),900),{once:true});
+  else setTimeout(()=>render(captureCalc()),900);
+  console.log("🧪 STAGING business display bridge active — business totals and open calculator state refresh safely together");
 })();
