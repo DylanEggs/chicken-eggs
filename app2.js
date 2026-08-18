@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const BUILD = String(window.__ChickenEggsBuild || "20260818-1770");
+  const BUILD = String(window.__ChickenEggsBuild || "20260818-1780");
   const load = (src, module = false) => document.write(`<script${module?' type="module"':''} src="${src}?v=${encodeURIComponent(BUILD)}"><\/script>`);
 
   load("sync-safety-preload-v1.js");
@@ -37,9 +37,17 @@
   load("app-self-test-v1.js");
 
   // Read-only until the user explicitly downloads/restores a file. This gives
-  // the live farm a complete off-device backup path before customer publishing
-  // is enabled.
+  // the live farm a complete off-device backup path before customer publishing.
   load("complete-safety-backup-v3.js");
+
+  // Customer publishing is deliberately isolated from the normal Egg App auth.
+  // The pure builders sanitize private farm data first; only the exact owner UID
+  // can connect the separate publisher session and write public_customer/public_flock.
+  load("customer-public-builder-v1.js");
+  load("customer-public-builder-v2.js");
+  load("public-customer-owner-auth-v1.js");
+  load("public-customer-publisher-v1.js");
+  load("public-customer-sync-ui-v1.js");
 
   let chickenSalesReturn = "farm2Hub";
   function activeScreenId(){return document.querySelector(".screen.active")?.id||"dashboard";}
