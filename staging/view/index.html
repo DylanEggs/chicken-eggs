@@ -7,6 +7,7 @@
   <meta name="theme-color" content="#f7b928" />
   <title>Rose Family Poultry — Customer Preview</title>
   <link rel="stylesheet" href="view.css" />
+  <link rel="stylesheet" href="view-v2.css" />
 </head>
 <body>
   <div class="preview-bar">
@@ -54,26 +55,10 @@
         <span class="mini-chip" id="forecastConfidence">Learning the flock</span>
       </div>
       <div class="metric-grid">
-        <article class="metric-card yellow">
-          <span class="metric-icon">🥚</span>
-          <strong id="todayCollected">—</strong>
-          <span>collected today</span>
-        </article>
-        <article class="metric-card green">
-          <span class="metric-icon">🔮</span>
-          <strong id="todayForecast">—</strong>
-          <span>today’s flock outlook</span>
-        </article>
-        <article class="metric-card blue">
-          <span class="metric-icon">📅</span>
-          <strong id="weekForecast">—</strong>
-          <span>predicted this week</span>
-        </article>
-        <article class="metric-card purple">
-          <span class="metric-icon">🌙</span>
-          <strong id="monthForecast">—</strong>
-          <span>predicted this month</span>
-        </article>
+        <article class="metric-card yellow"><span class="metric-icon">🥚</span><strong id="todayCollected">—</strong><span>collected today</span></article>
+        <article class="metric-card green"><span class="metric-icon">🔮</span><strong id="todayForecast">—</strong><span>today’s flock outlook</span></article>
+        <article class="metric-card blue"><span class="metric-icon">📅</span><strong id="weekForecast">—</strong><span>predicted this week</span></article>
+        <article class="metric-card purple"><span class="metric-icon">🌙</span><strong id="monthForecast">—</strong><span>predicted this month</span></article>
       </div>
       <p class="forecast-note" id="forecastNote">Predictions update as the flock logs more laying days.</p>
     </section>
@@ -81,11 +66,7 @@
     <section class="weather-card" aria-labelledby="weatherTitle">
       <div class="weather-left">
         <div class="weather-icon" id="weatherEmoji" aria-hidden="true">🌤️</div>
-        <div>
-          <div class="section-kicker">🌤️ Coop weather</div>
-          <h2 id="weatherTitle"><span id="weatherTemp">—</span><small>°F</small></h2>
-          <p><span id="weatherCondition">Weather loading</span> <span id="weatherFeels"></span></p>
-        </div>
+        <div><div class="section-kicker">🌤️ Coop weather</div><h2 id="weatherTitle"><span id="weatherTemp">—</span><small>°F</small></h2><p><span id="weatherCondition">Weather loading</span> <span id="weatherFeels"></span></p></div>
       </div>
       <div class="weather-details">
         <div><span>High / Low</span><strong id="weatherHighLow">—</strong></div>
@@ -96,73 +77,40 @@
 
     <section class="celebrity-card" aria-labelledby="chickenDayTitle">
       <div class="celebrity-photo" id="chickenDayPhoto"><span>🐔</span></div>
-      <div class="celebrity-copy">
-        <div class="section-kicker">⭐ Chicken of the Day</div>
-        <h2 id="chickenDayTitle">Meet today’s flock celebrity</h2>
-        <h3 id="chickenDayName">Loading…</h3>
-        <p id="chickenDayDetails">Checking the roost…</p>
-        <div class="celebrity-tag">🏆 Today’s featured feathered employee</div>
-      </div>
+      <div class="celebrity-copy"><div class="section-kicker">⭐ Chicken of the Day</div><h2 id="chickenDayTitle">Meet today’s flock celebrity</h2><h3 id="chickenDayName">Loading…</h3><p id="chickenDayDetails">Checking the roost…</p><div class="celebrity-tag">🏆 Today’s featured feathered employee</div></div>
     </section>
 
     <section class="fact-card" aria-labelledby="factTitle">
       <div class="fact-emoji" aria-hidden="true">💡🐓</div>
-      <div class="fact-copy">
-        <div class="section-kicker">Did you know?</div>
-        <h2 id="factTitle">Chicken fact of the visit</h2>
-        <p id="factText">Loading a flock fact…</p>
-      </div>
+      <div class="fact-copy"><div class="section-kicker">Did you know?</div><h2 id="factTitle">Chicken fact of the visit</h2><p id="factText">Loading a flock fact…</p></div>
       <button type="button" class="fact-next" id="nextFact">Another fact ✨</button>
     </section>
 
     <section class="section-block flock-section" aria-labelledby="flockTitle">
       <div class="section-heading flock-heading">
-        <div>
-          <div class="section-kicker">🐔 Meet the crew</div>
-          <h2 id="flockTitle">Browse the flock</h2>
-          <p><span id="flockCount">—</span> current flock profiles</p>
-        </div>
-        <div class="flock-filter" role="group" aria-label="Filter flock profiles">
-          <button type="button" class="filter active" data-filter="all">All</button>
-          <button type="button" class="filter" data-filter="hens">Hens</button>
-          <button type="button" class="filter" data-filter="roosters">Roosters</button>
-        </div>
+        <div><div class="section-kicker">🐔 Meet the crew</div><h2 id="flockTitle">Browse the flock</h2><p><span id="flockCount">—</span> current flock profiles</p></div>
+        <div class="flock-filter" role="group" aria-label="Filter flock profiles"><button type="button" class="filter active" data-filter="all">All</button><button type="button" class="filter" data-filter="hens">Hens</button><button type="button" class="filter" data-filter="roosters">Roosters</button></div>
       </div>
       <div class="flock-grid" id="flockGrid"></div>
       <div class="empty-flock" id="emptyFlock" hidden>No flock profiles match this view yet.</div>
     </section>
 
-    <footer class="site-footer">
-      <div class="footer-chicken">🐓</div>
-      <strong id="footerFarmName">Rose Family Poultry</strong>
-      <span>Fresh eggs, real flock updates, and absolutely no boring spreadsheets for customers.</span>
-      <small>This customer page is view-only. Availability and predictions can change as eggs are collected or reserved.</small>
-    </footer>
+    <footer class="site-footer"><div class="footer-chicken">🐓</div><strong id="footerFarmName">Rose Family Poultry</strong><span>Fresh eggs, real flock updates, and absolutely no boring spreadsheets for customers.</span><small>This customer page is view-only. Availability, predictions and stats can change as the farm updates.</small></footer>
   </main>
 
   <div class="profile-modal" id="profileModal" hidden>
     <div class="modal-backdrop" data-close-profile></div>
-    <article class="profile-sheet" role="dialog" aria-modal="true" aria-labelledby="profileName">
-      <button type="button" class="modal-close" data-close-profile aria-label="Close chicken profile">×</button>
-      <div class="profile-photo" id="profilePhoto"><span>🐔</span></div>
-      <div class="section-kicker">Flock profile</div>
-      <h2 id="profileName">Chicken</h2>
-      <div class="profile-facts" id="profileFacts"></div>
-      <div class="profile-signoff">🐾 Certified member of the feathered production team.</div>
-    </article>
+    <article class="profile-sheet" role="dialog" aria-modal="true" aria-labelledby="profileName"><button type="button" class="modal-close" data-close-profile aria-label="Close chicken profile">×</button><div class="profile-photo" id="profilePhoto"><span>🐔</span></div><div class="section-kicker">Flock profile</div><h2 id="profileName">Chicken</h2><div class="profile-facts" id="profileFacts"></div><div class="profile-signoff">🐾 Certified member of the feathered production team.</div></article>
   </div>
 
-  <div class="missing-data" id="missingData" hidden>
-    <div class="missing-card">
-      <div class="missing-icon">🧪</div>
-      <h2>Customer preview needs a staging snapshot</h2>
-      <p>Open the Test / Staging farm once so it can make the isolated read-only copy, then come back here.</p>
-      <a href="../">Open Test / Staging Farm</a>
-    </div>
-  </div>
+  <div class="missing-data" id="missingData" hidden><div class="missing-card"><div class="missing-icon">🧪</div><h2>Customer preview needs a staging snapshot</h2><p>Open the Test / Staging farm once so it can make the isolated read-only copy, then come back here.</p><a href="../">Open Test / Staging Farm</a></div></div>
 
+  <script src="../../customer-public-builder-v1.js"></script>
+  <script src="../../customer-public-builder-v2.js"></script>
   <script src="../customer-public-data-v1.js"></script>
+  <script src="../customer-public-data-v2.js"></script>
   <script src="view.js"></script>
   <script src="year-forecast-v1.js"></script>
+  <script src="view-v2.js"></script>
 </body>
 </html>
