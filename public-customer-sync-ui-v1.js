@@ -4,7 +4,6 @@
   window.__publicCustomerSyncUiV1 = true;
 
   let busy=false,lastPublish=null;
-  const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
 
   function status(){return window.PublicCustomerOwnerAuth?.status?.()||{ready:false,connected:false};}
   function APIsReady(){return !!window.PublicCustomerOwnerAuth && !!window.FarmPublicCustomerPublisherV1;}
@@ -15,7 +14,7 @@
     const s=document.createElement("style");s.id="publicCustomerSyncUiCss";s.textContent=`
       .pubsync-status{padding:11px 12px;border-radius:14px;background:rgba(31,122,58,.08);font-size:13px;font-weight:850;line-height:1.35;margin:10px 0}
       .pubsync-status.good{background:rgba(31,122,58,.12);color:#176b31}.pubsync-status.warn{background:rgba(245,185,28,.14);color:#8a6400}.pubsync-status.bad{background:rgba(217,59,59,.1);color:#a52d2d}
-      .pubsync-row{display:flex;gap:9px;flex-wrap:wrap}.pubsync-row button{width:auto;flex:1 1 160px}.pubsync-password{display:grid;gap:8px;margin:10px 0}.pubsync-password input{width:100%}
+      .pubsync-row{display:flex;gap:9px;flex-wrap:wrap}.pubsync-row button{width:auto;flex:1 1 160px}.pubsync-login{display:grid;gap:8px;margin:10px 0}.pubsync-login input{width:100%}
       .farm2-dark .pubsync-status.good{color:#8ae7a3}.farm2-dark .pubsync-status.warn{color:#ffd978}.farm2-dark .pubsync-status.bad{color:#ff9b9b}
     `;document.head.appendChild(s);
   }
@@ -29,7 +28,9 @@
       <h3>🌐 Customer Page Sync</h3>
       <p class="farm2-subtle">Publishes only the safe customer view: egg availability, production stats, weather/laying insights, flock profiles/photos, Chicken of the Day and fun facts. No money, expenses, customer history, notes, or private farm data are published.</p>
       <div id="publicCustomerSyncStatus" class="pubsync-status warn">Checking customer sync…</div>
-      <div id="publicCustomerPasswordWrap" class="pubsync-password" hidden>
+      <div id="publicCustomerLoginWrap" class="pubsync-login" hidden>
+        <label for="publicCustomerOwnerEmail">Owner Firebase email</label>
+        <input id="publicCustomerOwnerEmail" type="email" autocomplete="username" placeholder="Owner email">
         <label for="publicCustomerOwnerPassword">Owner Firebase password</label>
         <input id="publicCustomerOwnerPassword" type="password" autocomplete="current-password" placeholder="Password is not stored">
         <button type="button" id="publicCustomerConnect">🔐 Connect Customer Updates</button>
@@ -39,7 +40,7 @@
         <button type="button" class="secondary" id="publicCustomerOpen">👀 Open Customer View</button>
         <button type="button" class="secondary" id="publicCustomerDisconnect" hidden>Disconnect Customer Sync</button>
       </div>
-      <div class="farm2-subtle" style="margin-top:9px">Once connected, safe customer data republishes automatically when eggs, inventory, flock/photos, weather, or predictions change.</div>`;
+      <div class="farm2-subtle" style="margin-top:9px">Once connected, safe customer data republishes automatically when eggs, inventory, flock/photos, weather, or predictions change. Your email and password are never written to farm storage.</div>`;
     root.appendChild(card);
     card.querySelector("#publicCustomerConnect")?.addEventListener("click",connect);
     card.querySelector("#publicCustomerPublishNow")?.addEventListener("click",()=>publish("manual-button"));
@@ -54,24 +55,28 @@
   function render(){
     if(!ensure())return;
     const s=status();
-    const wrap=document.getElementById("publicCustomerPasswordWrap"),pub=document.getElementById("publicCustomerPublishNow"),disc=document.getElementById("publicCustomerDisconnect");
+    const wrap=document.getElementById("publicCustomerLoginWrap"),pub=document.getElementById("publicCustomerPublishNow"),disc=document.getElementById("publicCustomerDisconnect");
     if(wrap)wrap.hidden=!!s.connected;if(pub)pub.hidden=!s.connected;if(disc)disc.hidden=!s.connected;
     if(busy){setStatus("Customer sync is working…","warn");return;}
     if(s.connected){
       if(lastPublish?.ok)setStatus(`Connected • customer page published ${lastPublish.writes||0} update${lastPublish.writes===1?"":"s"}. Future farm changes will update automatically.`,"good");
       else if(lastPublish&&!lastPublish.ok)setStatus(`Owner connected, but publish is waiting: ${lastPublish.error||"Firebase public rules may not be ready yet."}`,"warn");
-      else setStatus(`Owner customer-sync session connected as ${s.email||"authorized owner"}.`,"good");
-    }else if(s.ready)setStatus("Customer updates are not connected yet. Enter the owner Firebase password once to connect.","warn");
+      else setStatus(`Owner customer-sync session connected${s.email?` as ${s.email}`:""}.`,"good");
+    }else if(s.ready)setStatus("Customer updates are not connected yet. Enter the owner Firebase email and password once to connect.","warn");
     else setStatus("Preparing the separate customer-sync session…","warn");
   }
 
   async function connect(){
-    if(busy)return;const input=document.getElementById("publicCustomerOwnerPassword");const password=String(input?.value||"");
-    if(!password){setStatus("Enter the owner Firebase password to connect customer updates.","bad");input?.focus();return;}
+    if(busy)return;
+    const emailInput=document.getElementById("publicCustomerOwnerEmail"),passwordInput=document.getElementById("publicCustomerOwnerPassword");
+    const email=String(emailInput?.value||"").trim(),password=String(passwordInput?.value||"");
+    if(!email){setStatus("Enter the owner Firebase email to connect customer updates.","bad");emailInput?.focus();return;}
+    if(!password){setStatus("Enter the owner Firebase password to connect customer updates.","bad");passwordInput?.focus();return;}
     busy=true;render();
     try{
-      await window.PublicCustomerOwnerAuth.signIn(password);
-      if(input)input.value="";
+      await window.PublicCustomerOwnerAuth.signIn(email,password);
+      if(passwordInput)passwordInput.value="";
+      if(emailInput)emailInput.value="";
       lastPublish=await window.FarmPublicCustomerPublisherV1.publishNow("owner-connected-from-ui");
     }catch(error){lastPublish={ok:false,error:String(error?.message||error)};}
     finally{busy=false;render();}
