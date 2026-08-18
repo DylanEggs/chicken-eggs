@@ -10,6 +10,7 @@
   const CALC_IDS=["bizCalcEgg","bizCalcChicken","bizCalcFeed","bizCalcSupplies"];
   let queued=false;
   let pendingCalc=null;
+  let saveCaptureInstalled=false;
 
   const read=(key,fallback)=>{try{return JSON.parse(localStorage.getItem(key)||JSON.stringify(fallback));}catch{return fallback;}};
   const n=v=>Number(v)||0;
@@ -48,18 +49,21 @@
     if(!pendingCalc){pendingCalc=snapshot;return;}
     pendingCalc={
       open:pendingCalc.open||snapshot.open,
-      fields:{...pendingCalc.fields,...snapshot.fields},
-      activeId:snapshot.activeId||pendingCalc.activeId||""
+      fields:{...snapshot.fields,...pendingCalc.fields},
+      activeId:pendingCalc.activeId||snapshot.activeId||""
     };
   }
 
   function restoreCalc(snapshot){
     if(!snapshot)return;
     const details=document.querySelector("#bizHome details");
-    if(details&&snapshot.open)details.open=true;
+    if(details)details.open=!!snapshot.open;
     for(const [id,value] of Object.entries(snapshot.fields||{})){
       const el=document.getElementById(id);
-      if(el&&el.value!==String(value??""))el.value=String(value??"");
+      if(el&&el.value!==String(value??"")){
+        el.value=String(value??"");
+        el.dispatchEvent(new Event("input",{bubbles:true}));
+      }
     }
     if(snapshot.activeId&&document.getElementById(snapshot.activeId)&&document.activeElement?.id!==snapshot.activeId){
       try{document.getElementById(snapshot.activeId).focus({preventScroll:true});}catch{}
@@ -111,6 +115,25 @@
     requestAnimationFrame(()=>render(pendingCalc));
   }
 
+  function installSaveCapture(){
+    if(saveCaptureInstalled)return;
+    const original=window.saveSale;
+    if(typeof original!=="function"){
+      setTimeout(installSaveCapture,50);
+      return;
+    }
+    if(original.__stagingBusinessCalcCaptureV2){saveCaptureInstalled=true;return;}
+    const wrapped=function(){
+      rememberCalc(captureCalc());
+      return original.apply(this,arguments);
+    };
+    wrapped.__stagingBusinessCalcCaptureV2=true;
+    wrapped.__stagingBusinessOriginalSaveSale=original;
+    window.saveSale=wrapped;
+    saveCaptureInstalled=true;
+    console.log("🧪 STAGING calculator state capture installed on saveSale");
+  }
+
   ["core-data-synced","farm-data-synced","farm-local-data-changed","inventory-authority-changed"].forEach(name=>window.addEventListener(name,schedule,true));
   document.addEventListener("click",event=>{
     const button=event.target?.closest?.("button");
@@ -121,6 +144,7 @@
   },true);
 
   window.StagingBusinessDisplay={stats,refresh:()=>render(captureCalc()),captureCalculator:captureCalc};
+  installSaveCapture();
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",()=>setTimeout(()=>render(captureCalc()),900),{once:true});
   else setTimeout(()=>render(captureCalc()),900);
   console.log("🧪 STAGING business display bridge active — business totals and open calculator state refresh safely together");
