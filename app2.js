@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const BUILD = String(window.__ChickenEggsBuild || "20260818-1860");
+  const BUILD = String(window.__ChickenEggsBuild || "20260819-1870");
   const load = (src, module = false) => document.write(`<script${module?' type="module"':''} src="${src}?v=${encodeURIComponent(BUILD)}"><\/script>`);
 
   load("sync-safety-preload-v1.js");
@@ -32,6 +32,7 @@
   // but is no longer auto-loaded on every owner-app startup. The current photo
   // service already owns normal photo sync and avoids duplicate scans/listeners.
   load("flock-manager-v7.js");
+  load("bird-sales-v1.js");
   load("insights-calendar-v2.js");
   load("flock-photo-viewer-v1.js");
   load("farm-diagnostics-v1.js");
@@ -47,8 +48,10 @@
   // can connect the separate publisher session and write public_customer/public_flock.
   load("customer-public-builder-v1.js");
   load("customer-public-builder-v2.js");
+  load("customer-public-builder-v3.js");
   load("public-customer-owner-auth-v1.js");
   load("public-customer-publisher-v1.js");
+  load("public-customer-bird-sales-publisher-v1.js");
   load("public-customer-sync-ui-v1.js");
 
   let chickenSalesReturn = "farm2Hub";
