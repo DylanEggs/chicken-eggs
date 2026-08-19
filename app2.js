@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const BUILD = String(window.__ChickenEggsBuild || "20260819-1870");
+  const BUILD = String(window.__ChickenEggsBuild || "20260819-1880");
   const load = (src, module = false) => document.write(`<script${module?' type="module"':''} src="${src}?v=${encodeURIComponent(BUILD)}"><\/script>`);
 
   load("sync-safety-preload-v1.js");
@@ -11,9 +11,11 @@
   // only photo copies already verified in Firebase if localStorage is full.
   load("storage-health-v1.js");
 
-  // ONE physical-inventory authority. Older inventory bridges, rebuilders and
-  // editors remain in the repository only as harmless compatibility stubs.
+  // ONE physical-inventory authority. The 12-pack layer changes only owner-side
+  // packaging/display: exact total remains authoritative, 12-packs are automatic,
+  // 18-packs are owner-designated, and the hidden remainder is never displayed.
   load("inventory-system-v6.js");
+  load("twelve-pack-default-v1.js");
 
   load("audit-finish-v1.js");
   load("app-audit-v1.js");
