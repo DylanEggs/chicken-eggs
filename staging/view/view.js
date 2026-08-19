@@ -36,10 +36,11 @@
   function renderAvailability() {
     const a = data.availability;
     setText("availableEggs", a.eggs);
-    const packs12 = Math.floor((Number(a.eggs) || 0) / 12);
-    setText("availabilityEquivalent", packs12 > 0
-      ? `${packs12} full 12-pack${packs12 === 1 ? "" : "s"} available from the current total`
-      : "Not enough for a full 12-pack yet");
+    const parts = [];
+    if (a.dozenEquivalent) parts.push(`${a.dozenEquivalent} dozen equivalent`);
+    if (a.remainder) parts.push(`${a.remainder} extra egg${a.remainder === 1 ? "" : "s"}`);
+    if (!parts.length) parts.push("Check back after the next collection");
+    setText("availabilityEquivalent", parts.join(" • "));
     const badge = $("availabilityBadge");
     if (badge) {
       badge.textContent = a.label;
