@@ -13,6 +13,7 @@ const photos=read('staging/staging-photo-service.js');
 const app2=read('staging/staging-app2.js');
 const banner=read('staging/staging-banner.js');
 const fullTest=read('staging/staging-full-test.js');
+const birdSalesTest=read('staging/staging-bird-sales-regression-v1.js');
 const liveApp2=read('app2.js');
 
 check('Staging has a separate URL shell',index.includes('Chicken Eggs — STAGING')&&index.includes('staging/staging-storage.js'));
@@ -23,6 +24,8 @@ check('Staging swaps out live Firebase entrypoint',index.includes('staging/stagi
 check('Staging swaps out live database adapter',index.includes('staging/staging-database.js'));
 check('Staging swaps out live app2 loader',index.includes('staging/staging-app2.js'));
 check('Staging loads destructive full-test runner only in staging shell',index.includes('staging/staging-full-test.js')&&fullTest.includes('window.__ChickenEggsStagingMode'));
+check('Staging bird-sales regression is staging-only',index.includes('staging/staging-bird-sales-regression-v1.js')&&birdSalesTest.includes('window.__ChickenEggsStagingMode'));
+check('Staging public builder v3 is available for privacy testing',index.includes('customer-public-builder-v3.js'));
 check('Staging boot refuses to run if live cloud scripts remain',index.includes('Safety stop: live firebase.js remained in staging shell')&&index.includes('Safety stop: live database.js remained in staging shell')&&index.includes('Safety stop: live app2.js remained in staging shell'));
 check('Staging localStorage is namespaced',storage.includes('__chicken_eggs_staging__::'));
 check('Staging clear is guarded and staging-only',storage.includes('if (!isStagingLocal(this)) return native.clear.call(this);')&&storage.includes('key.startsWith(PREFIX) && key !== INIT'));
@@ -30,7 +33,11 @@ check('Staging database has no Firebase imports',!database.includes('firebasejs'
 check('Staging photo service has no Firebase imports',!photos.includes('firebasejs')&&!photos.includes('FirestoreDB'));
 check('Staging app2 removes live photo service',app2.includes('.replace(\'load("bird-photo-service-v4.js");\', \'load("staging/staging-photo-service.js");\')'));
 check('Staging app2 removes live photo recovery',app2.includes('.replace(\'load("bird-photo-recovery-v2.js");\', \'\')'));
-check('Staging banner clearly identifies test mode',banner.includes('TEST / STAGING')&&banner.includes('LIVE FARM DATA IS READ-ONLY'));
+check('Staging app2 removes real customer owner auth',app2.includes('.replace(\'load("public-customer-owner-auth-v1.js");\', \'\')'));
+check('Staging app2 removes real customer publisher',app2.includes('.replace(\'load("public-customer-publisher-v1.js");\', \'\')'));
+check('Staging app2 removes real customer sync UI',app2.includes('.replace(\'load("public-customer-sync-ui-v1.js");\', \'\')'));
+check('Staging app2 loads bird-sales manager through sandboxed runtime',app2.includes('load("bird-sales-v1.js")'));
+check('Staging banner clearly identifies test mode',banner.includes('TEST / STAGING')&&banner.includes('LIVE FIREBASE IS READ-ONLY'));
 check('Staging Firebase imports reads only',firebase.includes('getDoc')&&firebase.includes('getDocs')&&firebase.includes('where'));
 check('Staging Firebase has no Firestore write API imports',!/(setDoc|addDoc|updateDoc|deleteDoc|runTransaction|writeBatch|onSnapshot)\s*[,}]/.test(firebase));
 check('Staging Firebase does not expose live Firestore handle',firebase.includes('Deliberately DO NOT expose FirestoreDB/FirebaseUser')&&!firebase.includes('window.FirestoreDB =')&&!firebase.includes('window.FirebaseUser ='));
@@ -42,6 +49,8 @@ check('Full staging runner snapshots and restores sandbox data',fullTest.include
 check('Full staging runner exercises egg add/edit/delete',fullTest.includes('Egg collection creates one history entry')&&fullTest.includes('Editing collection applies only the +2 inventory delta')&&fullTest.includes('Deleting collection reverses its inventory effect'));
 check('Full staging runner exercises unpaid sale and payment',fullTest.includes('Sale customer / unpaid metadata saves')&&fullTest.includes('Who Owes renders unpaid sale on Home')&&fullTest.includes('Mark Paid does not change inventory'));
 check('Full staging runner exercises farm modules',fullTest.includes('Customer add works')&&fullTest.includes('Expense add works')&&fullTest.includes('Chore add works')&&fullTest.includes('Flock profile add works')&&fullTest.includes('Chicken sale add works'));
+check('Bird-sales regression proves egg inventory and history stay unchanged',birdSalesTest.includes('does not change egg inventory')&&birdSalesTest.includes('does not change egg/sale history')&&birdSalesTest.includes('never changes egg inventory/history'));
+check('Bird-sales regression checks public privacy boundary',birdSalesTest.includes('SECRET BIRD BUYER')&&birdSalesTest.includes('SECRET FEED COST')&&birdSalesTest.includes('never enter public bird payload'));
 check('Live app remains on current normal loader',liveApp2.includes('load("inventory-system-v6.js")')&&liveApp2.includes('load("who-owes.js")')&&!liveApp2.includes('staging/staging-firebase.js'));
 
 console.log('\nChicken Eggs staging isolation audit');
