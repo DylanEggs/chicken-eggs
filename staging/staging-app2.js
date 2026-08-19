@@ -27,16 +27,18 @@
       // STAGING MUST NEVER authenticate or publish the real public customer page.
       .replace('load("public-customer-owner-auth-v1.js");', '')
       .replace('load("public-customer-publisher-v1.js");', '')
+      .replace('load("public-customer-bird-sales-publisher-v1.js");', '')
       .replace('load("public-customer-sync-ui-v1.js");', '');
 
     if (source.includes('load("bird-photo-service-v4.js")')) throw new Error("Live photo service was not isolated");
     if (source.includes('load("bird-photo-recovery-v2.js")')) throw new Error("Live photo recovery was not isolated");
     if (source.includes('load("public-customer-publisher-v1.js")')) throw new Error("Live customer publisher remained in staging");
+    if (source.includes('load("public-customer-bird-sales-publisher-v1.js")')) throw new Error("Live bird sale publisher remained in staging");
     if (source.includes('load("public-customer-owner-auth-v1.js")')) throw new Error("Live customer owner auth remained in staging");
 
     window.__STAGING_PUBLIC_PUBLISH_DISABLED__ = true;
     (0, eval)(`${source}\n//# sourceURL=staging-app2-runtime.js`);
-    console.log("🧪 STAGING app2 active — cloud writers and public publisher isolated");
+    console.log("🧪 STAGING app2 active — cloud writers and public publishers isolated");
   } catch (error) {
     console.error("STAGING app2 loader failed:", error);
   }
