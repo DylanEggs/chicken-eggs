@@ -62,6 +62,9 @@ jobs:
       - name: Run live customer page static privacy checks
         run: node qa/public-view-static-check.js
 
+      - name: Run bird sales live privacy checks
+        run: node qa/bird-sales-live-check.js
+
       - name: Run destructive staging isolation test
         run: node qa/staging-isolation-integration.js
 
