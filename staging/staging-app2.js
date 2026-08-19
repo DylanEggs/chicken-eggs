@@ -18,7 +18,7 @@
     // Keep the same live feature code but replace any module that can reach the
     // real Firebase/photo cloud with staging-only adapters.
     source = source
-      .replace('load("inventory-system-v6.js");', 'load("inventory-system-v6.js");\n  load("staging/staging-12-pack-default-v1.js");')
+      .replace('load("inventory-system-v6.js");', 'load("inventory-system-v6.js");\n  load("staging/staging-12-pack-default-v1.js");\n  load("staging/staging-12-pack-full-suite-v1.js");')
       .replace('load("bird-photo-service-v4.js");', 'load("staging/staging-photo-service.js");')
       .replace('load("bird-photo-recovery-v2.js");', '')
       .replace('load("flock-manager-v7.js");', 'load("flock-manager-v7.js");\n  load("bird-sales-v1.js");')
@@ -37,6 +37,7 @@
     if (source.includes('load("public-customer-bird-sales-publisher-v1.js")')) throw new Error("Live bird sale publisher remained in staging");
     if (source.includes('load("public-customer-owner-auth-v1.js")')) throw new Error("Live customer owner auth remained in staging");
     if (!source.includes('load("staging/staging-12-pack-default-v1.js")')) throw new Error("12-pack staging layer was not injected");
+    if (!source.includes('load("staging/staging-12-pack-full-suite-v1.js")')) throw new Error("12-pack full-suite staging layer was not injected");
 
     window.__STAGING_PUBLIC_PUBLISH_DISABLED__ = true;
     (0, eval)(`${source}\n//# sourceURL=staging-app2-runtime.js`);
