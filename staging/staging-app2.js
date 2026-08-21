@@ -5,6 +5,8 @@
 
   try {
     const build = String(window.__ChickenEggsBuild || Date.now());
+    const stageBuild = String(window.__ChickenEggsStagingBuild || Date.now());
+    const runtimeBuild = `${build}-${stageBuild}`;
     const rootUrl = new URL("../app2.js", document.currentScript?.src || location.href);
     rootUrl.searchParams.set("v", build);
     const xhr = new XMLHttpRequest();
@@ -14,6 +16,14 @@
 
     let source = String(xhr.responseText || "");
     if (!source.includes('load("inventory-system-v6.js")')) throw new Error("Current app2 loader signature not found");
+
+    // IMPORTANT: staging modules must be cache-busted by the staging build, not
+    // only the live app build. Otherwise a new staging regression can be served
+    // from an older iPhone/browser cache while the staging shell itself is new.
+    source = source.replace(
+      /const BUILD = String\(window\.__ChickenEggsBuild \|\| "[^"]+"\);/,
+      `const BUILD = ${JSON.stringify(runtimeBuild)};`
+    );
 
     // Keep the same live feature code but replace any module that can reach the
     // real Firebase/photo cloud with staging-only adapters.
@@ -60,7 +70,7 @@
 
     window.__STAGING_PUBLIC_PUBLISH_DISABLED__ = true;
     (0, eval)(`${source}\n//# sourceURL=staging-app2-runtime.js`);
-    console.log("🧪 STAGING app2 active — cloud writers/public publishers isolated; 12-pack, sale-edit return and Customer Requests experiments active");
+    console.log(`🧪 STAGING app2 active — build ${runtimeBuild}; cloud writers/public publishers isolated; 12-pack, sale-edit return and Customer Requests experiments active`);
   } catch (error) {
     console.error("STAGING app2 loader failed:", error);
   }
