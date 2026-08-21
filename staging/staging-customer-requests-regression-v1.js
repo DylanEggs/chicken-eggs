@@ -13,6 +13,15 @@
     const original=localStorage.getItem(KEY),before=snapFarm();
     try{
       check("Customer Requests staging owner module is active",!!api?.createRequest);
+      let liveOwnerSource="";
+      try{
+        const u=new URL("../customer-requests-owner-v1.js",location.href);u.searchParams.set("t",String(Date.now()));
+        const r=await fetch(u.href,{cache:"no-store"});if(r.ok)liveOwnerSource=await r.text();
+      }catch{}
+      const saveStart=liveOwnerSource.indexOf("async function saveSettings(){"),saveEnd=saveStart>=0?liveOwnerSource.indexOf("async function updateStatus",saveStart):-1,saveBlock=saveStart>=0&&saveEnd>saveStart?liveOwnerSource.slice(saveStart,saveEnd):"";
+      const captureAt=saveBlock.indexOf("const next=readSettingsForm();"),rerenderAt=saveBlock.indexOf("render();");
+      check("Live request settings reader includes the public-form checkbox",liveOwnerSource.includes('enabled:!!document.getElementById("reqPublicEnabled")?.checked'),"enabled checkbox must be captured from the form");
+      check("Live request settings are captured before any rerender",captureAt>=0&&(rerenderAt<0||captureAt<rerenderAt),saveBlock.slice(0,320));
       api.save({version:1,settings:{eggs:"auto",birds:"auto"},requests:[]});
       check("Customer request test starts with isolated empty inbox",api.load().requests.length===0);
       check("Automatic egg availability returns a customer-safe message",typeof api.autoAvailability("eggs")==="string"&&api.autoAvailability("eggs").length>0,api.autoAvailability("eggs"));
@@ -63,8 +72,8 @@
     const ready=base?.run&&base.__twelvePackFullSuiteV1&&base.__historyBackV1&&base.__saleEditBackV1&&window.StagingCustomerRequestsV1?.createRequest;
     if(!ready||base.__customerRequestsV1){setTimeout(install,140);return;}
     const baseRun=base.run.bind(base);
-    window.StagingFullTest={...base,async run(){const first=await baseRun();const extra=await runChecks();const results=[...(first?.results||[]),...extra];const failed=results.filter(x=>!x.pass);return {...first,total:results.length,passed:results.length-failed.length,failed:failed.length,results,suite:`${first?.suite||"staging-full"}+customer-requests-v2`};},__customerRequestsV1:true};
-    console.log("📨 STAGING customer request regression active — privacy, validation, bird-type and owner workflow checks added");
+    window.StagingFullTest={...base,async run(){const first=await baseRun();const extra=await runChecks();const results=[...(first?.results||[]),...extra];const failed=results.filter(x=>!x.pass);return {...first,total:results.length,passed:results.length-failed.length,failed:failed.length,results,suite:`${first?.suite||"staging-full"}+customer-requests-v3`};},__customerRequestsV1:true};
+    console.log("📨 STAGING customer request regression active — privacy, validation, bird-type, owner workflow and settings-save checks added");
   }
   setTimeout(install,2600);
 })();
