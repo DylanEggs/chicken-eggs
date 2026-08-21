@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const BUILD = String(window.__ChickenEggsBuild || "20260821-1930");
+  const BUILD = String(window.__ChickenEggsBuild || "20260821-1950");
   const load = (src, module = false) => document.write(`<script${module?' type="module"':''} src="${src}?v=${encodeURIComponent(BUILD)}"><\/script>`);
 
   load("sync-safety-preload-v1.js");
@@ -55,6 +55,7 @@
   load("customer-public-builder-v2.js");
   load("customer-public-builder-v3.js");
   load("public-customer-owner-auth-v1.js");
+  load("customer-requests-owner-v1.js");
   load("public-customer-publisher-v1.js");
   load("public-customer-bird-sales-publisher-v1.js");
   load("public-customer-sync-ui-v1.js");
