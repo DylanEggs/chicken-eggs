@@ -23,6 +23,14 @@
       source = source.replace('load("inventory-system-v6.js");', 'load("inventory-system-v6.js");\n  load("staging/staging-12-pack-default-v1.js");\n  load("staging/staging-12-pack-full-suite-v1.js");\n  load("staging/staging-sale-edit-back-regression-v1.js");');
     }
 
+    // Staging-only Customer Requests / waitlist feature. This never reaches
+    // real Firebase; the staging storage adapter keeps all request data isolated.
+    if (source.includes('load("history-back-v1.js");')) {
+      source = source.replace('load("history-back-v1.js");', 'load("history-back-v1.js");\n  load("staging/staging-customer-requests-owner-v1.js");\n  load("staging/staging-customer-requests-regression-v1.js");');
+    } else {
+      source = source.replace('load("app2-legacy-safe-loader-v1.js");', 'load("app2-legacy-safe-loader-v1.js");\n  load("staging/staging-customer-requests-owner-v1.js");\n  load("staging/staging-customer-requests-regression-v1.js");');
+    }
+
     source = source
       .replace('load("sale-edit-back-v1.js");', '')
       .replace('load("bird-photo-service-v4.js");', 'load("staging/staging-photo-service.js");')
@@ -47,10 +55,12 @@
     if (!source.includes('load("staging/staging-12-pack-default-v1.js")')) throw new Error("12-pack staging layer was not injected");
     if (!source.includes('load("staging/staging-12-pack-full-suite-v1.js")')) throw new Error("12-pack full-suite staging layer was not injected");
     if (!source.includes('load("staging/staging-sale-edit-back-regression-v1.js")')) throw new Error("Sale edit return staging regression was not injected");
+    if (!source.includes('load("staging/staging-customer-requests-owner-v1.js")')) throw new Error("Customer Requests owner module was not injected");
+    if (!source.includes('load("staging/staging-customer-requests-regression-v1.js")')) throw new Error("Customer Requests regression was not injected");
 
     window.__STAGING_PUBLIC_PUBLISH_DISABLED__ = true;
     (0, eval)(`${source}\n//# sourceURL=staging-app2-runtime.js`);
-    console.log("🧪 STAGING app2 active — cloud writers/public publishers isolated; 12-pack default experiment and sale-edit return regression active");
+    console.log("🧪 STAGING app2 active — cloud writers/public publishers isolated; 12-pack, sale-edit return and Customer Requests experiments active");
   } catch (error) {
     console.error("STAGING app2 loader failed:", error);
   }
