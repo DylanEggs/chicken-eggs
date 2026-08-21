@@ -10,6 +10,7 @@
   const PHOTO_CACHE = "chickenEggLocalBirdPhotosV1";
   const DELUXE = "chickenEggDeluxeV1";
   const LARGE_CACHE_LIMIT = 250000;
+  const TEST_REPORT_LIMIT = 90000;
   const local = window.localStorage;
   const proto = Storage.prototype;
   const native = {
@@ -38,6 +39,10 @@
     return /^(chickenEgg|farm|bird|core|inventory)/i.test(String(key || ""));
   }
   function stageKey(key) { return PREFIX + String(key); }
+  function testArtifactKey(key) {
+    const k = String(key || "");
+    return /^chickenEggStaging/i.test(k) && /test/i.test(k);
+  }
 
   function stripLargePhotoPayload(key, value) {
     const k = String(key || "");
@@ -54,21 +59,56 @@
     return value;
   }
 
-  // First launch takes a read-only copy of the browser's current live app keys.
-  // The originals are never modified. Cloud seeding can later refresh the copy.
+  function compactTestReport(key, value) {
+    if (!testArtifactKey(key)) return value;
+    const text = String(value ?? "");
+    if (text.length <= TEST_REPORT_LIMIT) return value;
+    try {
+      const obj = JSON.parse(text);
+      if (obj && typeof obj === "object") {
+        const failures = Array.isArray(obj.results)
+          ? obj.results.filter(x => !x?.pass).slice(0,40).map(x => ({name:String(x?.name||""),pass:false,detail:String(x?.detail||"").slice(0,400)}))
+          : [];
+        return JSON.stringify({
+          at:Number(obj.at)||Date.now(),
+          startedAt:Number(obj.startedAt)||0,
+          durationMs:Number(obj.durationMs)||0,
+          total:Number(obj.total)||0,
+          passed:Number(obj.passed)||0,
+          failed:Number(obj.failed)||failures.length,
+          suite:String(obj.suite||"staging-test"),
+          results:failures,
+          compactedForStagingStorage:true
+        });
+      }
+    } catch {}
+    return JSON.stringify({compactedForStagingStorage:true,originalChars:text.length});
+  }
+
+  function normalizeValue(key, value) {
+    return compactTestReport(key, stripLargePhotoPayload(key, value));
+  }
+
   if (!native.getItem.call(local, INIT)) {
     const liveKeys = physicalKeys().filter(k => !k.startsWith(PREFIX) && relevantLiveKey(k));
     for (const key of liveKeys) {
       try {
         const value = native.getItem.call(local, key);
-        if (value != null) native.setItem.call(local, stageKey(key), stripLargePhotoPayload(key, value));
+        if (value != null) native.setItem.call(local, stageKey(key), normalizeValue(key, value));
       } catch {}
     }
     native.setItem.call(local, INIT, JSON.stringify({ at: Date.now(), copiedKeys: liveKeys.length }));
   }
 
-  // Clean up an oversized photo cache left behind by an older staging build.
-  // This touches only prefixed staging keys, never the live app keys.
+  // Disposable staging test reports from older runs can consume a surprising
+  // amount of localStorage. Delete those on startup; they are not farm data.
+  for (const physicalKey of physicalKeys()) {
+    if (!physicalKey.startsWith(PREFIX) || physicalKey === INIT) continue;
+    const virtualKey = physicalKey.slice(PREFIX.length);
+    if (!testArtifactKey(virtualKey)) continue;
+    try { native.removeItem.call(local, physicalKey); } catch {}
+  }
+
   try {
     const cached = native.getItem.call(local, stageKey(PHOTO_CACHE));
     if (cached && cached.length > LARGE_CACHE_LIMIT) native.setItem.call(local, stageKey(PHOTO_CACHE), "{}");
@@ -94,7 +134,7 @@
   };
   proto.setItem = function(key, value) {
     if (!isStagingLocal(this)) return native.setItem.call(this, key, value);
-    return native.setItem.call(this, stageKey(key), stripLargePhotoPayload(key, value));
+    return native.setItem.call(this, stageKey(key), normalizeValue(key, value));
   };
   proto.removeItem = function(key) {
     if (!isStagingLocal(this)) return native.removeItem.call(this, key);
@@ -117,6 +157,7 @@
     prefix: PREFIX,
     environment: "staging",
     listKeys: stagingKeys,
+    isTestArtifactKey:testArtifactKey,
     resetVirtualStorage() {
       for (const key of physicalKeys()) {
         if (key.startsWith(PREFIX) && key !== INIT) {
@@ -134,5 +175,5 @@
     }
   };
 
-  console.log("🧪 STAGING storage sandbox active — live localStorage is isolated and oversized copied photo caches are trimmed");
+  console.log("🧪 STAGING storage sandbox active — live localStorage isolated; photo caches trimmed and disposable test reports compacted");
 })();
