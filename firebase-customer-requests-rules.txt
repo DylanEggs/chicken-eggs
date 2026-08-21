@@ -1,0 +1,39 @@
+// Add these rules inside service cloud.firestore { match /databases/{database}/documents { ... } }
+// They are intentionally narrow: the public customer page can CREATE a request,
+// but cannot read, list, edit, or delete any request. Only the exact farm owner
+// can read/manage the private inbox.
+
+match /customer_requests/{requestId} {
+  allow create: if request.auth == null
+    && request.resource.data.keys().hasOnly([
+      'name','phone','email','category','birdType','item','quantity','note',
+      'status','createdAt','updatedAt','source'
+    ])
+    && request.resource.data.name is string
+    && request.resource.data.name.size() >= 1
+    && request.resource.data.name.size() <= 80
+    && request.resource.data.phone is string
+    && request.resource.data.phone.size() <= 40
+    && request.resource.data.email is string
+    && request.resource.data.email.size() <= 120
+    && (request.resource.data.phone.size() > 0 || request.resource.data.email.size() > 0)
+    && request.resource.data.category in ['eggs','birds']
+    && request.resource.data.birdType is string
+    && request.resource.data.birdType in ['', 'chicks','pullets','roosters']
+    && (request.resource.data.category == 'birds' || request.resource.data.birdType == '')
+    && request.resource.data.item is string
+    && request.resource.data.item.size() >= 1
+    && request.resource.data.item.size() <= 120
+    && request.resource.data.quantity is int
+    && request.resource.data.quantity >= 1
+    && request.resource.data.quantity <= 999
+    && request.resource.data.note is string
+    && request.resource.data.note.size() <= 300
+    && request.resource.data.status == 'New'
+    && request.resource.data.createdAt is int
+    && request.resource.data.updatedAt is int
+    && request.resource.data.createdAt == request.resource.data.updatedAt
+    && request.resource.data.source == 'customer-page-v1';
+
+  allow read, update, delete: if isOwner();
+}
