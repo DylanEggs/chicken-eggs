@@ -7,15 +7,13 @@
   const CACHE = "chickenEggLocalBirdPhotosV1";
   const META = "chickenEggBirdPhotoMetaV4";
   const OLD_META = "chickenEggBirdPhotoMetaV3";
-  const FALLBACK_DOC = "farm_deluxe_v1";
-  const FALLBACK_FIELD = "birdPhotosV3Fallback";
   const TYPE = "birdPhotoV4";
-  const PHOTO_TYPES = ["birdPhotoV2", "birdPhotoV3", TYPE];
   const listeners = new Set();
   const remote = new Map();
   let api = null;
   let unsubscribe = null;
   let readyPromise = null;
+  let listenerReady = false;
 
   const read = (key, fallback) => {
     try { return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback)); }
@@ -94,19 +92,6 @@
     return raw ? await imageToJpeg(raw,156,.4) : "";
   }
 
-  function setLocal(id, record) {
-    id=String(id||"");
-    if (!id) return false;
-    const c=cache(), m=meta();
-    if (record.deleted) delete c[id];
-    else if (isImage(record.dataUrl)) c[id]=record.dataUrl;
-    else return false;
-    m[id]={updatedAt:Number(record.updatedAt)||now(),deleted:!!record.deleted,sourceRank:Number(record.sourceRank)||4};
-    const ok1=write(CACHE,c), ok2=write(META,m);
-    if (ok1&&ok2) notify({birdId:id,deleted:!!record.deleted});
-    return ok1&&ok2;
-  }
-
   function candidateBetter(a,b) {
     if (!a) return b;
     if (!b) return a;
@@ -117,7 +102,7 @@
     return br>=ar?b:a;
   }
 
-  function normalizeRecord(data, rank=3) {
+  function normalizeRecord(data, rank=4) {
     const id=String(data?.birdId||"");
     if (!id) return null;
     const deleted=!!data.deleted;
@@ -134,12 +119,40 @@
       String(a.dataUrl||"")===String(b.dataUrl||"");
   }
 
+  function localRecord(id) {
+    id=String(id||"");
+    if (!id) return null;
+    const c=cache(), m=meta(), info=m[id]||{};
+    const src=typeof c[id]==="string"?c[id]:"";
+    if (info.deleted) return {birdId:id,dataUrl:"",deleted:true,updatedAt:Number(info.updatedAt)||1,sourceRank:Number(info.sourceRank)||4};
+    if (!isImage(src)) return null;
+    return {birdId:id,dataUrl:src,deleted:false,updatedAt:Number(info.updatedAt)||1,sourceRank:Number(info.sourceRank)||4};
+  }
+
+  function setLocal(id, record) {
+    id=String(id||"");
+    if (!id) return false;
+    const existing=localRecord(id);
+    if (sameRecord(existing,record)) return true;
+    const c=cache(), m=meta();
+    if (record.deleted) delete c[id];
+    else if (isImage(record.dataUrl)) c[id]=record.dataUrl;
+    else return false;
+    m[id]={updatedAt:Number(record.updatedAt)||now(),deleted:!!record.deleted,sourceRank:Number(record.sourceRank)||4};
+    const ok1=write(CACHE,c), ok2=write(META,m);
+    if (ok1&&ok2) notify({birdId:id,deleted:!!record.deleted});
+    return ok1&&ok2;
+  }
+
   function rememberRemote(record) {
     if (!record?.birdId) return;
     remote.set(record.birdId, candidateBetter(remote.get(record.birdId), record));
   }
 
-  async function collectMigrationCandidates() {
+  // Low-read V4 startup: only use this device's local photo cache as migration
+  // candidates. Historical V2/V3 cloud collections are intentionally NOT scanned
+  // during normal app startup anymore. Manual recovery modules remain available.
+  function collectLocalCandidates() {
     const ids=birdIds();
     const best=new Map();
     const take=record=>{
@@ -154,28 +167,12 @@
       const info=m4[id]||m3[id]||{};
       take({birdId:id,dataUrl:src,deleted:false,updatedAt:Number(info.updatedAt)||1,sourceRank:Number(info.sourceRank)||4});
     }
-    for (const [id,info] of Object.entries(m4)) if (ids.has(id)&&info?.deleted) take({birdId:id,dataUrl:"",deleted:true,updatedAt:Number(info.updatedAt)||1,sourceRank:4});
-    for (const [id,info] of Object.entries(m3)) if (ids.has(id)&&info?.deleted) take({birdId:id,dataUrl:"",deleted:true,updatedAt:Number(info.updatedAt)||1,sourceRank:3});
-
-    const f=await firebaseApi();
-    if (!f) return best;
-    try {
-      const photoQuery=f.query(
-        f.collection(window.FirestoreDB,"entries"),
-        f.where("type","in",PHOTO_TYPES)
-      );
-      const snap=await f.getDocs(photoQuery);
-      for (const d of snap.docs) {
-        const data=d.data()||{};
-        const record=normalizeRecord(data,data.type===TYPE?4:3);
-        if (!record) continue;
-        rememberRemote(record);
-        take(record);
-      }
-      const fb=await f.getDoc(f.doc(window.FirestoreDB,"entries",FALLBACK_DOC));
-      const map=fb.exists()&&fb.data()?.[FALLBACK_FIELD]&&typeof fb.data()[FALLBACK_FIELD]==="object"?fb.data()[FALLBACK_FIELD]:{};
-      for (const data of Object.values(map)) take(normalizeRecord(data,3));
-    } catch (error) { console.warn("Photo migration scan failed:",error); }
+    for (const [id,info] of Object.entries(m4)) {
+      if (ids.has(id)&&info?.deleted) take({birdId:id,dataUrl:"",deleted:true,updatedAt:Number(info.updatedAt)||1,sourceRank:4});
+    }
+    for (const [id,info] of Object.entries(m3)) {
+      if (ids.has(id)&&info?.deleted&&!m4[id]) take({birdId:id,dataUrl:"",deleted:true,updatedAt:Number(info.updatedAt)||1,sourceRank:3});
+    }
     return best;
   }
 
@@ -210,14 +207,19 @@
   }
 
   async function reconcile() {
-    const best=await collectMigrationCandidates();
+    if (!listenerReady) return false;
+    const best=collectLocalCandidates();
     for (const [id,record] of best) {
-      setLocal(id,record);
       const known=remote.get(id);
       if (known && sameRecord(known,record)) continue;
+      if (known && Number(known.updatedAt)>Number(record.updatedAt)) {
+        setLocal(id,known);
+        continue;
+      }
       try { await writeCloud(record); }
-      catch (error) { console.warn("Photo migration write waiting:",id,error); }
+      catch (error) { console.warn("Photo V4 sync waiting:",id,error); }
     }
+    return true;
   }
 
   function applyRemote(data) {
@@ -225,27 +227,37 @@
     if (!record) return;
     const id=record.birdId;
     remote.set(id,record);
-    const localInfo=meta()[id]||{};
-    const localSrc=get(id);
-    const local={birdId:id,dataUrl:localInfo.deleted?"":localSrc,deleted:!!localInfo.deleted,updatedAt:Number(localInfo.updatedAt)||0,sourceRank:4};
+    const local=localRecord(id);
     const winner=candidateBetter(local,record);
-    if (winner===record || Number(record.updatedAt)>=Number(local.updatedAt)) setLocal(id,record);
+    if (winner===record || Number(record.updatedAt)>=Number(local?.updatedAt||0)) setLocal(id,record);
   }
 
   async function startListener() {
     const f=await firebaseApi();
-    if (!f) return;
-    unsubscribe?.();
+    if (!f) return false;
+    try { unsubscribe?.(); } catch {}
+    unsubscribe=null;
+    listenerReady=false;
+    remote.clear();
     const currentPhotoQuery=f.query(
       f.collection(window.FirestoreDB,"entries"),
       f.where("type","==",TYPE)
     );
-    unsubscribe=f.onSnapshot(currentPhotoQuery,snap=>{
-      for (const change of snap.docChanges()) {
-        if (change.type==="removed") continue;
-        applyRemote(change.doc.data()||{});
-      }
-    },error=>console.warn("Photo v4 listener failed:",error));
+    return new Promise(resolve=>{
+      let first=true;
+      unsubscribe=f.onSnapshot(currentPhotoQuery,snap=>{
+        for (const change of snap.docChanges()) {
+          if (change.type==="removed") continue;
+          applyRemote(change.doc.data()||{});
+        }
+        listenerReady=true;
+        if (first) { first=false; resolve(true); }
+      },error=>{
+        listenerReady=false;
+        console.warn("Photo v4 listener failed:",error);
+        if (first) { first=false; resolve(false); }
+      });
+    });
   }
 
   async function savePrepared(id,src) {
@@ -288,13 +300,19 @@
     catch(error){console.warn("Photo remove sync failed:",error);status("Photo removed here; Firebase removal is waiting to sync.","warning");}
   }
 
-  async function flush() { await reconcile(); }
+  async function flush() {
+    if (!listenerReady) return false;
+    return reconcile();
+  }
 
   async function initWork() {
-    await reconcile();
-    await startListener();
-    window.addEventListener("online",async()=>{await reconcile();await startListener();});
-    console.log("✅ Bird photo service v4 active — scoped photo-only Firebase sync");
+    const ok=await startListener();
+    if (ok) await reconcile();
+    window.addEventListener("online",async()=>{
+      const reconnected=await startListener();
+      if (reconnected) await reconcile();
+    });
+    console.log("✅ Bird photo service v4.1 active — current V4 listener only; legacy cloud scans disabled");
   }
   function ready(){if(!readyPromise)readyPromise=initWork();return readyPromise;}
 
@@ -302,7 +320,6 @@
     const start=()=>{ if (window.FarmSyncSafety?.isReady?.()) { void ready(); return true; } return false; };
     if (start()) return;
     window.addEventListener("farm-sync-ready",()=>void ready(),{once:true});
-    window.addEventListener("online",()=>{ if (window.FarmSyncSafety?.isReady?.()) void ready(); });
     setTimeout(start,5000);
   }
 
