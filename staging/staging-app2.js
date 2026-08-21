@@ -18,9 +18,9 @@
     // Keep the same live feature code but replace any module that can reach the
     // real Firebase/photo cloud with staging-only adapters.
     if (source.includes('load("twelve-pack-default-v1.js");')) {
-      source = source.replace('load("twelve-pack-default-v1.js");', 'load("staging/staging-12-pack-default-v1.js");\n  load("staging/staging-12-pack-full-suite-v1.js");');
+      source = source.replace('load("twelve-pack-default-v1.js");', 'load("staging/staging-12-pack-default-v1.js");\n  load("staging/staging-12-pack-full-suite-v1.js");\n  load("staging/staging-sale-edit-back-regression-v1.js");');
     } else {
-      source = source.replace('load("inventory-system-v6.js");', 'load("inventory-system-v6.js");\n  load("staging/staging-12-pack-default-v1.js");\n  load("staging/staging-12-pack-full-suite-v1.js");');
+      source = source.replace('load("inventory-system-v6.js");', 'load("inventory-system-v6.js");\n  load("staging/staging-12-pack-default-v1.js");\n  load("staging/staging-12-pack-full-suite-v1.js");\n  load("staging/staging-sale-edit-back-regression-v1.js");');
     }
 
     source = source
@@ -44,10 +44,11 @@
     if (source.includes('load("twelve-pack-default-v1.js")')) throw new Error("Live 12-pack module remained in staging");
     if (!source.includes('load("staging/staging-12-pack-default-v1.js")')) throw new Error("12-pack staging layer was not injected");
     if (!source.includes('load("staging/staging-12-pack-full-suite-v1.js")')) throw new Error("12-pack full-suite staging layer was not injected");
+    if (!source.includes('load("staging/staging-sale-edit-back-regression-v1.js")')) throw new Error("Sale edit return staging regression was not injected");
 
     window.__STAGING_PUBLIC_PUBLISH_DISABLED__ = true;
     (0, eval)(`${source}\n//# sourceURL=staging-app2-runtime.js`);
-    console.log("🧪 STAGING app2 active — cloud writers/public publishers isolated; 12-pack default experiment active");
+    console.log("🧪 STAGING app2 active — cloud writers/public publishers isolated; 12-pack default experiment and sale-edit return regression active");
   } catch (error) {
     console.error("STAGING app2 loader failed:", error);
   }
