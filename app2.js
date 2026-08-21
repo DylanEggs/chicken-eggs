@@ -1,10 +1,11 @@
 (() => {
   "use strict";
-  const BUILD = String(window.__ChickenEggsBuild || "20260821-1900");
+  const BUILD = String(window.__ChickenEggsBuild || "20260821-1930");
   const load = (src, module = false) => document.write(`<script${module?' type="module"':''} src="${src}?v=${encodeURIComponent(BUILD)}"><\/script>`);
 
   load("sync-safety-preload-v1.js");
   load("core-sync-ui-v1.js");
+  load("firebase-listener-recovery-v1.js");
   load("legacy-render-observer-guard-v1.js");
 
   // Critical farm data gets first claim on browser storage. This can reclaim
