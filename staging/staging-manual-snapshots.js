@@ -5,13 +5,14 @@
   if (!window.__ChickenEggsStagingMode) return;
 
   const BASELINE_KEY = "chickenEggManualStagingBaselineV1";
-  const EXCLUDE = new Set([BASELINE_KEY]);
+  const testArtifact = key => window.StagingStorageSandbox?.isTestArtifactKey?.(key) || (/^chickenEggStaging/i.test(String(key || "")) && /test/i.test(String(key || "")));
+  const excluded = key => String(key) === BASELINE_KEY || testArtifact(key);
 
   function snapshot() {
     const out = {};
     const keys = window.StagingStorageSandbox?.listKeys?.() || [];
     for (const key of keys) {
-      if (EXCLUDE.has(key)) continue;
+      if (excluded(key)) continue;
       try {
         const value = localStorage.getItem(key);
         if (value !== null) out[key] = value;
@@ -68,16 +69,14 @@
     window.__farmApplyingRemote = true;
     try {
       for (const key of window.StagingStorageSandbox?.listKeys?.() || []) {
-        if (EXCLUDE.has(key)) continue;
+        if (excluded(key)) continue;
         try { localStorage.removeItem(key); } catch {}
       }
       for (const [key, value] of Object.entries(record.data)) {
-        if (EXCLUDE.has(key)) continue;
+        if (excluded(key)) continue;
         localStorage.setItem(key, String(value));
       }
-    } finally {
-      window.__farmApplyingRemote = oldRemote;
-    }
+    } finally { window.__farmApplyingRemote = oldRemote; }
     reloadMemory("restore-baseline");
     window.dispatchEvent(new CustomEvent("staging-baseline-restored", { detail:{ savedAt:record.savedAt, keys:record.keys } }));
     return { restored:true, savedAt:record.savedAt, keys:record.keys };
@@ -92,7 +91,7 @@
   }
 
   window.StagingManualSnapshots = {
-    version: 1,
+    version: 2,
     baselineKey: BASELINE_KEY,
     snapshot,
     info: baselineInfo,
@@ -101,5 +100,5 @@
     refreshFromLiveAndSaveBaseline
   };
 
-  console.log("🧪 Manual staging baseline controls ready");
+  console.log("🧪 Manual staging baseline controls ready — disposable test reports excluded");
 })();
