@@ -33,9 +33,9 @@
     }
 
     if (source.includes('load("history-back-v1.js");')) {
-      source = source.replace('load("history-back-v1.js");', 'load("history-back-v1.js");\n  load("staging/staging-customer-requests-owner-v1.js");\n  load("staging/staging-customer-requests-regression-v1.js");\n  load("staging/staging-test-ready-gate-v1.js");');
+      source = source.replace('load("history-back-v1.js");', 'load("history-back-v1.js");\n  load("staging/staging-customer-requests-owner-v1.js");\n  load("staging/staging-customer-requests-regression-v1.js");\n  load("staging/staging-test-ready-gate-v1.js");\n  load("staging/staging-test-memory-runner-v1.js");');
     } else {
-      source = source.replace('load("app2-legacy-safe-loader-v1.js");', 'load("app2-legacy-safe-loader-v1.js");\n  load("staging/staging-customer-requests-owner-v1.js");\n  load("staging/staging-customer-requests-regression-v1.js");\n  load("staging/staging-test-ready-gate-v1.js");');
+      source = source.replace('load("app2-legacy-safe-loader-v1.js");', 'load("app2-legacy-safe-loader-v1.js");\n  load("staging/staging-customer-requests-owner-v1.js");\n  load("staging/staging-customer-requests-regression-v1.js");\n  load("staging/staging-test-ready-gate-v1.js");\n  load("staging/staging-test-memory-runner-v1.js");');
     }
 
     source = source
@@ -66,10 +66,11 @@
     if (!source.includes('load("staging/staging-customer-requests-owner-v1.js")')) throw new Error("Customer Requests owner module was not injected");
     if (!source.includes('load("staging/staging-customer-requests-regression-v1.js")')) throw new Error("Customer Requests regression was not injected");
     if (!source.includes('load("staging/staging-test-ready-gate-v1.js")')) throw new Error("Final staging test readiness gate was not injected");
+    if (!source.includes('load("staging/staging-test-memory-runner-v1.js")')) throw new Error("In-memory staging test runner was not injected");
 
     window.__STAGING_PUBLIC_PUBLISH_DISABLED__ = true;
     (0, eval)(`${source}\n//# sourceURL=staging-app2-runtime.js`);
-    console.log(`🧪 STAGING app2 active — build ${runtimeBuild}; cloud writers/public publishers isolated; staging-safe storage health, 12-pack, sale-edit return and Customer Requests active`);
+    console.log(`🧪 STAGING app2 active — build ${runtimeBuild}; cloud writers/public publishers isolated; full torture suite uses an in-memory storage overlay`);
   } catch (error) {
     console.error("STAGING app2 loader failed:", error);
   }
