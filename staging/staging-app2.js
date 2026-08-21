@@ -24,6 +24,7 @@
     }
 
     source = source
+      .replace('load("sale-edit-back-v1.js");', '')
       .replace('load("bird-photo-service-v4.js");', 'load("staging/staging-photo-service.js");')
       .replace('load("bird-photo-recovery-v2.js");', '')
       .replace('load("flock-manager-v7.js");', 'load("flock-manager-v7.js");\n  load("bird-sales-v1.js");')
@@ -36,6 +37,7 @@
       .replace('load("public-customer-bird-sales-publisher-v1.js");', '')
       .replace('load("public-customer-sync-ui-v1.js");', '');
 
+    if (source.includes('load("sale-edit-back-v1.js")')) throw new Error("Live sale edit back module remained in staging");
     if (source.includes('load("bird-photo-service-v4.js")')) throw new Error("Live photo service was not isolated");
     if (source.includes('load("bird-photo-recovery-v2.js")')) throw new Error("Live photo recovery was not isolated");
     if (source.includes('load("public-customer-publisher-v1.js")')) throw new Error("Live customer publisher remained in staging");
