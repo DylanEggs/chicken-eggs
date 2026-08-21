@@ -22,8 +22,6 @@
       `const BUILD = ${JSON.stringify(runtimeBuild)};`
     );
 
-    // Staging gets its own quota-recovery layer. Never run the live storage-health
-    // exception mutator inside the sandbox.
     source = source.replace('load("storage-health-v1.js");', 'load("staging/staging-storage-health-v1.js");');
 
     if (source.includes('load("twelve-pack-default-v1.js");')) {
@@ -46,6 +44,7 @@
       .replace('load("farm-diagnostics-v1.js");', 'load("staging/staging-diagnostics.js");')
       .replace('load("farm-diagnostics-photo-v2.js");', '')
       .replace('load("app-self-test-v1.js");', '')
+      .replace('load("customer-requests-owner-v1.js");', '')
       .replace('load("public-customer-owner-auth-v1.js");', '')
       .replace('load("public-customer-publisher-v1.js");', '')
       .replace('load("public-customer-bird-sales-publisher-v1.js");', '')
@@ -53,6 +52,7 @@
 
     if (source.includes('load("storage-health-v1.js")')) throw new Error("Live storage health remained in staging");
     if (!source.includes('load("staging/staging-storage-health-v1.js")')) throw new Error("Staging-safe storage health was not injected");
+    if (source.includes('load("customer-requests-owner-v1.js")')) throw new Error("Live customer requests owner module remained in staging");
     if (source.includes('load("sale-edit-back-v1.js")')) throw new Error("Live sale edit back module remained in staging");
     if (source.includes('load("bird-photo-service-v4.js")')) throw new Error("Live photo service was not isolated");
     if (source.includes('load("bird-photo-recovery-v2.js")')) throw new Error("Live photo recovery was not isolated");
