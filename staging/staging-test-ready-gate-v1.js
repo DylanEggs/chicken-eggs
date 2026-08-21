@@ -10,12 +10,14 @@
   function suiteReady() {
     const s = window.StagingFullTest;
     if (!s?.run) return false;
-    if (!regularMode) return true;
+    if (!regularMode) return !!window.StagingTestMemoryRunnerV1;
     return !!(
       s.__twelvePackFullSuiteV1 &&
       s.__historyBackV1 &&
       s.__saleEditBackV1 &&
-      s.__customerRequestsV1
+      s.__customerRequestsV1 &&
+      window.StagingTestMemoryRunnerV1 &&
+      window.StagingStorageSandbox?.beginMemoryOverlay
     );
   }
 
@@ -50,11 +52,11 @@
     btn.dataset.finalSuiteReady = ok ? "true" : "false";
     if (ok) {
       btn.textContent = "🧪 Run Full Sandbox Test";
-      btn.title = regularMode ? "Final staging torture suite is assembled and test data is ready." : "Staging test data is ready.";
+      btn.title = regularMode ? "Final staging torture suite and in-memory runner are ready." : "Staging test data is ready.";
       if (!announcedReady) {
         announcedReady = true;
-        window.dispatchEvent(new CustomEvent("staging-final-test-ready", { detail:{ expectedChecks:193 } }));
-        console.log("✅ STAGING final torture suite ready — test data settled and final wrappers attached");
+        window.dispatchEvent(new CustomEvent("staging-final-test-ready", { detail:{ expectedChecks:193, inMemory:true } }));
+        console.log("✅ STAGING final torture suite ready — data settled, wrappers attached, in-memory runner active");
       }
     } else {
       announcedReady = false;
@@ -63,15 +65,13 @@
         btn.title = "Waiting for the isolated read-only live snapshot to finish.";
       } else {
         btn.textContent = "⏳ Assembling tests…";
-        btn.title = "Waiting for all staging regression modules to attach.";
+        btn.title = "Waiting for all staging regressions and the in-memory test runner to attach.";
       }
     }
   }
 
   function start() {
     refresh();
-    // Keep watching permanently. A later Refresh Test Data From Live must
-    // immediately disable the button again instead of leaving a stale green light.
     setInterval(refresh, 120);
   }
 
@@ -88,15 +88,17 @@
   window.addEventListener("farm-data-synced", refresh);
   window.addEventListener("staging-baseline-restored", refresh);
   window.addEventListener("staging-final-suite-changed", refresh);
+  window.addEventListener("staging-storage-overlay", refresh);
 
   window.StagingFinalTestReadyGateV1 = {
-    version: 2,
+    version: 3,
     ready,
     dataReady,
     suiteReady,
     copyInProgress,
     refresh,
-    expectedChecks: regularMode ? 193 : null
+    expectedChecks: regularMode ? 193 : null,
+    requiresMemoryRunner:true
   };
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start, { once:true });
