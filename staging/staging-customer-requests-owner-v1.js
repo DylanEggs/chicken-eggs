@@ -8,6 +8,7 @@
   const INVENTORY="chickenEggInventoryV2";
   const APP2="chickenEggApp2V1";
   const STATUS=["New","Contacted","Reserved","Fulfilled","Cancelled"];
+  const BIRD_TYPES={chicks:"Chicks",pullets:"Pullets",roosters:"Roosters"};
   const MSGS={
     auto:"Automatic from farm data",
     available:"In stock now",
@@ -33,7 +34,10 @@
     const phone=String(r.phone||"").trim().slice(0,40);
     const email=String(r.email||"").trim().slice(0,120);
     const category=r.category==="birds"?"birds":"eggs";
-    const item=String(r.item|| (category==="birds"?"Birds":"Eggs")).trim().slice(0,120);
+    const birdType=category==="birds"&&BIRD_TYPES[String(r.birdType||"")]
+      ? String(r.birdType)
+      : "";
+    const item=String(r.item|| (category==="birds"?(BIRD_TYPES[birdType]||"Birds"):"Eggs")).trim().slice(0,120);
     const quantity=Math.min(999,whole(r.quantity));
     const note=String(r.note||"").trim().slice(0,300);
     const status=STATUS.includes(r.status)?r.status:"New";
@@ -42,9 +46,10 @@
       if(!phone&&!email)throw new Error("Enter a phone number or email.");
       if(email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))throw new Error("Enter a valid email address.");
       if(quantity<1)throw new Error("Quantity must be at least 1.");
+      if(category==="birds"&&!birdType)throw new Error("Choose Chicks, Pullets or Roosters.");
     }
     if(existing&&!String(r.id||""))return null;
-    return {id:String(r.id||nowId()).slice(0,140),name,phone,email,category,item:item|| (category==="birds"?"Birds":"Eggs"),quantity:Math.max(1,quantity||1),note,status,createdAt:whole(r.createdAt||Date.now()),updatedAt:whole(r.updatedAt||Date.now())};
+    return {id:String(r.id||nowId()).slice(0,140),name,phone,email,category,birdType,item:item|| (category==="birds"?(BIRD_TYPES[birdType]||"Birds"):"Eggs"),quantity:Math.max(1,quantity||1),note,status,createdAt:whole(r.createdAt||Date.now()),updatedAt:whole(r.updatedAt||Date.now())};
   }
   function load(){return sanitizeState(readJSON(KEY,blank()));}
   function save(state){const next=sanitizeState(state);next.updatedAt=Date.now();localStorage.setItem(KEY,JSON.stringify(next));render();return next;}
@@ -88,11 +93,11 @@
     ensureScreen();const body=document.getElementById("customerRequestOwnerBody");if(!body)return;
     const s=load(),newCount=s.requests.filter(r=>r.status==="New").length,open=s.requests.filter(r=>!["Fulfilled","Cancelled"].includes(r.status)).length;
     const opts=current=>Object.entries(MSGS).map(([v,l])=>`<option value="${v}" ${v===current?"selected":""}>${esc(l)}</option>`).join("");
-    body.innerHTML=`<div class="farm2-card"><div class="farm2-kicker">📣 Customer availability message</div><h3>What customers see before requesting</h3><div class="req-settings"><label>Eggs<select id="reqEggMsg">${opts(s.settings.eggs)}</select></label><label>Birds<select id="reqBirdMsg">${opts(s.settings.birds)}</select></label></div><button id="reqSaveMessages">Save Availability Messages</button><div class="farm2-subtle">Current public message: 🥚 ${esc(publicAvailability("eggs"))} • 🐣 ${esc(publicAvailability("birds"))}</div></div><div class="farm2-formRow"><div class="farm2-card"><div class="farm2-kicker">New</div><div class="farm2-moneyBig">${newCount}</div></div><div class="farm2-card"><div class="farm2-kicker">Open requests</div><div class="farm2-moneyBig">${open}</div></div></div><div class="farm2-card"><div class="farm2-kicker">📨 Request inbox</div><h3>${s.requests.length} total request${s.requests.length===1?"":"s"}</h3><div id="reqOwnerList">${s.requests.length?s.requests.map(r=>`<article class="req-card"><div class="req-top"><div><strong>${esc(r.name)}</strong><div class="req-contact">${esc(r.phone||r.email)}${r.phone&&r.email?` • ${esc(r.email)}`:""}</div></div><b>${esc(r.status)}</b></div><div class="req-meta">${r.category==="birds"?"🐣":"🥚"} ${esc(r.item)} • Qty ${r.quantity}</div>${r.note?`<div class="req-note">${esc(r.note)}</div>`:""}<div class="req-actions"><select data-req-status="${esc(r.id)}">${STATUS.map(x=>`<option ${x===r.status?"selected":""}>${x}</option>`).join("")}</select><button data-req-save="${esc(r.id)}">Update</button></div></article>`).join(""):'<div class="farm2-subtle">No customer requests yet.</div>'}</div></div>`;
+    body.innerHTML=`<div class="farm2-card"><div class="farm2-kicker">📣 Customer availability message</div><h3>What customers see before requesting</h3><div class="req-settings"><label>Eggs<select id="reqEggMsg">${opts(s.settings.eggs)}</select></label><label>Birds<select id="reqBirdMsg">${opts(s.settings.birds)}</select></label></div><button id="reqSaveMessages">Save Availability Messages</button><div class="farm2-subtle">Current public message: 🥚 ${esc(publicAvailability("eggs"))} • 🐣 ${esc(publicAvailability("birds"))}</div></div><div class="farm2-formRow"><div class="farm2-card"><div class="farm2-kicker">New</div><div class="farm2-moneyBig">${newCount}</div></div><div class="farm2-card"><div class="farm2-kicker">Open requests</div><div class="farm2-moneyBig">${open}</div></div></div><div class="farm2-card"><div class="farm2-kicker">📨 Request inbox</div><h3>${s.requests.length} total request${s.requests.length===1?"":"s"}</h3><div id="reqOwnerList">${s.requests.length?s.requests.map(r=>`<article class="req-card"><div class="req-top"><div><strong>${esc(r.name)}</strong><div class="req-contact">${esc(r.phone||r.email)}${r.phone&&r.email?` • ${esc(r.email)}`:""}</div></div><b>${esc(r.status)}</b></div><div class="req-meta">${r.category==="birds"?(r.birdType==="roosters"?"🐓":r.birdType==="pullets"?"🐔":"🐣"):"🥚"} ${r.category==="birds"&&r.birdType?`${esc(BIRD_TYPES[r.birdType])} • `:""}${esc(r.item)} • Qty ${r.quantity}</div>${r.note?`<div class="req-note">${esc(r.note)}</div>`:""}<div class="req-actions"><select data-req-status="${esc(r.id)}">${STATUS.map(x=>`<option ${x===r.status?"selected":""}>${x}</option>`).join("")}</select><button data-req-save="${esc(r.id)}">Update</button></div></article>`).join(""):'<div class="farm2-subtle">No customer requests yet.</div>'}</div></div>`;
     document.getElementById("reqSaveMessages")?.addEventListener("click",()=>{const next=load();next.settings.eggs=document.getElementById("reqEggMsg")?.value||"auto";next.settings.birds=document.getElementById("reqBirdMsg")?.value||"auto";save(next);});
     body.querySelectorAll("[data-req-save]").forEach(btn=>btn.addEventListener("click",()=>{const id=btn.dataset.reqSave,sel=body.querySelector(`[data-req-status="${CSS.escape(id)}"]`);updateStatus(id,sel?.value||"New");}));
   }
   function start(){ensureScreen();render();setTimeout(()=>{ensureScreen();render();},700);setTimeout(()=>{ensureScreen();render();},1800);}
-  window.StagingCustomerRequestsV1={version:1,key:KEY,load,save,createRequest,updateStatus,setAvailability,publicAvailability,autoAvailability,sanitizeRequest,render,statuses:STATUS.slice()};
+  window.StagingCustomerRequestsV1={version:2,key:KEY,load,save,createRequest,updateStatus,setAvailability,publicAvailability,autoAvailability,sanitizeRequest,render,statuses:STATUS.slice(),birdTypes:{...BIRD_TYPES}};
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",start,{once:true});else start();
 })();
