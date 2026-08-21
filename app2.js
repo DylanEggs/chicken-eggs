@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const BUILD = String(window.__ChickenEggsBuild || "20260819-1880");
+  const BUILD = String(window.__ChickenEggsBuild || "20260821-1890");
   const load = (src, module = false) => document.write(`<script${module?' type="module"':''} src="${src}?v=${encodeURIComponent(BUILD)}"><\/script>`);
 
   load("sync-safety-preload-v1.js");
@@ -21,6 +21,7 @@
   load("app-audit-v1.js");
   load("app2-stable-runtime-v1.js");
   load("app2-legacy-safe-loader-v1.js");
+  load("history-back-v1.js");
 
   // Current feature modules are loaded explicitly with the same app build.
   load("app-polish-v1.js");
