@@ -119,7 +119,13 @@
   function installTest() {
     installBehavior();
     const base = window.StagingFullTest;
-    if (!base?.run || base.__saleEditBackV1) { setTimeout(installTest, 100); return; }
+    // IMPORTANT: attach only after the final known staging wrappers are active.
+    // Otherwise this test can capture an older suite and accidentally resurrect
+    // obsolete pre-12-pack loose-egg expectations.
+    const ready = base?.run && base.__twelvePackFullSuiteV1 && base.__historyBackV1;
+    if (!ready) { setTimeout(installTest, 120); return; }
+    if (base.__saleEditBackV1) return;
+
     const baseRun = base.run.bind(base);
     window.StagingFullTest = {
       ...base,
@@ -132,8 +138,9 @@
       },
       __saleEditBackV1:true
     };
+    console.log("🧪 STAGING sale edit back regression attached after 12-pack/history suites");
   }
 
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => setTimeout(installTest, 1900), {once:true});
-  else setTimeout(installTest, 1900);
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => setTimeout(installTest, 2450), {once:true});
+  else setTimeout(installTest, 2450);
 })();
