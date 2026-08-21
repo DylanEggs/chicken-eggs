@@ -8,6 +8,7 @@
   const PHOTO_META3 = "chickenEggBirdPhotoMetaV3";
   const DELUXE = "chickenEggDeluxeV1";
   const SNAPSHOTS = "chickenEggApp2SnapshotsV1";
+  const STAGING_PREFIX = "__chicken_eggs_staging__::";
   const CRITICAL = new Set([
     "chickenEggInventoryV2",
     "chickenEggEntriesV102",
@@ -120,6 +121,25 @@
     return { changed:true, removed };
   }
 
+  function pruneStagingSandbox() {
+    if (window.__ChickenEggsStagingMode) return { changed:false, removed:0, freedBytes:0, reason:"staging-page" };
+    const doomed = [];
+    let freedBytes = 0;
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (!key || !String(key).startsWith(STAGING_PREFIX)) continue;
+        const value = localStorage.getItem(key) || "";
+        doomed.push(key);
+        freedBytes += bytes(key) + bytes(value);
+      }
+      doomed.forEach(key => nativeRemoveItem.call(localStorage, key));
+      return { changed:doomed.length>0, removed:doomed.length, freedBytes, reason:"discarded-staging-only-sandbox" };
+    } catch (error) {
+      return { changed:false, removed:0, freedBytes:0, reason:"staging-cleanup-failed", error:String(error?.message || error) };
+    }
+  }
+
   function trimSafetySnapshots() {
     const shots = read(SNAPSHOTS, []);
     if (!Array.isArray(shots) || shots.length <= 1) return { changed:false, before:Array.isArray(shots)?shots.length:0, after:Array.isArray(shots)?shots.length:0 };
@@ -157,15 +177,27 @@
   }
 
   function emergencyCompact(reason = "quota") {
-    const first = compact(reason);
-    const actions = Array.isArray(first?.actions) ? first.actions.slice() : [];
+    const before = usage();
+    const actions = [];
+    // TEST/STAGING uses the same origin/quota as the live app. These prefixed
+    // keys are disposable sandbox copies, never live farm data, so remove them
+    // first when a critical live save cannot fit.
+    try { actions.push({ type:"staging-sandbox", ...pruneStagingSandbox() }); } catch {}
+    try {
+      const normal = compact(reason);
+      if (Array.isArray(normal?.actions)) actions.push(...normal.actions);
+    } catch {}
     try { actions.push({ type:"snapshots", ...trimSafetySnapshots() }); } catch {}
     const after = usage();
     lastCleanup = {
-      ...(first || {}), reason, at:Date.now(), actions,
+      reason,
+      at:Date.now(),
+      beforeBytes:before.bytes,
       afterBytes:after.bytes,
-      freedBytes:Math.max(0,Number(first?.beforeBytes || after.bytes)-after.bytes)
+      freedBytes:Math.max(0,before.bytes-after.bytes),
+      actions
     };
+    window.dispatchEvent(new CustomEvent("farm-storage-health", { detail:lastCleanup }));
     return lastCleanup;
   }
 
@@ -174,7 +206,7 @@
       return nativeSetItem.call(this, key, value);
     } catch (error) {
       if (this !== window.localStorage || !quotaError(error) || !CRITICAL.has(String(key))) throw error;
-      console.warn("🧹 Browser storage full during critical farm save; freeing verified cloud-backed cache and retrying", key);
+      console.warn("🧹 Browser storage full during critical farm save; freeing staging-only/verified cache and retrying", key);
       emergencyCompact(`quota:${String(key)}`);
       try {
         const result = nativeSetItem.call(this, key, value);
@@ -182,8 +214,11 @@
         return result;
       } catch (retryError) {
         if (!quotaError(retryError)) throw retryError;
-        retryError.message = `${retryError.message || "Browser storage quota exceeded"}. Critical farm save still could not fit after safe cache cleanup.`;
-        throw retryError;
+        // DOMException.message can be read-only in browsers. Never mutate it.
+        const wrapped = new Error(`${retryError?.message || "Browser storage quota exceeded"}. Critical farm save still could not fit after safe cache cleanup.`);
+        wrapped.name = String(retryError?.name || "QuotaExceededError");
+        try { wrapped.code = retryError?.code; } catch {}
+        throw wrapped;
       }
     }
   };
@@ -203,6 +238,7 @@
     usage,
     compact,
     emergencyCompact,
+    pruneStagingSandbox,
     getLastCleanup:() => lastCleanup,
     isQuotaError:quotaError
   };
@@ -212,5 +248,5 @@
     if (event.detail?.photoOnly) setTimeout(() => compact("photo-sync"), 250);
   });
 
-  console.log("✅ Farm storage health active — critical saves can reclaim only verified cloud-backed cache");
+  console.log("✅ Farm storage health v1.1 active — critical saves can reclaim staging-only and verified cloud-backed cache safely");
 })();
