@@ -68,14 +68,32 @@
   async function openInbox(){
     ensureScreen();busy=true;render();try{await window.PublicCustomerOwnerAuth?.init?.();if(authStatus().connected){await loadSettings();await subscribe();lastError="";}}catch(e){lastError=String(e?.message||e);}finally{busy=false;render();}
   }
+  function readSettingsForm(){
+    return {
+      enabled:!!document.getElementById("reqPublicEnabled")?.checked,
+      eggs:document.getElementById("reqEggMsg")?.value||"auto",
+      birds:document.getElementById("reqBirdMsg")?.value||"auto",
+      updatedAt:Date.now()
+    };
+  }
   async function saveSettings(){
-    if(busy)return;busy=true;lastError="";render();try{const d=await ownerDb(),a=await sdk();const next={enabled:!!document.getElementById("reqPublicEnabled")?.checked,eggs:document.getElementById("reqEggMsg")?.value||"auto",birds:document.getElementById("reqBirdMsg")?.value||"auto",updatedAt:Date.now()};if(!MSGS[next.eggs]||!MSGS[next.birds])throw new Error("Invalid availability setting.");await a.setDoc(a.doc(d,"public_customer","request_settings"),next,{merge:false});settings=next;}catch(e){lastError=String(e?.message||e);}finally{busy=false;render();}
+    if(busy)return;
+    const next=readSettingsForm();
+    if(!MSGS[next.eggs]||!MSGS[next.birds]){lastError="Invalid availability setting.";render();return;}
+    busy=true;lastError="";
+    const btn=document.getElementById("reqSaveSettings");
+    if(btn){btn.disabled=true;btn.textContent="Saving Customer Request Settings…";}
+    try{
+      const d=await ownerDb(),a=await sdk();
+      await a.setDoc(a.doc(d,"public_customer","request_settings"),next,{merge:false});
+      settings=next;
+    }catch(e){lastError=String(e?.message||e);}finally{busy=false;render();}
   }
   async function updateStatus(id,status){
     if(!STATUS.includes(status))return;try{const d=await ownerDb(),a=await sdk();await a.updateDoc(a.doc(d,"customer_requests",String(id)),{status,updatedAt:Date.now()});lastError="";}catch(e){lastError=String(e?.message||e);render();}
   }
   function install(){ensureScreen();[400,1200,2600].forEach(ms=>setTimeout(ensureScreen,ms));}
   window.addEventListener("public-customer-owner-auth-changed",()=>{if(!authStatus().connected&&unsubscribe){try{unsubscribe();}catch{}unsubscribe=null;rows=[];}if(document.getElementById("customerRequests")?.classList.contains("active"))void openInbox();else render();});
-  window.FarmCustomerRequestsV1={version:1,openInbox,render,rows:()=>rows.slice(),settings:()=>({...settings})};
+  window.FarmCustomerRequestsV1={version:2,openInbox,render,readSettingsForm,rows:()=>rows.slice(),settings:()=>({...settings})};
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",install,{once:true});else install();
 })();
