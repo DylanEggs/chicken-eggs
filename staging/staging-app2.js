@@ -17,24 +17,21 @@
     let source = String(xhr.responseText || "");
     if (!source.includes('load("inventory-system-v6.js")')) throw new Error("Current app2 loader signature not found");
 
-    // IMPORTANT: staging modules must be cache-busted by the staging build, not
-    // only the live app build. Otherwise a new staging regression can be served
-    // from an older iPhone/browser cache while the staging shell itself is new.
     source = source.replace(
       /const BUILD = String\(window\.__ChickenEggsBuild \|\| "[^"]+"\);/,
       `const BUILD = ${JSON.stringify(runtimeBuild)};`
     );
 
-    // Keep the same live feature code but replace any module that can reach the
-    // real Firebase/photo cloud with staging-only adapters.
+    // Staging gets its own quota-recovery layer. Never run the live storage-health
+    // exception mutator inside the sandbox.
+    source = source.replace('load("storage-health-v1.js");', 'load("staging/staging-storage-health-v1.js");');
+
     if (source.includes('load("twelve-pack-default-v1.js");')) {
       source = source.replace('load("twelve-pack-default-v1.js");', 'load("staging/staging-12-pack-default-v1.js");\n  load("staging/staging-12-pack-full-suite-v1.js");\n  load("staging/staging-sale-edit-back-regression-v1.js");');
     } else {
       source = source.replace('load("inventory-system-v6.js");', 'load("inventory-system-v6.js");\n  load("staging/staging-12-pack-default-v1.js");\n  load("staging/staging-12-pack-full-suite-v1.js");\n  load("staging/staging-sale-edit-back-regression-v1.js");');
     }
 
-    // Staging-only Customer Requests / waitlist feature. This never reaches
-    // real Firebase; the staging storage adapter keeps all request data isolated.
     if (source.includes('load("history-back-v1.js");')) {
       source = source.replace('load("history-back-v1.js");', 'load("history-back-v1.js");\n  load("staging/staging-customer-requests-owner-v1.js");\n  load("staging/staging-customer-requests-regression-v1.js");\n  load("staging/staging-test-ready-gate-v1.js");');
     } else {
@@ -49,12 +46,13 @@
       .replace('load("farm-diagnostics-v1.js");', 'load("staging/staging-diagnostics.js");')
       .replace('load("farm-diagnostics-photo-v2.js");', '')
       .replace('load("app-self-test-v1.js");', '')
-      // STAGING MUST NEVER authenticate or publish the real public customer page.
       .replace('load("public-customer-owner-auth-v1.js");', '')
       .replace('load("public-customer-publisher-v1.js");', '')
       .replace('load("public-customer-bird-sales-publisher-v1.js");', '')
       .replace('load("public-customer-sync-ui-v1.js");', '');
 
+    if (source.includes('load("storage-health-v1.js")')) throw new Error("Live storage health remained in staging");
+    if (!source.includes('load("staging/staging-storage-health-v1.js")')) throw new Error("Staging-safe storage health was not injected");
     if (source.includes('load("sale-edit-back-v1.js")')) throw new Error("Live sale edit back module remained in staging");
     if (source.includes('load("bird-photo-service-v4.js")')) throw new Error("Live photo service was not isolated");
     if (source.includes('load("bird-photo-recovery-v2.js")')) throw new Error("Live photo recovery was not isolated");
@@ -71,7 +69,7 @@
 
     window.__STAGING_PUBLIC_PUBLISH_DISABLED__ = true;
     (0, eval)(`${source}\n//# sourceURL=staging-app2-runtime.js`);
-    console.log(`🧪 STAGING app2 active — build ${runtimeBuild}; cloud writers/public publishers isolated; 12-pack, sale-edit return and Customer Requests experiments active`);
+    console.log(`🧪 STAGING app2 active — build ${runtimeBuild}; cloud writers/public publishers isolated; staging-safe storage health, 12-pack, sale-edit return and Customer Requests active`);
   } catch (error) {
     console.error("STAGING app2 loader failed:", error);
   }
