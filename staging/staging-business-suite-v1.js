@@ -1,0 +1,95 @@
+(() => {
+  "use strict";
+  if (window.__StagingBusinessSuiteV1 || !window.__ChickenEggsStagingMode) return;
+  window.__StagingBusinessSuiteV1 = true;
+
+  const BRAND="Rose Family Poultry";
+  const STORE="rfpBusinessSuiteV1";
+  const ENTRIES="chickenEggEntriesV102";
+  const APP2="chickenEggApp2V1";
+  const read=(k,f)=>{try{const x=localStorage.getItem(k);return x==null?f:JSON.parse(x);}catch{return f;}};
+  const write=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));return true;}catch{return false;}};
+  const money=n=>`$${(Number(n)||0).toFixed(2)}`;
+  const today=()=>new Date().toISOString().slice(0,10);
+  const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
+  const state=()=>{const s=read(STORE,{});return {expenses:Array.isArray(s.expenses)?s.expenses:[],mileage:Array.isArray(s.mileage)?s.mileage:[],settings:s.settings&&typeof s.settings==="object"?s.settings:{invoicePrefix:"RFP",nextInvoice:1},receipts:Array.isArray(s.receipts)?s.receipts:[]};};
+  const save=s=>{write(STORE,s);window.dispatchEvent(new CustomEvent("rfp-staging-business-changed"));};
+  const entries=()=>{const x=read(ENTRIES,[]);return Array.isArray(x)?x:[];};
+  const app2=()=>{const x=read(APP2,{});return x&&typeof x==="object"?x:{};};
+  const year=()=>String(new Date().getFullYear());
+  const number=v=>Math.max(0,Number(v)||0);
+
+  function saleAmount(e){
+    if(!e||e.type!=="sale")return 0;
+    if(Number.isFinite(Number(e.total)))return number(e.total);
+    if(Number.isFinite(Number(e.amount)))return number(e.amount);
+    return number(e.dozenSold||e.dozens||e.dozen)*number(e.dozenPrice||e.pricePerDozen||e.price)+number(e.packSold||e.packs18)*number(e.packPrice||e.pricePer18);
+  }
+  function birdSales(){
+    const a=app2();
+    const pools=[a.birdSales,a.chickenSales,a.sales];
+    const list=pools.find(Array.isArray)||[];
+    return list.filter(x=>String(x?.date||x?.soldDate||"").startsWith(year()));
+  }
+  function birdSaleAmount(x){return number(x?.total||x?.amount||x?.price||0)*Math.max(1,number(x?.quantity||x?.qty||1));}
+  function ytd(){
+    const y=year();
+    const eggSales=entries().filter(e=>e?.type==="sale"&&String(e.date||"").startsWith(y)).reduce((s,e)=>s+saleAmount(e),0);
+    const chickenSales=birdSales().reduce((s,e)=>s+birdSaleAmount(e),0);
+    const s=state();
+    const exp=s.expenses.filter(e=>String(e.date||"").startsWith(y));
+    const expenses=exp.reduce((n,e)=>n+number(e.amount),0);
+    const miles=s.mileage.filter(m=>String(m.date||"").startsWith(y)).reduce((n,m)=>n+number(m.miles),0);
+    const byCategory={};for(const e of exp){const c=e.category||"Other";byCategory[c]=(byCategory[c]||0)+number(e.amount);}
+    return {eggSales,chickenSales,income:eggSales+chickenSales,expenses,net:eggSales+chickenSales-expenses,miles,byCategory};
+  }
+
+  function css(){
+    if(document.getElementById("rfpBusinessSuiteCss"))return;
+    const s=document.createElement("style");s.id="rfpBusinessSuiteCss";s.textContent=`
+      #rfpBusinessLauncher{position:fixed;right:14px;bottom:92px;z-index:9997;width:auto!important;margin:0!important;padding:11px 14px!important;border-radius:999px!important;box-shadow:0 12px 30px rgba(0,0,0,.22);font-size:12px!important}
+      .rfp-biz-modal[hidden]{display:none!important}.rfp-biz-modal{position:fixed;inset:0;z-index:10020;background:rgba(9,20,12,.72);padding:14px;overflow:auto}.rfp-biz-sheet{max-width:760px;margin:20px auto;background:#f7fbf7;color:#17351f;border-radius:24px;padding:18px;box-shadow:0 25px 70px rgba(0,0,0,.32)}.farm2-dark .rfp-biz-sheet{background:#18231b;color:#f7fbf7}
+      .rfp-biz-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.rfp-biz-head h2{margin:0}.rfp-biz-close{width:auto!important;margin:0!important;padding:8px 12px!important}.rfp-biz-tabs{display:flex;gap:7px;overflow:auto;padding:12px 0}.rfp-biz-tabs button{width:auto!important;margin:0!important;white-space:nowrap;padding:9px 11px!important;font-size:11px!important}.rfp-biz-tabs button.active{outline:3px solid rgba(31,122,58,.18)}
+      .rfp-biz-panel{display:none}.rfp-biz-panel.active{display:block}.rfp-biz-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.rfp-biz-card{background:rgba(255,255,255,.72);border:1px solid rgba(31,122,58,.12);border-radius:17px;padding:13px}.farm2-dark .rfp-biz-card{background:rgba(255,255,255,.05)}.rfp-biz-card b{font-size:22px;display:block}.rfp-biz-form{display:grid;gap:8px}.rfp-biz-form input,.rfp-biz-form select,.rfp-biz-form textarea{width:100%;box-sizing:border-box}.rfp-biz-form textarea{min-height:70px}.rfp-biz-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.rfp-biz-list{display:grid;gap:8px;margin-top:12px}.rfp-biz-item{padding:11px;border-radius:14px;background:rgba(31,122,58,.07);display:flex;justify-content:space-between;gap:10px}.rfp-biz-item small{display:block;opacity:.7}.rfp-biz-photo{width:58px;height:58px;object-fit:cover;border-radius:10px;margin-top:6px}.rfp-biz-actions{display:flex;gap:8px;flex-wrap:wrap}.rfp-biz-actions button{width:auto!important;margin:0!important}.rfp-receipt{background:white;color:#111;padding:18px;border-radius:14px;border:1px dashed #aaa}.rfp-receipt h3{margin-top:0}.rfp-muted{font-size:11px;opacity:.7}.rfp-cat{display:grid;grid-template-columns:1fr auto;gap:5px;font-size:12px}
+      @media(max-width:560px){.rfp-biz-grid,.rfp-biz-row{grid-template-columns:1fr}.rfp-biz-sheet{margin:4px auto}}
+    `;document.head.appendChild(s);
+  }
+
+  function launcher(){
+    if(document.getElementById("rfpBusinessLauncher"))return;
+    const b=document.createElement("button");b.id="rfpBusinessLauncher";b.type="button";b.textContent="📊 Business Tools";b.addEventListener("click",open);document.body.appendChild(b);
+  }
+  function shell(){
+    if(document.getElementById("rfpBusinessModal"))return;
+    const m=document.createElement("div");m.id="rfpBusinessModal";m.className="rfp-biz-modal";m.hidden=true;m.innerHTML=`<div class="rfp-biz-sheet"><div class="rfp-biz-head"><div><div class="eyebrow">STAGING • LOCAL ONLY</div><h2>Rose Family Poultry — Business Tools</h2><div class="rfp-muted">No Firebase reads or writes from this suite.</div></div><button class="rfp-biz-close" type="button">Close</button></div><div class="rfp-biz-tabs"><button data-tab="dashboard">📊 YTD</button><button data-tab="expenses">🧾 Expenses</button><button data-tab="mileage">🚗 Mileage</button><button data-tab="report">📄 Tax Report</button><button data-tab="receipts">💵 Receipts</button><button data-tab="calculator">📈 Worth Selling?</button></div><div id="rfpBizBody"></div></div>`;
+    m.querySelector(".rfp-biz-close").addEventListener("click",close);m.addEventListener("click",e=>{if(e.target===m)close();});m.querySelectorAll("[data-tab]").forEach(b=>b.addEventListener("click",()=>show(b.dataset.tab)));document.body.appendChild(m);
+  }
+  function open(){shell();document.getElementById("rfpBusinessModal").hidden=false;show("dashboard");}
+  function close(){const m=document.getElementById("rfpBusinessModal");if(m)m.hidden=true;}
+  function body(html){const b=document.getElementById("rfpBizBody");if(b)b.innerHTML=html;}
+  function markTab(tab){document.querySelectorAll("#rfpBusinessModal [data-tab]").forEach(b=>b.classList.toggle("active",b.dataset.tab===tab));}
+
+  function dashboard(){const d=ytd();const cats=Object.entries(d.byCategory).sort((a,b)=>b[1]-a[1]);body(`<section class="rfp-biz-panel active"><div class="rfp-biz-grid"><div class="rfp-biz-card"><span>Egg sales YTD</span><b>${money(d.eggSales)}</b></div><div class="rfp-biz-card"><span>Chicken sales YTD</span><b>${money(d.chickenSales)}</b></div><div class="rfp-biz-card"><span>Total income</span><b>${money(d.income)}</b></div><div class="rfp-biz-card"><span>Business expenses</span><b>${money(d.expenses)}</b></div><div class="rfp-biz-card"><span>Net profit / loss</span><b>${money(d.net)}</b></div><div class="rfp-biz-card"><span>Business miles</span><b>${d.miles.toFixed(1)}</b></div></div><h3>Expense breakdown</h3><div class="rfp-biz-card">${cats.length?cats.map(([c,v])=>`<div class="rfp-cat"><span>${esc(c)}</span><strong>${money(v)}</strong></div>`).join(""):"No staged business expenses yet."}</div></section>`);}
+
+  function expensePanel(){const s=state();body(`<section class="rfp-biz-panel active"><h3>🧾 Receipt & Expense Vault</h3><form id="rfpExpenseForm" class="rfp-biz-form"><div class="rfp-biz-row"><input name="date" type="date" value="${today()}" required><input name="vendor" placeholder="Vendor (Tractor Supply, etc.)" required></div><div class="rfp-biz-row"><select name="category"><option>Feed</option><option>Bedding</option><option>Egg Cartons</option><option>Equipment</option><option>Chicks / Poultry</option><option>Veterinary</option><option>Incubator Supplies</option><option>Other</option></select><input name="amount" type="number" min="0" step="0.01" placeholder="Amount" required></div><textarea name="notes" placeholder="Notes"></textarea><label>Receipt photo (optional, compressed locally)<input name="photo" type="file" accept="image/*"></label><button type="submit">Save Expense</button></form><div class="rfp-biz-list">${s.expenses.slice().reverse().map(e=>`<div class="rfp-biz-item"><div><strong>${esc(e.vendor)}</strong><small>${esc(e.date)} • ${esc(e.category)} • ${esc(e.notes||"")}</small>${e.photo?`<img class="rfp-biz-photo" src="${esc(e.photo)}" alt="Receipt">`:""}</div><b>${money(e.amount)}</b></div>`).join("")||"<div class='rfp-muted'>No expenses saved yet.</div>"}</div></section>`);document.getElementById("rfpExpenseForm")?.addEventListener("submit",saveExpense);}
+
+  async function compress(file){if(!file)return"";return new Promise(resolve=>{const img=new Image(),url=URL.createObjectURL(file);img.onload=()=>{try{const max=900,scale=Math.min(1,max/Math.max(img.width,img.height)),c=document.createElement("canvas");c.width=Math.max(1,Math.round(img.width*scale));c.height=Math.max(1,Math.round(img.height*scale));c.getContext("2d").drawImage(img,0,0,c.width,c.height);let out=c.toDataURL("image/jpeg",.58);if(out.length>450000)out=c.toDataURL("image/jpeg",.38);URL.revokeObjectURL(url);resolve(out);}catch{URL.revokeObjectURL(url);resolve("");}};img.onerror=()=>{URL.revokeObjectURL(url);resolve("");};img.src=url;});}
+  async function saveExpense(e){e.preventDefault();const f=new FormData(e.currentTarget),s=state(),photo=await compress(f.get("photo"));s.expenses.push({id:`exp-${Date.now()}`,date:String(f.get("date")||today()),vendor:String(f.get("vendor")||""),category:String(f.get("category")||"Other"),amount:number(f.get("amount")),notes:String(f.get("notes")||""),photo});save(s);expensePanel();}
+
+  function mileagePanel(){const s=state();const total=s.mileage.filter(m=>String(m.date||"").startsWith(year())).reduce((n,m)=>n+number(m.miles),0);body(`<section class="rfp-biz-panel active"><h3>🚗 Business Mileage Tracker</h3><div class="rfp-biz-card"><span>${year()} business miles</span><b>${total.toFixed(1)}</b></div><form id="rfpMileageForm" class="rfp-biz-form"><div class="rfp-biz-row"><input name="date" type="date" value="${today()}" required><input name="miles" type="number" min="0" step="0.1" placeholder="Miles" required></div><input name="purpose" placeholder="Purpose (feed pickup, poultry swap, delivery...)" required><textarea name="notes" placeholder="Notes / destination"></textarea><button type="submit">Save Trip</button></form><div class="rfp-biz-list">${s.mileage.slice().reverse().map(m=>`<div class="rfp-biz-item"><div><strong>${esc(m.purpose)}</strong><small>${esc(m.date)} • ${esc(m.notes||"")}</small></div><b>${number(m.miles).toFixed(1)} mi</b></div>`).join("")||"<div class='rfp-muted'>No mileage saved yet.</div>"}</div></section>`);document.getElementById("rfpMileageForm")?.addEventListener("submit",e=>{e.preventDefault();const f=new FormData(e.currentTarget),s=state();s.mileage.push({id:`mile-${Date.now()}`,date:String(f.get("date")||today()),miles:number(f.get("miles")),purpose:String(f.get("purpose")||""),notes:String(f.get("notes")||"")});save(s);mileagePanel();});}
+
+  function reportPanel(){const d=ytd();const rows=Object.entries(d.byCategory).sort((a,b)=>a[0].localeCompare(b[0]));body(`<section class="rfp-biz-panel active"><h3>📄 ${year()} Business Summary</h3><div class="rfp-receipt"><h3>${BRAND}</h3><p><strong>Tax / Accountant Summary — ${year()}</strong></p><div class="rfp-cat"><span>Egg sales</span><strong>${money(d.eggSales)}</strong><span>Chicken sales</span><strong>${money(d.chickenSales)}</strong><span>Total income</span><strong>${money(d.income)}</strong><span>Total expenses</span><strong>${money(d.expenses)}</strong><span>Net profit / loss</span><strong>${money(d.net)}</strong><span>Business mileage</span><strong>${d.miles.toFixed(1)} mi</strong></div><hr><strong>Expenses by category</strong>${rows.length?rows.map(([c,v])=>`<div class="rfp-cat"><span>${esc(c)}</span><strong>${money(v)}</strong></div>`).join(""):"<p>No staged expenses.</p>"}</div><div class="rfp-biz-actions" style="margin-top:10px"><button id="rfpDownloadCsv" type="button">Download CSV</button><button id="rfpPrintReport" type="button">Print / Save PDF</button></div></section>`);document.getElementById("rfpDownloadCsv")?.addEventListener("click",downloadCsv);document.getElementById("rfpPrintReport")?.addEventListener("click",()=>window.print());}
+  function downloadCsv(){const d=ytd(),lines=[["Rose Family Poultry Business Summary",year()],["Egg Sales",d.eggSales],["Chicken Sales",d.chickenSales],["Total Income",d.income],["Total Expenses",d.expenses],["Net Profit/Loss",d.net],["Business Miles",d.miles],[""],["Expense Category","Amount"],...Object.entries(d.byCategory)];const csv=lines.map(r=>r.map(v=>`"${String(v??"").replace(/"/g,'""')}"`).join(",")).join("\n"),a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));a.download=`Rose-Family-Poultry-${year()}-Business-Summary.csv`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
+
+  function recentSales(){return entries().filter(e=>e?.type==="sale").slice().sort((a,b)=>String(b.date||"").localeCompare(String(a.date||""))).slice(0,30);}
+  function receiptPanel(){const sales=recentSales();body(`<section class="rfp-biz-panel active"><h3>💵 Invoice / Receipt Generator</h3><form id="rfpReceiptForm" class="rfp-biz-form"><select name="sale"><option value="manual">Manual receipt</option>${sales.map((e,i)=>`<option value="${i}">${esc(e.date||"")} • ${money(saleAmount(e))}</option>`).join("")}</select><div class="rfp-biz-row"><input name="customer" placeholder="Customer name"><select name="status"><option>Paid</option><option>Unpaid</option></select></div><input name="items" placeholder="Items (example: 2 dozen eggs)" required><input name="total" type="number" min="0" step="0.01" placeholder="Total" required><button type="submit">Create Receipt</button></form><div id="rfpReceiptPreview"></div></section>`);const form=document.getElementById("rfpReceiptForm");form?.querySelector('[name="sale"]')?.addEventListener("change",e=>{const i=Number(e.target.value);if(!Number.isInteger(i)||!sales[i])return;form.elements.total.value=saleAmount(sales[i]).toFixed(2);const x=sales[i];const dozens=number(x.dozenSold||x.dozens||x.dozen),packs=number(x.packSold||x.packs18);form.elements.items.value=[dozens?`${dozens} dozen eggs`:"",packs?`${packs} 18-pack${packs===1?"":"s"}`:""].filter(Boolean).join(" + ")||"Egg sale";});form?.addEventListener("submit",createReceipt);}
+  function createReceipt(e){e.preventDefault();const f=new FormData(e.currentTarget),s=state(),num=`${s.settings.invoicePrefix||"RFP"}-${String(s.settings.nextInvoice||1).padStart(4,"0")}`,r={number:num,date:today(),customer:String(f.get("customer")||"Customer"),status:String(f.get("status")||"Paid"),items:String(f.get("items")||"Sale"),total:number(f.get("total"))};s.settings.nextInvoice=number(s.settings.nextInvoice||1)+1;s.receipts.push(r);save(s);const p=document.getElementById("rfpReceiptPreview");if(p)p.innerHTML=`<div class="rfp-receipt"><h3>${BRAND}</h3><div class="rfp-cat"><span>Receipt</span><strong>${esc(r.number)}</strong><span>Date</span><strong>${esc(r.date)}</strong><span>Customer</span><strong>${esc(r.customer)}</strong><span>Items</span><strong>${esc(r.items)}</strong><span>Status</span><strong>${esc(r.status)}</strong><span>Total</span><strong>${money(r.total)}</strong></div></div><div class="rfp-biz-actions" style="margin-top:8px"><button type="button" onclick="window.print()">Print / Save PDF</button></div>`;}
+
+  function calculator(){body(`<section class="rfp-biz-panel active"><h3>📈 Is This Worth Selling?</h3><form id="rfpCalcForm" class="rfp-biz-form"><div class="rfp-biz-row"><select name="mode"><option value="bird">Bird / chick batch</option><option value="egg">Eggs</option></select><input name="qty" type="number" min="1" value="1" placeholder="Quantity"></div><div class="rfp-biz-row"><input name="start" type="number" min="0" step="0.01" placeholder="Purchase / hatching cost"><input name="feed" type="number" min="0" step="0.01" placeholder="Feed / grow-out cost"></div><div class="rfp-biz-row"><input name="other" type="number" min="0" step="0.01" placeholder="Other cost"><input name="price" type="number" min="0" step="0.01" placeholder="Sale price per bird/item"></div><button type="submit">Calculate Profit</button></form><div id="rfpCalcResult" class="rfp-biz-card" style="margin-top:10px">Enter your costs and expected sale price.</div></section>`);document.getElementById("rfpCalcForm")?.addEventListener("submit",e=>{e.preventDefault();const f=new FormData(e.currentTarget),q=Math.max(1,number(f.get("qty"))),cost=number(f.get("start"))+number(f.get("feed"))+number(f.get("other")),revenue=number(f.get("price"))*q,profit=revenue-cost,per=profit/q,margin=revenue>0?profit/revenue*100:0;document.getElementById("rfpCalcResult").innerHTML=`<span>Estimated batch profit</span><b>${money(profit)}</b><div>${money(per)} per item • ${margin.toFixed(1)}% margin</div><small>Total cost ${money(cost)} • Revenue ${money(revenue)}</small>`;});}
+
+  function show(tab){markTab(tab);if(tab==="expenses")expensePanel();else if(tab==="mileage")mileagePanel();else if(tab==="report")reportPanel();else if(tab==="receipts")receiptPanel();else if(tab==="calculator")calculator();else dashboard();}
+  function init(){css();launcher();shell();}
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init,{once:true});else setTimeout(init,0);
+  window.StagingBusinessSuiteV1={version:1,open,close,show,ytd,state,networkCalls:0,firebaseWrites:0};
+  console.log("📊 STAGING business suite v1 active — expenses, mileage, YTD, reports, receipts, profitability calculator; zero Firebase calls");
+})();
