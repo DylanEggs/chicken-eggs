@@ -61,11 +61,12 @@
       }));
     }catch{}
     const result={copied,skipped,bytes,copiedKeys,mismatchedKeys,fingerprints,verified:mismatchedKeys.length===0&&copied>0,at,hasLiveBrowserData:keys.length>0};
+    if(window.StagingLocalSeedV1)window.StagingLocalSeedV1.result=result;
     window.dispatchEvent(new CustomEvent("staging-live-browser-mirrored",{detail:result}));
     return result;
   }
 
   const result=syncFromLiveBrowser();
-  window.StagingLocalSeedV1={version:3,prefix:PREFIX,hasLiveBrowserData,hasStagingCore,liveKeys,syncFromLiveBrowser,result};
+  window.StagingLocalSeedV1={version:4,prefix:PREFIX,hasLiveBrowserData,hasStagingCore,liveKeys,syncFromLiveBrowser,result};
   console.log(`🪞 STAGING mirrored ${result.copied} current LIVE browser keys (${result.bytes} chars); verified=${result.verified}; 0 Firebase reads`);
 })();
