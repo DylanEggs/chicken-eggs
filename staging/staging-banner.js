@@ -19,6 +19,13 @@
     }).join("\n\n");
   }
 
+  function refreshReadyUi(){
+    try{window.StagingFinalTestReadyGateV1?.refresh?.();}catch{}
+    try{window.StagingCustomerPreviewGuardV1?.renderMirrorBadge?.();}catch{}
+    try{window.updateApp?.();}catch{}
+    try{window.InventorySystemV6?.render?.();}catch{}
+  }
+
   function inject() {
     if (!document.body || document.getElementById("stagingSafetyBanner")) return;
     const ownerMode = window.__ChickenEggsStagingOwnerMode === true;
@@ -63,12 +70,14 @@
         const saved = await window.StagingManualSnapshots?.refreshFromLiveAndSaveBaseline?.();
         if (!saved?.saved) throw new Error("The staging refresh did not return a saved verified baseline.");
         setState(`Fresh live baseline saved ${new Date(saved.savedAt || Date.now()).toLocaleString()}.`);
-        alert(`✅ Fresh LIVE data verified in TEST/STAGING and saved as the new test baseline.\n\nSource: ${String(saved.liveSource||"verified LIVE")}.\n\nLive data was not changed.`);
-        location.reload();
+        refreshReadyUi();
+        alert(`✅ Fresh LIVE data verified in TEST/STAGING.\n\nSource: ${String(saved.liveSource||"verified LIVE")}.\n\nThe TEST copy is running in memory so Chrome's storage limit cannot corrupt it. Live data was not changed.`);
       } catch (error) {
         console.error(error);
         alert(`Could not refresh the staging snapshot. Live data was not changed.\n\nERROR: ${String(error?.message||error)}`);
+      } finally {
         if (btn) { btn.disabled = false; btn.textContent = "🔄 Refresh Test Data From Live"; }
+        refreshReadyUi();
       }
     });
 
@@ -76,7 +85,7 @@
       try {
         const saved = await window.StagingManualSnapshots?.saveBaseline?.();
         setState(`Manual baseline saved ${new Date(saved?.savedAt || Date.now()).toLocaleString()}.`);
-        alert("Current TEST/STAGING state saved as your manual baseline. Live data was not changed.");
+        alert("Current TEST/STAGING state saved as your manual baseline for this staging session. Live data was not changed.");
       } catch (error) {
         console.error(error);
         alert(`Could not save the test baseline. Live data was not changed.\n\nERROR: ${String(error?.message||error)}`);
@@ -92,8 +101,8 @@
       try {
         const restored = await window.StagingManualSnapshots.restoreBaseline();
         setState(`Restored baseline saved ${new Date(restored.savedAt).toLocaleString()}.`);
+        refreshReadyUi();
         alert("TEST/STAGING was restored to the saved baseline. Live data was not changed.");
-        location.reload();
       } catch (error) {
         console.error(error);
         alert(`Could not restore the test baseline. Live data was not changed.\n\nERROR: ${String(error?.message||error)}`);
@@ -119,6 +128,7 @@
         alert(`Sandbox test could not complete. Live data was not changed.\n\nERROR: ${String(error?.message||error)}`);
       } finally {
         if (btn) { btn.disabled = false; btn.textContent = "🧪 Run Full Sandbox Test"; }
+        refreshReadyUi();
       }
     });
   }
