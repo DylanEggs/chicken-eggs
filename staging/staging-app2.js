@@ -30,10 +30,11 @@
       source = source.replace('load("inventory-system-v6.js");', 'load("inventory-system-v6.js");\n  load("staging/staging-12-pack-default-v1.js");\n  load("staging/staging-12-pack-full-suite-v1.js");\n  load("staging/staging-sale-edit-back-regression-v1.js");');
     }
 
+    const requestStack='load("staging/staging-customer-requests-live-parity-v1.js");\n  load("staging/staging-customer-requests-parity-compat-v1.js");\n  load("staging/staging-customer-request-status-test-v1.js");\n  load("staging/staging-customer-requests-regression-v1.js");\n  load("staging/staging-test-ready-gate-v1.js");\n  load("staging/staging-test-memory-runner-v1.js");';
     if (source.includes('load("history-back-v1.js");')) {
-      source = source.replace('load("history-back-v1.js");', 'load("history-back-v1.js");\n  load("staging/staging-customer-requests-owner-v1.js");\n  load("staging/staging-customer-request-status-test-v1.js");\n  load("staging/staging-customer-requests-regression-v1.js");\n  load("staging/staging-test-ready-gate-v1.js");\n  load("staging/staging-test-memory-runner-v1.js");');
+      source = source.replace('load("history-back-v1.js");', `load("history-back-v1.js");\n  ${requestStack}`);
     } else {
-      source = source.replace('load("app2-legacy-safe-loader-v1.js");', 'load("app2-legacy-safe-loader-v1.js");\n  load("staging/staging-customer-requests-owner-v1.js");\n  load("staging/staging-customer-request-status-test-v1.js");\n  load("staging/staging-customer-requests-regression-v1.js");\n  load("staging/staging-test-ready-gate-v1.js");\n  load("staging/staging-test-memory-runner-v1.js");');
+      source = source.replace('load("app2-legacy-safe-loader-v1.js");', `load("app2-legacy-safe-loader-v1.js");\n  ${requestStack}`);
     }
 
     source = source
@@ -52,7 +53,8 @@
 
     if (source.includes('load("storage-health-v1.js")')) throw new Error("Live storage health remained in staging");
     if (!source.includes('load("staging/staging-storage-health-v1.js")')) throw new Error("Staging-safe storage health was not injected");
-    if (source.includes('load("customer-requests-owner-v1.js")')) throw new Error("Live customer requests owner module remained in staging");
+    if (source.includes('load("staging/staging-customer-requests-owner-v1.js")')) throw new Error("Old homemade staging Customer Requests UI remained loaded");
+    if (source.includes('load("customer-requests-owner-v1.js")')) throw new Error("Live Customer Requests owner module remained directly connected in staging");
     if (source.includes('load("sale-edit-back-v1.js")')) throw new Error("Live sale edit back module remained in staging");
     if (source.includes('load("bird-photo-service-v4.js")')) throw new Error("Live photo service was not isolated");
     if (source.includes('load("bird-photo-recovery-v2.js")')) throw new Error("Live photo recovery was not isolated");
@@ -63,7 +65,8 @@
     if (!source.includes('load("staging/staging-12-pack-default-v1.js")')) throw new Error("12-pack staging layer was not injected");
     if (!source.includes('load("staging/staging-12-pack-full-suite-v1.js")')) throw new Error("12-pack full-suite staging layer was not injected");
     if (!source.includes('load("staging/staging-sale-edit-back-regression-v1.js")')) throw new Error("Sale edit return staging regression was not injected");
-    if (!source.includes('load("staging/staging-customer-requests-owner-v1.js")')) throw new Error("Customer Requests owner module was not injected");
+    if (!source.includes('load("staging/staging-customer-requests-live-parity-v1.js")')) throw new Error("Live-parity Customer Requests owner layer was not injected");
+    if (!source.includes('load("staging/staging-customer-requests-parity-compat-v1.js")')) throw new Error("Customer Requests parity test bridge was not injected");
     if (!source.includes('load("staging/staging-customer-request-status-test-v1.js")')) throw new Error("Customer Requests status parity helper was not injected");
     if (!source.includes('load("staging/staging-customer-requests-regression-v1.js")')) throw new Error("Customer Requests regression was not injected");
     if (!source.includes('load("staging/staging-test-ready-gate-v1.js")')) throw new Error("Final staging test readiness gate was not injected");
@@ -71,7 +74,7 @@
 
     window.__STAGING_PUBLIC_PUBLISH_DISABLED__ = true;
     (0, eval)(`${source}\n//# sourceURL=staging-app2-runtime.js`);
-    console.log(`🧪 STAGING app2 active — build ${runtimeBuild}; cloud writers/public publishers isolated; full torture suite uses an in-memory storage overlay`);
+    console.log(`🧪 STAGING app2 active — build ${runtimeBuild}; live Customer Requests UI runs only through sandbox adapters; full torture suite uses an in-memory storage overlay`);
   } catch (error) {
     console.error("STAGING app2 loader failed:", error);
   }
