@@ -15,7 +15,6 @@
     if (!s?.run) return false;
     if (!regularMode) return !!window.StagingTestMemoryRunnerV1;
     return !!(
-      sourceReady() &&
       window.StagingCustomerPreviewGuardV1?.version >= 6 &&
       s.__twelvePackFullSuiteV1 &&
       s.__historyBackV1 &&
@@ -26,7 +25,8 @@
       window.StagingCustomerRequestsV1?.version === "live-parity" &&
       String(window.FarmCustomerRequestsV1?.version || "").includes("staging-parity") &&
       window.StagingTestMemoryRunnerV1 &&
-      window.StagingStorageSandbox?.beginMemoryOverlay
+      window.StagingStorageSandbox?.beginMemoryOverlay &&
+      window.StagingSandbox?.resetFromLive
     );
   }
 
@@ -45,13 +45,8 @@
   function button(){return document.getElementById("stagingRunFullTest");}
 
   function lockedReason(){
-    const source=sourceResult();
-    if(!dataReady())return "STAGING is still loading or refreshing its test data.";
-    if(!sourceReady()){
-      if(source?.error)return `Fresh LIVE data is not verified yet: ${source.error}`;
-      return "Fresh LIVE data is not verified yet. Click “Refresh Test Data From Live” first.";
-    }
-    if(!suiteReady())return "Fresh LIVE data is verified, but one or more sandbox regression-test modules are still loading. Wait a few seconds and click again.";
+    if(!dataReady())return "STAGING is still loading. Wait a few seconds and click again.";
+    if(!suiteReady())return "One or more sandbox regression-test modules are still loading. Wait a few seconds and click again.";
     return "The sandbox test is not ready yet.";
   }
 
@@ -65,11 +60,13 @@
     btn.textContent="🧪 Run Full Sandbox Test";
     if(ok){
       const source=sourceResult();
-      btn.title=`Verified ${String(source?.source||"LIVE")} data + full in-memory sandbox suite are ready.`;
+      btn.title=sourceReady()
+        ? `Ready. Current ${String(source?.source||"LIVE")} data is verified; the test will refresh it again before running.`
+        : "Ready. The test will first fetch and verify fresh LIVE Firebase data read-only, then run entirely in memory.";
       if(!announcedReady){
         announcedReady=true;
-        window.dispatchEvent(new CustomEvent("staging-final-test-ready",{detail:{inMemory:true,verifiedLiveSource:true,source:source?.source||"live",customerRequestsLiveParity:true,customerPreviewGuard:true}}));
-        console.log("✅ STAGING ready — verified LIVE source + full in-memory torture suite confirmed");
+        window.dispatchEvent(new CustomEvent("staging-final-test-ready",{detail:{inMemory:true,selfRefreshesLiveSource:true,customerRequestsLiveParity:true,customerPreviewGuard:true}}));
+        console.log("✅ STAGING test runner ready — it will self-refresh verified LIVE Firebase data before every sandbox run");
       }
     }else{
       announcedReady=false;
@@ -88,6 +85,6 @@
   },true);
   for(const name of ["farm-sync-ready","core-data-synced","farm-data-synced","staging-baseline-restored","staging-final-suite-changed","staging-storage-overlay","staging-live-source-verified","staging-live-browser-mirrored"])window.addEventListener(name,refresh);
 
-  window.StagingFinalTestReadyGateV1={version:10,ready,dataReady,suiteReady,sourceReady,sourceResult,copyInProgress,lockedReason,refresh,requiresMemoryRunner:true,requiresCustomerRequestsLiveParity:true,requiresVerifiedLiveSource:true,requiresCustomerPreviewGuard:true};
+  window.StagingFinalTestReadyGateV1={version:11,ready,dataReady,suiteReady,sourceReady,sourceResult,copyInProgress,lockedReason,refresh,requiresMemoryRunner:true,selfRefreshesVerifiedLiveSource:true,requiresCustomerRequestsLiveParity:true,requiresCustomerPreviewGuard:true};
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",start,{once:true});else start();
 })();
