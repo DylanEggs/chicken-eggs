@@ -5,8 +5,13 @@
   if (!window.__ChickenEggsStagingMode) return;
 
   const BASELINE_KEY = "chickenEggManualStagingBaselineV1";
+  const HEAVY_CACHE_KEYS = new Set([
+    "chickenEggLocalBirdPhotosV1",
+    "chickenEggBirdPhotoMetaV4",
+    "chickenEggApp2SnapshotsV1"
+  ]);
   const testArtifact = key => window.StagingStorageSandbox?.isTestArtifactKey?.(key) || (/^chickenEggStaging/i.test(String(key || "")) && /test/i.test(String(key || "")));
-  const excluded = key => String(key) === BASELINE_KEY || testArtifact(key);
+  const excluded = key => String(key) === BASELINE_KEY || HEAVY_CACHE_KEYS.has(String(key)) || testArtifact(key);
 
   function snapshot() {
     const out = {};
@@ -55,9 +60,14 @@
       sourceCoreEntries: Number(seed?.coreEntries) || 0,
       sourcePhotos: Number(seed?.photos) || 0,
       keys: Object.keys(data).length,
+      excludedHeavyCaches: Array.from(HEAVY_CACHE_KEYS),
       data
     };
-    localStorage.setItem(BASELINE_KEY, JSON.stringify(record));
+    try {
+      localStorage.setItem(BASELINE_KEY, JSON.stringify(record));
+    } catch (error) {
+      throw new Error(`Test baseline could not be saved in browser storage: ${String(error?.message || error)}`);
+    }
     window.dispatchEvent(new CustomEvent("staging-baseline-saved", { detail:{ ...record, data:undefined } }));
     return { saved:true, ...record, data:undefined };
   }
@@ -85,13 +95,17 @@
   async function refreshFromLiveAndSaveBaseline() {
     const ok = await window.StagingSandbox?.resetFromLive?.();
     if (ok === false) throw new Error("Live snapshot refresh was unavailable.");
+    const mirror = window.StagingLocalSeedV1?.result;
+    if (!mirror?.verified) {
+      throw new Error(`LIVE mirror did not verify (copied ${Number(mirror?.copied)||0}/${Number(mirror?.eligible)||0}, skipped ${Number(mirror?.skipped)||0}, mismatches ${Array.isArray(mirror?.mismatchedKeys)?mirror.mismatchedKeys.length:Number(mirror?.mismatchedKeys)||0}).`);
+    }
     const saved = await saveBaseline("Fresh live-data baseline");
     reloadMemory("refresh-live-baseline");
     return saved;
   }
 
   window.StagingManualSnapshots = {
-    version: 2,
+    version: 3,
     baselineKey: BASELINE_KEY,
     snapshot,
     info: baselineInfo,
@@ -100,5 +114,5 @@
     refreshFromLiveAndSaveBaseline
   };
 
-  console.log("🧪 Manual staging baseline controls ready — disposable test reports excluded");
+  console.log("🧪 Manual staging baseline controls ready — large photo/snapshot caches excluded");
 })();
