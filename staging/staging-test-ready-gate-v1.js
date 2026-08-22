@@ -9,7 +9,7 @@
 
   function mirrorReady(){
     const m=window.StagingLocalSeedV1;
-    return !!(m?.version>=3 && m?.result?.verified === true && m?.result?.hasLiveBrowserData === true);
+    return !!(m?.version>=7 && m?.result?.verified === true && m?.result?.hasLiveBrowserData === true);
   }
 
   function suiteReady() {
@@ -49,9 +49,12 @@
   function refresh(){
     const btn=button();if(!btn)return;
     const sync=dataReady(),mirror=mirrorReady(),suite=suiteReady(),ok=sync&&suite;
-    btn.disabled=!ok;btn.dataset.finalSuiteReady=ok?"true":"false";
+    btn.disabled=!ok;
+    btn.dataset.finalSuiteReady=ok?"true":"false";
+    // Keep the control recognizable at all times. The separate staging status
+    // badge explains why it is locked instead of making the test button vanish.
+    btn.textContent="🧪 Run Full Sandbox Test";
     if(ok){
-      btn.textContent="🧪 Run Full Sandbox Test";
       btn.title="Verified current LIVE browser mirror + Customer Preview guard + live-parity Customer Requests UI + in-memory torture suite are ready.";
       if(!announcedReady){
         announcedReady=true;
@@ -61,19 +64,23 @@
     }else{
       announcedReady=false;
       if(!sync||!mirror){
-        btn.textContent="⏳ Verifying LIVE mirror…";
-        btn.title="Staging will not test until the current LIVE browser data has been copied and verified.";
+        btn.title="Locked until the current LIVE farm datasets are copied into TEST/STAGING and verified. Use Refresh Test Data From Live if needed.";
       }else{
-        btn.textContent="⏳ Assembling exact tests…";
-        btn.title="Waiting for every live-parity regression and preview guard to attach.";
+        btn.title="LIVE mirror is verified; waiting for the remaining sandbox regression tests to attach.";
       }
     }
   }
 
   function start(){refresh();setInterval(refresh,120);}
-  document.addEventListener("click",event=>{const btn=event.target?.closest?.("#stagingRunFullTest");if(!btn||ready())return;event.preventDefault();event.stopImmediatePropagation();refresh();},true);
+  document.addEventListener("click",event=>{
+    const btn=event.target?.closest?.("#stagingRunFullTest");
+    if(!btn||ready())return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    refresh();
+  },true);
   for(const name of ["farm-sync-ready","core-data-synced","farm-data-synced","staging-baseline-restored","staging-final-suite-changed","staging-storage-overlay","staging-live-browser-mirrored"])window.addEventListener(name,refresh);
 
-  window.StagingFinalTestReadyGateV1={version:7,ready,dataReady,suiteReady,mirrorReady,copyInProgress,refresh,requiresMemoryRunner:true,requiresCustomerRequestsLiveParity:true,requiresVerifiedLiveBrowserMirror:true,requiresCustomerPreviewGuard:true};
+  window.StagingFinalTestReadyGateV1={version:8,ready,dataReady,suiteReady,mirrorReady,copyInProgress,refresh,requiresMemoryRunner:true,requiresCustomerRequestsLiveParity:true,requiresVerifiedLiveBrowserMirror:true,requiresCustomerPreviewGuard:true};
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",start,{once:true});else start();
 })();
