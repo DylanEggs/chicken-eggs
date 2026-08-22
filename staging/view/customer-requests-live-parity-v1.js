@@ -13,7 +13,7 @@
   function blank(){return {version:1,settings:{enabled:false,eggs:"auto",birds:"auto"},requests:[],updatedAt:0};}
   function load(){try{const x=JSON.parse(localStorage.getItem(KEY)||"null");return x&&typeof x==="object"?{...blank(),...x,settings:{...blank().settings,...(x.settings||{})},requests:Array.isArray(x.requests)?x.requests:[]}:blank();}catch{return blank();}}
   function save(state){const next={...blank(),...(state||{}),settings:{...blank().settings,...(state?.settings||{})},requests:Array.isArray(state?.requests)?state.requests:[],updatedAt:Date.now()};localStorage.setItem(KEY,JSON.stringify(next));emit();return next;}
-  function emit(){const snap={docs:load().requests.map(r=>({id:String(r.id||""),data:()=>({...r})}))};listeners.forEach(fn=>{try{fn(snap);}catch{}});}
+  function emit(){listeners.forEach(fn=>{try{fn();}catch{}});}
   function createRequest(data){const s=load(),t=Date.now(),row={id:`req-${t}-${Math.random().toString(36).slice(2,8)}`,name:String(data?.name||"").slice(0,80),phone:String(data?.phone||"").slice(0,40),email:String(data?.email||"").slice(0,120),category:data?.category==="birds"?"birds":"eggs",birdType:BIRD_TYPES[data?.birdType]?data.birdType:"",item:String(data?.item||"").slice(0,120),quantity:Math.min(999,Math.max(1,whole(data?.quantity)||1)),note:String(data?.note||"").slice(0,300),status:"New",createdAt:t,updatedAt:t,source:"staging-live-parity"};s.requests.unshift(row);save(s);return row;}
   function settings(){const s=load().settings||{};return {enabled:s.enabled===true,eggs:MSGS[s.eggs]?s.eggs:"auto",birds:MSGS[s.birds]?s.birds:"auto"};}
 
@@ -32,7 +32,8 @@
   };
 
   window.CustomerViewPublic=window.CustomerViewPublic||window.CustomerViewStaging;
-  window.StagingCustomerRequestPublicParityV1={version:1,key:KEY,load,save,createRequest,settings,firestoreApi:fs,db:fakeDb};
+  window.StagingCustomerRequestPublicParityV1={version:2,key:KEY,load,save,createRequest,settings,firestoreApi:fs,db:fakeDb,emit};
+  window.addEventListener("storage",event=>{if(event.key===KEY)emit();});
 
   try{
     const url=new URL("../../view/customer-requests-v1.js",document.currentScript?.src||location.href);url.searchParams.set("stage",String(Date.now()));
