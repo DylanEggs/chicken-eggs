@@ -22,22 +22,13 @@
   function actionButton(screenId,fn){return [...document.querySelectorAll(`#${screenId} button`)].find(b=>(b.getAttribute("onclick")||"").includes(`${fn}()`));}
   function newRow(before,after,type){const ids=new Set(before.map(x=>String(x?.id||"")));return after.find(x=>x?.type===type&&x?.id&&!ids.has(String(x.id)))||null;}
 
-  async function freshCleanStart(){
-    // The 237-check suite uses delayed UI/data work. Let it fully finish, then
-    // reload authoritative LIVE data read-only before the real click test.
-    await sleep(1400);
-    const ok=await window.StagingSandbox?.resetFromLive?.();
-    const source=window.StagingSandbox?.liveSourceResult?.()||window.__StagingLiveSourceResult||null;
-    if(ok===false||!source?.verified)throw new Error(source?.error||"Could not refresh a clean LIVE snapshot for the real-user click test.");
-    await sleep(350);
-    try{window.loadLocal?.();}catch{}try{window.loadFarmSettings?.();}catch{}try{window.__reloadFarm2Memory?.();}catch{}try{window.updateApp?.();}catch{}try{window.InventorySystemV6?.render?.();}catch{}
-    await sleep(150);
-  }
-
   async function runChecks(){
-    const results=[];
-    await freshCleanStart();
-    const snap=snapshot(),savedFields=fields(),activeBefore=document.querySelector(".screen.active")?.id||"dashboard";
+    const source=window.StagingSandbox?.liveSourceResult?.()||window.__StagingLiveSourceResult||null;
+    if(!source?.verified)throw new Error("Real-user click test requires a fresh verified LIVE staging snapshot before it starts.");
+    try{window.loadLocal?.();}catch{}try{window.loadFarmSettings?.();}catch{}try{window.__reloadFarm2Memory?.();}catch{}try{window.updateApp?.();}catch{}try{window.InventorySystemV6?.render?.();}catch{}
+    await sleep(180);
+
+    const results=[],snap=snapshot(),savedFields=fields(),activeBefore=document.querySelector(".screen.active")?.id||"dashboard";
     const oldAlert=window.alert,oldConfirm=window.confirm;const alerts=[];window.alert=m=>alerts.push(String(m||""));window.confirm=()=>true;
     try{
       const collectNav=buttonForScreen("collect");
@@ -89,7 +80,7 @@
     return results;
   }
 
-  window.StagingRealUserFlowRegressionV1={version:4,run:runChecks,isolated:true,refreshesCleanLiveBeforeRun:true,scoredChecks:19};
+  window.StagingRealUserFlowRegressionV1={version:5,run:runChecks,isolated:true,requiresFreshCaller:true,scoredChecks:19};
   window.dispatchEvent(new CustomEvent("staging-final-suite-changed"));
-  console.log("🖱️ STAGING isolated real-user flow v4 ready — clean LIVE refresh is setup-only; exactly 19 click checks are scored");
+  console.log("🖱️ STAGING real-user flow v5 ready — exactly 19 actual click checks run before the destructive torture suite");
 })();
