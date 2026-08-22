@@ -9,12 +9,23 @@
   let data = null;
   let filter = "all";
   let factIndex = 0;
+  let publicPhotoMap = new Map();
+  let publicPhotosLoaded = false;
+  let publicPhotosLoading = false;
 
   const $ = id => document.getElementById(id);
   const esc = value => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
-  const photoHtml = (bird, className = "") => bird?.photo
-    ? `<img class="${className}" src="${esc(bird.photo)}" alt="${esc(bird.name || "Chicken")}">`
-    : `<span aria-hidden="true">${["Rooster","Cockerel"].includes(bird?.sex) ? "🐓" : "🐔"}</span>`;
+  const resolvedPhoto = bird => {
+    const direct = typeof bird?.photo === "string" ? bird.photo : "";
+    if (direct) return direct;
+    return publicPhotoMap.get(String(bird?.id || "")) || "";
+  };
+  const photoHtml = (bird, className = "") => {
+    const photo = resolvedPhoto(bird);
+    return photo
+      ? `<img class="${className}" src="${esc(photo)}" alt="${esc(bird?.name || "Chicken")}">`
+      : `<span aria-hidden="true">${["Rooster","Cockerel"].includes(bird?.sex) ? "🐓" : "🐔"}</span>`;
+  };
 
   function relativeTime(timestamp) {
     const t = Number(timestamp) || 0;
@@ -164,6 +175,33 @@
     return data;
   }
 
+  async function hydratePublicPhotosOnce() {
+    if (publicPhotosLoaded || publicPhotosLoading) return;
+    publicPhotosLoading = true;
+    try {
+      await import("../../customer-public-reader-v2.js");
+      const reader = window.FarmPublicCustomerReaderV2;
+      if (!reader?.load) return;
+      const snapshot = await reader.load();
+      const flock = Array.isArray(snapshot?.flock) ? snapshot.flock : [];
+      publicPhotoMap = new Map(
+        flock
+          .filter(b => b?.id && typeof b?.photo === "string" && b.photo)
+          .map(b => [String(b.id), b.photo])
+      );
+      publicPhotosLoaded = true;
+      if (data) {
+        renderChickenOfDay();
+        renderFlock();
+      }
+      console.log(`🖼️ STAGING customer preview hydrated ${publicPhotoMap.size} public flock photos with a one-time read`);
+    } catch (error) {
+      console.warn("STAGING customer preview photo hydration unavailable:", error);
+    } finally {
+      publicPhotosLoading = false;
+    }
+  }
+
   $("nextFact")?.addEventListener("click", () => { factIndex += 1; fact(); });
   document.querySelectorAll(".filter").forEach(button => button.addEventListener("click", () => {
     filter = button.dataset.filter || "all";
@@ -174,20 +212,16 @@
   document.addEventListener("keydown", event => { if (event.key === "Escape") closeProfile(); });
 
   window.CustomerViewStaging = {
-    version: 1,
+    version: 2,
     environment: "staging-customer-preview",
     refresh: render,
     getData: () => data,
     getFilter: () => filter,
     openProfile,
-    closeProfile
+    closeProfile,
+    publicPhotoCount: () => publicPhotoMap.size
   };
 
   render();
-  setInterval(() => {
-    const previousFact = factIndex;
-    render();
-    factIndex = previousFact;
-    fact();
-  }, 15000);
+  void hydratePublicPhotosOnce();
 })();
