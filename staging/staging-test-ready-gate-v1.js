@@ -16,6 +16,7 @@
       s.__historyBackV1 &&
       s.__saleEditBackV1 &&
       s.__customerRequestsV1 &&
+      s.__customerRequestStatusParityV1 &&
       window.StagingTestMemoryRunnerV1 &&
       window.StagingStorageSandbox?.beginMemoryOverlay
     );
@@ -55,7 +56,7 @@
       btn.title = regularMode ? "Final staging torture suite and in-memory runner are ready." : "Staging test data is ready.";
       if (!announcedReady) {
         announcedReady = true;
-        window.dispatchEvent(new CustomEvent("staging-final-test-ready", { detail:{ expectedChecks:193, inMemory:true } }));
+        window.dispatchEvent(new CustomEvent("staging-final-test-ready", { detail:{ expectedChecks:200, inMemory:true } }));
         console.log("✅ STAGING final torture suite ready — data settled, wrappers attached, in-memory runner active");
       }
     } else {
@@ -91,13 +92,13 @@
   window.addEventListener("staging-storage-overlay", refresh);
 
   window.StagingFinalTestReadyGateV1 = {
-    version: 3,
+    version: 4,
     ready,
     dataReady,
     suiteReady,
     copyInProgress,
     refresh,
-    expectedChecks: regularMode ? 193 : null,
+    expectedChecks: regularMode ? 200 : null,
     requiresMemoryRunner:true
   };
 
