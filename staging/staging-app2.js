@@ -30,7 +30,7 @@
       source = source.replace('load("inventory-system-v6.js");', 'load("inventory-system-v6.js");\n  load("staging/staging-12-pack-default-v1.js");\n  load("staging/staging-12-pack-full-suite-v1.js");\n  load("staging/staging-sale-edit-back-regression-v1.js");');
     }
 
-    const requestStack='load("staging/staging-customer-requests-live-parity-v1.js");\n  load("staging/staging-customer-requests-parity-compat-v1.js");\n  load("staging/staging-customer-request-status-test-v1.js");\n  load("staging/staging-customer-requests-regression-v1.js");\n  load("staging/staging-test-ready-gate-v1.js");\n  load("staging/staging-test-memory-runner-v1.js");';
+    const requestStack='load("staging/staging-customer-requests-live-parity-v1.js");\n  load("staging/staging-customer-requests-parity-compat-v1.js");\n  load("staging/staging-customer-request-status-test-v1.js");\n  load("staging/staging-customer-requests-regression-v1.js");\n  load("staging/staging-customer-preview-guard-v1.js");\n  load("staging/staging-test-ready-gate-v1.js");\n  load("staging/staging-test-memory-runner-v1.js");';
     if (source.includes('load("history-back-v1.js");')) {
       source = source.replace('load("history-back-v1.js");', `load("history-back-v1.js");\n  ${requestStack}`);
     } else {
@@ -69,12 +69,13 @@
     if (!source.includes('load("staging/staging-customer-requests-parity-compat-v1.js")')) throw new Error("Customer Requests parity test bridge was not injected");
     if (!source.includes('load("staging/staging-customer-request-status-test-v1.js")')) throw new Error("Customer Requests status parity helper was not injected");
     if (!source.includes('load("staging/staging-customer-requests-regression-v1.js")')) throw new Error("Customer Requests regression was not injected");
+    if (!source.includes('load("staging/staging-customer-preview-guard-v1.js")')) throw new Error("Customer Preview preparation guard was not injected");
     if (!source.includes('load("staging/staging-test-ready-gate-v1.js")')) throw new Error("Final staging test readiness gate was not injected");
     if (!source.includes('load("staging/staging-test-memory-runner-v1.js")')) throw new Error("In-memory staging test runner was not injected");
 
     window.__STAGING_PUBLIC_PUBLISH_DISABLED__ = true;
     (0, eval)(`${source}\n//# sourceURL=staging-app2-runtime.js`);
-    console.log(`🧪 STAGING app2 active — build ${runtimeBuild}; live Customer Requests UI runs only through sandbox adapters; full torture suite uses an in-memory storage overlay`);
+    console.log(`🧪 STAGING app2 active — build ${runtimeBuild}; live Customer Requests UI runs only through sandbox adapters; Customer Preview is prepared before navigation; full torture suite uses an in-memory storage overlay`);
   } catch (error) {
     console.error("STAGING app2 loader failed:", error);
   }
