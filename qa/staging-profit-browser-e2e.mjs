@@ -1,5 +1,6 @@
 import { chromium } from 'playwright';
 import fs from 'node:fs';
+import { installStagingLiveBrowserFixture } from './staging-live-browser-fixture.mjs';
 
 const expected=JSON.parse(fs.readFileSync(new URL('../staging/staging-build.json',import.meta.url),'utf8')).build;
 const base='https://dylaneggs.github.io/chicken-eggs/staging/';
@@ -19,6 +20,7 @@ async function waitForDeploy(){
 await waitForDeploy();
 const browser=await chromium.launch({headless:true});
 const context=await browser.newContext({viewport:{width:390,height:844},locale:'en-US',timezoneId:'America/New_York'});
+await installStagingLiveBrowserFixture(context);
 const page=await context.newPage();
 const errors=[];
 page.on('pageerror',error=>errors.push(error.message));
@@ -27,26 +29,31 @@ page.on('console',msg=>{console.log(`[profit ${msg.type()}] ${msg.text()}`);if(m
 try{
   await page.goto(`${base}?profit=${Date.now()}`,{waitUntil:'domcontentloaded',timeout:120000});
   await page.waitForFunction(()=>window.__ChickenEggsEnvironment==='staging',null,{timeout:30000});
-  await page.waitForFunction(()=>window.FarmSyncSafety?.isReady?.()===true,null,{timeout:30000});
-  await page.waitForFunction(()=>window.StagingFullTest?.suite==='v2-visible-business'&&window.StagingFullTest?.__deepV3===true&&window.StagingBusinessDisplay?.refresh,null,{timeout:30000});
+  await page.waitForFunction(()=>window.StagingFinalTestReadyGateV1?.ready?.()===true,null,{timeout:45000});
+  await page.waitForFunction(()=>window.StagingFullTest?.run&&window.StagingBusinessDisplay?.refresh,null,{timeout:30000});
 
   const before=await page.evaluate(()=>({
-    suite:window.StagingFullTest?.suite,
-    deepV3:window.StagingFullTest?.__deepV3===true,
     liveFirestore:!!window.FirestoreDB,
     liveUser:!!window.FirebaseUser,
-    readOnly:window.__STAGING_FIREBASE_READONLY__===true
+    readOnly:window.__STAGING_FIREBASE_READONLY__===true,
+    mirror:window.StagingLocalSeedV1?.result,
+    gate:window.StagingFinalTestReadyGateV1?.ready?.()===true
   }));
   console.log('PROFIT SUITE READY',JSON.stringify(before));
-  if(before.suite!=='v2-visible-business'||!before.deepV3)throw new Error(`Wrong sandbox suite loaded: ${JSON.stringify(before)}`);
   if(before.liveFirestore||before.liveUser||!before.readOnly)throw new Error('Profit E2E staging safety boundary is not intact');
+  if(!before.mirror?.verified||!before.gate)throw new Error(`Profit E2E did not start from verified LIVE mirror: ${JSON.stringify(before.mirror)}`);
 
-  const report=await page.evaluate(()=>window.StagingFullTest.run());
+  const wrapped=await page.evaluate(async()=>{
+    const mirror=await window.StagingTestMemoryRunnerV1.refreshVerifiedLiveMirror();
+    const overlay=window.StagingStorageSandbox.beginMemoryOverlay();
+    if(!overlay?.active)throw new Error('Memory overlay did not start');
+    try{return {report:await window.StagingFullTest.run(),mirror};}
+    finally{window.StagingStorageSandbox.endMemoryOverlay(true);}
+  });
+  const report=wrapped.report;
   console.log(`VISIBLE PROFIT SUITE ${report.passed}/${report.total} passed; suite=${report.suite}`);
   for(const row of report.results||[])console.log(`${row.pass?'PASS':'FAIL'} ${row.name}${row.detail?` — ${row.detail}`:''}`);
-
-  const suiteName=String(report.suite||'');
-  if(!suiteName.includes('visible-business')||!suiteName.includes('deep-v3'))throw new Error(`Full test returned wrong suite ${suiteName||'unknown'}`);
+  if(!wrapped.mirror?.verified)throw new Error('Profit suite lost LIVE mirror verification');
   if(report.failed)throw new Error(`Visible profit sandbox failed ${report.failed} of ${report.total} checks`);
 
   const required=[
@@ -66,11 +73,7 @@ try{
     'Sandbox test restores egg date form field'
   ];
   const byName=new Map((report.results||[]).map(row=>[row.name,row]));
-  for(const name of required){
-    const row=byName.get(name);
-    if(!row)throw new Error(`Required visible-profit check is missing: ${name}`);
-    if(!row.pass)throw new Error(`Required visible-profit check failed: ${name} — ${row.detail||''}`);
-  }
+  for(const name of required){const row=byName.get(name);if(!row)throw new Error(`Required visible-profit check is missing: ${name}`);if(!row.pass)throw new Error(`Required visible-profit check failed: ${name} — ${row.detail||''}`);}
 
   const deepRequired=[
     'Sale equal to all available stock succeeds',
@@ -79,25 +82,14 @@ try{
     'Deleting edited sale restores exact pre-sale mixed inventory',
     'Public v2 snapshot contains no private customer/money values'
   ];
-  for(const name of deepRequired){
-    const row=byName.get(name);
-    if(!row)throw new Error(`Required deep-v3 check is missing: ${name}`);
-    if(!row.pass)throw new Error(`Required deep-v3 check failed: ${name} — ${row.detail||''}`);
-  }
+  for(const name of deepRequired){const row=byName.get(name);if(!row)throw new Error(`Required deep-v3 check is missing: ${name}`);if(!row.pass)throw new Error(`Required deep-v3 check failed: ${name} — ${row.detail||''}`);}
 
-  const ui=await page.evaluate(()=>({
-    saleDate:document.getElementById('saleDate')?.value||'',
-    eggDate:document.getElementById('eggDate')?.value||'',
-    screen:document.querySelector('.screen.active')?.id||'',
-    full:window.StagingFullTest.last?.()
-  }));
+  const ui=await page.evaluate(()=>({saleDate:document.getElementById('saleDate')?.value||'',eggDate:document.getElementById('eggDate')?.value||'',screen:document.querySelector('.screen.active')?.id||''}));
   if(ui.saleDate==='2099-12-31'||ui.eggDate==='2099-12-31')throw new Error(`Sandbox left future test date behind in UI: ${JSON.stringify(ui)}`);
-  const savedSuite=String(ui.full?.suite||'');
-  if(!savedSuite.includes('visible-business')||!savedSuite.includes('deep-v3'))throw new Error(`Saved full-test report is not the deep visible-business suite: ${savedSuite}`);
 
   const serious=errors.filter(x=>!/favicon|ResizeObserver/i.test(x));
   if(serious.length)throw new Error(`Profit browser console/page errors: ${serious.slice(0,5).join(' | ')}`);
-  console.log(`PASS Visible profit browser regression — ${report.passed}/${report.total}; calculator math/state, sale revenue, Home profit/loss, deep inventory/reservation checks, and form restoration verified`);
+  console.log(`PASS Visible profit browser regression — verified LIVE mirror; ${report.passed}/${report.total} checks passed in memory`);
 }finally{
   await browser.close();
 }
