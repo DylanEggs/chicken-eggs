@@ -15,6 +15,9 @@
     link.style.pointerEvents="none";
     try{
       if(!hasSnapshot()){
+        // If an old seed marker survived but its staging payload did not, clear only
+        // that staging marker so the low-read staging importer can repair itself.
+        try{localStorage.removeItem(SEED);}catch{}
         const ok=await window.FarmSyncSafety?.ready?.();
         if(ok===false&&!hasSnapshot())throw new Error("The staging farm does not have a usable snapshot yet.");
       }
@@ -41,5 +44,5 @@
     void prepareAndOpen(link);
   },true);
 
-  window.StagingCustomerPreviewGuardV1={version:1,hasSnapshot,prepareAndOpen};
+  window.StagingCustomerPreviewGuardV1={version:2,hasSnapshot,prepareAndOpen};
 })();
