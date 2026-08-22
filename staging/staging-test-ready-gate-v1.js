@@ -16,7 +16,8 @@
       s.__historyBackV1 &&
       s.__saleEditBackV1 &&
       s.__customerRequestsV1 &&
-      s.__customerRequestStatusParityV1 &&
+      s.__customerRequestsLiveParityV1 &&
+      window.StagingCustomerRequestStatusTestV1?.parityReady?.() &&
       window.StagingTestMemoryRunnerV1 &&
       window.StagingStorageSandbox?.beginMemoryOverlay
     );
@@ -53,11 +54,11 @@
     btn.dataset.finalSuiteReady = ok ? "true" : "false";
     if (ok) {
       btn.textContent = "🧪 Run Full Sandbox Test";
-      btn.title = regularMode ? "Final staging torture suite and in-memory runner are ready." : "Staging test data is ready.";
+      btn.title = regularMode ? "Final staging torture suite, live Customer Requests parity layer, and in-memory runner are ready." : "Staging test data is ready.";
       if (!announcedReady) {
         announcedReady = true;
-        window.dispatchEvent(new CustomEvent("staging-final-test-ready", { detail:{ expectedChecks:200, inMemory:true } }));
-        console.log("✅ STAGING final torture suite ready — data settled, wrappers attached, in-memory runner active");
+        window.dispatchEvent(new CustomEvent("staging-final-test-ready", { detail:{ expectedChecks:null, inMemory:true, customerRequestsLiveParity:true } }));
+        console.log("✅ STAGING final torture suite ready — live Customer Requests UI parity confirmed, data settled, in-memory runner active");
       }
     } else {
       announcedReady = false;
@@ -66,7 +67,7 @@
         btn.title = "Waiting for the isolated read-only live snapshot to finish.";
       } else {
         btn.textContent = "⏳ Assembling tests…";
-        btn.title = "Waiting for all staging regressions and the in-memory test runner to attach.";
+        btn.title = "Waiting for all staging regressions and the live Customer Requests parity layer to attach.";
       }
     }
   }
@@ -92,14 +93,15 @@
   window.addEventListener("staging-storage-overlay", refresh);
 
   window.StagingFinalTestReadyGateV1 = {
-    version: 4,
+    version: 5,
     ready,
     dataReady,
     suiteReady,
     copyInProgress,
     refresh,
-    expectedChecks: regularMode ? 200 : null,
-    requiresMemoryRunner:true
+    expectedChecks:null,
+    requiresMemoryRunner:true,
+    requiresCustomerRequestsLiveParity:true
   };
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start, { once:true });
