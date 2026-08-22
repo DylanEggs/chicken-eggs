@@ -61,12 +61,13 @@
       if (btn) { btn.disabled = true; btn.textContent = "Refreshing…"; }
       try {
         const saved = await window.StagingManualSnapshots?.refreshFromLiveAndSaveBaseline?.();
-        setState(`Fresh live baseline saved ${new Date(saved?.savedAt || Date.now()).toLocaleString()}.`);
-        alert("Fresh LIVE data was copied into TEST/STAGING and saved as the new test baseline. Live data was not changed.");
+        if (!saved?.saved) throw new Error("The staging refresh did not return a saved verified baseline.");
+        setState(`Fresh live baseline saved ${new Date(saved.savedAt || Date.now()).toLocaleString()}.`);
+        alert(`✅ Fresh LIVE data verified in TEST/STAGING and saved as the new test baseline.\n\nSource: ${String(saved.liveSource||"verified LIVE")}.\n\nLive data was not changed.`);
         location.reload();
       } catch (error) {
         console.error(error);
-        alert("Could not refresh the staging snapshot. Live data was not changed.");
+        alert(`Could not refresh the staging snapshot. Live data was not changed.\n\nERROR: ${String(error?.message||error)}`);
         if (btn) { btn.disabled = false; btn.textContent = "🔄 Refresh Test Data From Live"; }
       }
     });
@@ -78,7 +79,7 @@
         alert("Current TEST/STAGING state saved as your manual baseline. Live data was not changed.");
       } catch (error) {
         console.error(error);
-        alert("Could not save the test baseline. Live data was not changed.");
+        alert(`Could not save the test baseline. Live data was not changed.\n\nERROR: ${String(error?.message||error)}`);
       }
     });
 
@@ -95,7 +96,7 @@
         location.reload();
       } catch (error) {
         console.error(error);
-        alert("Could not restore the test baseline. Live data was not changed.");
+        alert(`Could not restore the test baseline. Live data was not changed.\n\nERROR: ${String(error?.message||error)}`);
       }
     });
 
@@ -115,7 +116,7 @@
         }
       } catch (error) {
         console.error(error);
-        alert("Sandbox test could not complete. Live data was not changed.");
+        alert(`Sandbox test could not complete. Live data was not changed.\n\nERROR: ${String(error?.message||error)}`);
       } finally {
         if (btn) { btn.disabled = false; btn.textContent = "🧪 Run Full Sandbox Test"; }
       }
