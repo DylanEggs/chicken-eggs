@@ -16,27 +16,71 @@
     }).join("\n\n");
   }
 
-  function ready() {
-    const gate = window.StagingFinalTestReadyGateV1;
-    return !!(gate?.ready?.() && window.StagingFullTest?.run && window.StagingStorageSandbox?.beginMemoryOverlay);
+  function sourceResult() {
+    return window.StagingSandbox?.liveSourceResult?.() ||
+      window.__StagingLiveSourceResult ||
+      window.StagingLocalSeedV1?.result || null;
   }
 
-  async function refreshVerifiedLiveMirror(btn) {
-    if (btn) btn.textContent = "🪞 Syncing current LIVE app…";
-    const mirror = window.StagingLocalSeedV1?.syncFromLiveBrowser?.();
-    if (window.StagingLocalSeedV1 && mirror) window.StagingLocalSeedV1.result = mirror;
-    if (!mirror?.verified || !mirror?.hasLiveBrowserData) {
-      throw new Error("Current LIVE app data could not be mirrored and verified. The torture test was not started.");
+  function ready() {
+    const gate = window.StagingFinalTestReadyGateV1;
+    return !!(
+      gate?.ready?.() &&
+      window.StagingFullTest?.run &&
+      window.StagingStorageSandbox?.beginMemoryOverlay &&
+      window.StagingSandbox?.resetFromLive
+    );
+  }
+
+  function snapshotMemory() {
+    const out = {};
+    for (const key of window.StagingStorageSandbox?.listKeys?.() || []) {
+      try {
+        const value = localStorage.getItem(key);
+        if (value !== null) out[key] = value;
+      } catch {}
     }
-    // Re-load normal app memory from the newly mirrored staged copy. In this
-    // staging build ready() is local-only and performs zero Firebase reads.
-    await window.FarmSyncSafety?.ready?.();
-    const current = window.StagingLocalSeedV1?.result;
-    if (!current?.verified || !current?.hasLiveBrowserData) {
-      throw new Error("LIVE mirror verification was lost while preparing the staging test.");
+    return out;
+  }
+
+  function restoreMemory(snap) {
+    const storage = window.StagingStorageSandbox;
+    if (!storage?.overlayActive?.()) storage?.beginMemoryOverlay?.();
+    const oldRemote = window.__farmApplyingRemote;
+    window.__farmApplyingRemote = true;
+    try {
+      localStorage.clear();
+      for (const [key, value] of Object.entries(snap || {})) {
+        localStorage.setItem(key, value);
+      }
+    } finally {
+      window.__farmApplyingRemote = oldRemote;
     }
+    try { window.loadLocal?.(); } catch {}
+    try { window.loadFarmSettings?.(); } catch {}
+    try { window.__reloadFarm2Memory?.(); } catch {}
+    try { window.updateApp?.(); } catch {}
+    try { window.InventorySystemV6?.render?.(); } catch {}
+    try { window.StagingCustomerRequestsV1?.render?.(); } catch {}
+    window.dispatchEvent(new CustomEvent("core-data-synced", {detail:{staging:true,testRestore:true,inMemory:true}}));
+    window.dispatchEvent(new CustomEvent("farm-data-synced", {detail:{staging:true,testRestore:true,inMemory:true,key:"test-memory-restore"}}));
+  }
+
+  async function refreshVerifiedLiveSource(btn) {
+    if (btn) btn.textContent = "☁️ Refreshing LIVE test copy…";
+
+    const ok = await window.StagingSandbox.resetFromLive();
+    const source = sourceResult();
+
+    if (ok === false || !source?.verified) {
+      throw new Error(source?.error || "Fresh LIVE Firebase data could not be verified for the sandbox test.");
+    }
+    if (!window.StagingStorageSandbox?.overlayActive?.()) {
+      throw new Error("Verified LIVE data was loaded, but the in-memory staging sandbox is not active.");
+    }
+
     try { window.StagingFinalTestReadyGateV1?.refresh?.(); } catch {}
-    return current;
+    return source;
   }
 
   async function run(btn) {
@@ -44,46 +88,45 @@
       try { window.StagingFinalTestReadyGateV1?.refresh?.(); } catch {}
       return;
     }
-    if (!confirm("Run the destructive full sandbox test now? Staging will first re-sync and verify the current LIVE app data, then run every destructive check in a temporary in-memory copy. Live data will not be changed.")) return;
+
+    if (!confirm("Run the full sandbox test now? Staging will refresh the current LIVE Firebase data in read-only mode, run destructive checks only in memory, then restore the verified TEST copy. LIVE data will not be changed.")) return;
 
     running = true;
-    let overlayStarted = false;
-    if (btn) { btn.disabled = true; btn.textContent = "🪞 Syncing current LIVE app…"; }
+    let verifiedSnap = null;
+    if (btn) { btn.disabled = true; btn.textContent = "☁️ Refreshing LIVE test copy…"; }
 
     try {
-      const mirror = await refreshVerifiedLiveMirror(btn);
-      if (btn) btn.textContent = "🧠 Testing verified LIVE mirror…";
+      const source = await refreshVerifiedLiveSource(btn);
+      verifiedSnap = snapshotMemory();
 
-      const overlay = window.StagingStorageSandbox.beginMemoryOverlay();
-      overlayStarted = !!overlay?.active;
-      if (!overlayStarted) throw new Error("Staging memory test overlay could not start.");
+      if (btn) btn.textContent = "🧠 Running Sandbox Test…";
 
       const result = await window.StagingFullTest.run();
       if (!result) throw new Error("Full staging test runner did not return a report.");
       window.__lastStagingFullTestResult = result;
 
-      // Discard every destructive test write before showing the result.
-      window.StagingStorageSandbox.endMemoryOverlay(true);
-      overlayStarted = false;
+      // Guarantee the exact verified pre-test TEST copy is restored even if one
+      // of the nested regression suites altered more state than expected.
+      restoreMemory(verifiedSnap);
 
-      const mirrorNote = `Verified current LIVE mirror: ${Number(mirror.copied)||0} keys, 0 Firebase reads.`;
+      const sourceNote = `Verified LIVE source: ${String(source.source || "LIVE")} • ${Number(source.copied)||0}/${Number(source.eligible)||0} datasets${Number.isFinite(Number(source.coreEntries)) ? ` • ${Number(source.coreEntries)} egg/sale entries` : ""}.`;
       if (result.failed) {
         const details = failureSummary(result);
-        alert(`Sandbox test finished: ${result.passed}/${result.total} passed, ${result.failed} failed.\n\n${mirrorNote}\n\nFAILED CHECKS:\n${details || "Failure details were not returned."}\n\nThe in-memory test copy was discarded. Live and persistent staging data were not changed.`);
+        alert(`Sandbox test finished: ${result.passed}/${result.total} passed, ${result.failed} failed.\n\n${sourceNote}\n\nFAILED CHECKS:\n${details || "Failure details were not returned."}\n\nThe verified in-memory TEST copy was restored. LIVE data was not changed.`);
       } else {
-        alert(`✅ Sandbox test passed ${result.passed}/${result.total} checks.\n\n${mirrorNote}\n\nThe in-memory test copy was discarded; persistent staging and live data were not changed.`);
+        alert(`✅ Sandbox test passed ${result.passed}/${result.total} checks.\n\n${sourceNote}\n\nThe verified in-memory TEST copy was restored. LIVE data was not changed.`);
       }
     } catch (error) {
-      console.error("STAGING in-memory torture test failed:", error);
-      alert(`Sandbox test could not complete: ${String(error?.message || error)}\n\nThe test was stopped. Live data was not changed.`);
-    } finally {
-      if (overlayStarted) {
-        try { window.StagingStorageSandbox.endMemoryOverlay(true); } catch {}
+      console.error("STAGING in-memory sandbox test failed:", error);
+      if (verifiedSnap) {
+        try { restoreMemory(verifiedSnap); } catch {}
       }
+      alert(`Sandbox test could not complete: ${String(error?.message || error)}\n\nThe test was stopped and the verified TEST copy was restored when available. LIVE data was not changed.`);
+    } finally {
       running = false;
       try { window.StagingFinalTestReadyGateV1?.refresh?.(); } catch {}
       const currentBtn = btn || document.getElementById("stagingRunFullTest");
-      if (currentBtn && window.StagingFinalTestReadyGateV1?.ready?.()) {
+      if (currentBtn) {
         currentBtn.disabled = false;
         currentBtn.textContent = "🧪 Run Full Sandbox Test";
       }
@@ -99,6 +142,15 @@
     void run(btn);
   }, true);
 
-  window.StagingTestMemoryRunnerV1 = { version:2, ready, isRunning:()=>running, refreshVerifiedLiveMirror, run:()=>run(document.getElementById("stagingRunFullTest")) };
-  console.log("🧠 STAGING full-test memory runner v2 active — current LIVE browser mirror is reverified before every torture run; destructive writes remain in memory");
+  window.StagingTestMemoryRunnerV1 = {
+    version:3,
+    ready,
+    isRunning:()=>running,
+    sourceResult,
+    refreshVerifiedLiveSource,
+    refreshVerifiedLiveMirror:refreshVerifiedLiveSource,
+    run:()=>run(document.getElementById("stagingRunFullTest"))
+  };
+
+  console.log("🧠 STAGING full-test memory runner v3 active — verified read-only LIVE Firebase source is refreshed before every test; destructive writes stay in memory");
 })();
