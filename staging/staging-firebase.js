@@ -18,29 +18,36 @@ if (!window.__ChickenEggsStagingFirebase) {
   const setStatus=text=>{try{if(typeof window.setSyncStatus==="function")window.setSyncStatus(text);else{const el=document.getElementById("syncStatus");if(el)el.textContent=text;}}catch{}};
   async function ensureAuth(){if(auth.currentUser)return auth.currentUser;const result=await signInAnonymously(auth);return result?.user||auth.currentUser;}
 
+  function mirrorLiveBrowser(){
+    try{return window.StagingLocalSeedV1?.syncFromLiveBrowser?.()||{copied:0,hasLiveBrowserData:false};}
+    catch(error){console.warn("STAGING live-browser mirror unavailable:",error);return{copied:0,hasLiveBrowserData:false};}
+  }
+
   function localReady(){
+    const mirror=mirrorLiveBrowser();
     const entries=read(ENTRIES,[]),seed=read(SEED_META,null);
     if(!seed?.completed){
-      write(SEED_META,{completed:true,importedAt:Date.now(),coreEntries:Array.isArray(entries)?entries.length:0,photos:0,fullCoreRefresh:false,source:"isolated browser staging copy; zero Firebase reads on startup"});
+      write(SEED_META,{completed:true,importedAt:Date.now(),coreEntries:Array.isArray(entries)?entries.length:0,photos:0,fullCoreRefresh:false,source:mirror?.hasLiveBrowserData?"current LIVE app browser mirror; zero Firebase reads":"isolated browser staging copy; zero Firebase reads",localMirror:!!mirror?.hasLiveBrowserData,copiedKeys:Number(mirror?.copied)||0});
     }
-    readyState=true;refreshAppMemory();unlockSandbox();setStatus("STAGING • isolated local sandbox ready • 0 Firebase reads");
+    readyState=true;refreshAppMemory();unlockSandbox();
+    setStatus(mirror?.hasLiveBrowserData?`STAGING • mirrored current LIVE app • ${Number(mirror.copied)||0} keys • 0 Firebase reads`:`STAGING • isolated local sandbox ready • 0 Firebase reads`);
     queueMicrotask(()=>{
-      window.dispatchEvent(new CustomEvent("core-data-synced",{detail:{staging:true,localOnly:true,zeroFirebaseReads:true}}));
-      window.dispatchEvent(new CustomEvent("farm-data-synced",{detail:{staging:true,localOnly:true,zeroFirebaseReads:true}}));
-      window.dispatchEvent(new CustomEvent("farm-sync-ready",{detail:{staging:true,localOnly:true,zeroFirebaseReads:true}}));
+      window.dispatchEvent(new CustomEvent("core-data-synced",{detail:{staging:true,localOnly:true,zeroFirebaseReads:true,liveBrowserMirror:!!mirror?.hasLiveBrowserData}}));
+      window.dispatchEvent(new CustomEvent("farm-data-synced",{detail:{staging:true,localOnly:true,zeroFirebaseReads:true,liveBrowserMirror:!!mirror?.hasLiveBrowserData}}));
+      window.dispatchEvent(new CustomEvent("farm-sync-ready",{detail:{staging:true,localOnly:true,zeroFirebaseReads:true,liveBrowserMirror:!!mirror?.hasLiveBrowserData}}));
     });
     return Promise.resolve(true);
   }
 
-  async function importLive(){
+  // Cloud fallback exists only for a browser that has no usable LIVE app state.
+  // Normal staging startup and normal "Refresh Test Data From Live" use the
+  // same-origin live browser mirror and therefore cost zero Firestore reads.
+  async function importLiveCloudFallback(){
     if(importPromise)return importPromise;
     importPromise=(async()=>{
-      setStatus("STAGING • refreshing compact read-only LIVE snapshot…");
+      setStatus("STAGING • no LIVE browser state found; refreshing compact read-only Firebase snapshot…");
       await ensureAuth();
       const cachedEntries=read(ENTRIES,[]);
-      // Explicit live refresh reads only the five compact documents when staging
-      // already has egg/sale history. Full core history is fetched only when the
-      // staging browser has no history at all.
       const needCoreFetch=!Array.isArray(cachedEntries)||!cachedEntries.length;
       const corePromise=needCoreFetch?getDocs(query(collection(db,"entries"),where("type","in",["eggs","sale"]))):Promise.resolve(null);
       const [app2Snap,invSnap,deluxeSnap,businessSnap,settingsSnap,coreSnap]=await Promise.all([
@@ -54,31 +61,50 @@ if (!window.__ChickenEggsStagingFirebase) {
       const app2=app2Snap.exists()?app2Snap.data()?.farmApp2:null,inventory=invSnap.exists()?invSnap.data()?.inventory:null,deluxe=deluxeSnap.exists()?deluxeSnap.data()?.deluxe:null,business=businessSnap.exists()?businessSnap.data()?.business:null,settings=settingsSnap.exists()?settingsSnap.data():null;
       const entries=coreSnap?coreSnap.docs.map(d=>({id:d.id,...d.data()})).filter(x=>x&&(x.type==="eggs"||x.type==="sale")):(Array.isArray(cachedEntries)?cachedEntries:[]);
       if(app2)write(APP2,app2);if(inventory)write(INVENTORY,inventory);if(deluxe)write(DELUXE,deluxe);if(business)write(BUSINESS,business);if(settings)write(SETTINGS,settings);if(coreSnap)write(ENTRIES,entries);
-      write(SEED_META,{completed:true,importedAt:Date.now(),coreEntries:entries.length,photos:0,fullCoreRefresh:!!coreSnap,source:"explicit compact live Firebase refresh; legacy photo scan omitted"});
-      readyState=true;refreshAppMemory();unlockSandbox();setStatus("STAGING • isolated sandbox refreshed from LIVE");
-      window.dispatchEvent(new CustomEvent("core-data-synced",{detail:{staging:true,imported:true,explicitLiveRefresh:true}}));
-      window.dispatchEvent(new CustomEvent("farm-data-synced",{detail:{staging:true,imported:true,explicitLiveRefresh:true}}));
-      window.dispatchEvent(new CustomEvent("farm-sync-ready",{detail:{staging:true,explicitLiveRefresh:true}}));
+      write(SEED_META,{completed:true,importedAt:Date.now(),coreEntries:entries.length,photos:0,fullCoreRefresh:!!coreSnap,source:"compact read-only Firebase fallback because LIVE browser state was unavailable"});
+      readyState=true;refreshAppMemory();unlockSandbox();setStatus("STAGING • isolated sandbox refreshed from Firebase fallback");
+      window.dispatchEvent(new CustomEvent("core-data-synced",{detail:{staging:true,imported:true,firebaseFallback:true}}));
+      window.dispatchEvent(new CustomEvent("farm-data-synced",{detail:{staging:true,imported:true,firebaseFallback:true}}));
+      window.dispatchEvent(new CustomEvent("farm-sync-ready",{detail:{staging:true,firebaseFallback:true}}));
       return true;
     })().catch(error=>{
-      console.error("STAGING explicit live snapshot refresh failed; keeping isolated browser copy:",error);
-      readyState=true;refreshAppMemory();unlockSandbox();setStatus("STAGING • local sandbox ready (LIVE refresh unavailable)");
+      console.error("STAGING Firebase fallback failed; keeping isolated browser copy:",error);
+      readyState=true;refreshAppMemory();unlockSandbox();setStatus("STAGING • local sandbox ready (Firebase fallback unavailable)");
       window.dispatchEvent(new CustomEvent("farm-sync-ready",{detail:{staging:true,localOnly:true}}));
       return false;
     }).finally(()=>{importPromise=null;});
     return importPromise;
   }
 
+  async function refreshFromLiveApp(){
+    const mirror=mirrorLiveBrowser();
+    if(mirror?.hasLiveBrowserData){
+      readyState=true;refreshAppMemory();unlockSandbox();
+      setStatus(`STAGING • refreshed from current LIVE app • ${Number(mirror.copied)||0} keys • 0 Firebase reads`);
+      window.dispatchEvent(new CustomEvent("core-data-synced",{detail:{staging:true,liveBrowserMirror:true,explicitRefresh:true,zeroFirebaseReads:true}}));
+      window.dispatchEvent(new CustomEvent("farm-data-synced",{detail:{staging:true,liveBrowserMirror:true,explicitRefresh:true,zeroFirebaseReads:true}}));
+      window.dispatchEvent(new CustomEvent("farm-sync-ready",{detail:{staging:true,liveBrowserMirror:true,explicitRefresh:true,zeroFirebaseReads:true}}));
+      return true;
+    }
+    return importLiveCloudFallback();
+  }
+
   async function localSync(){readyState=true;unlockSandbox();setStatus("STAGING • isolated sandbox saved");window.dispatchEvent(new CustomEvent("farm-data-synced",{detail:{staging:true,localOnly:true}}));return true;}
 
-  window.FarmSyncSafety={ready:localReady,isReady:()=>readyState,refresh:localSync,getDirtyKeys:()=>[],version:"STAGING-LOCAL-FIRST-5-ZERO-AUTO-READS"};
+  window.FarmSyncSafety={ready:localReady,isReady:()=>readyState,refresh:localSync,getDirtyKeys:()=>[],version:"STAGING-LIVE-BROWSER-MIRROR-6"};
   window.EggSyncAuthorityReady=localReady;
   window.syncFarmNow=localSync;
   window.refreshCoreFromFirebase=localSync;
-  window.StagingSandbox={environment:"staging",liveFirebaseAccess:"READ ONLY — explicit refresh only",resetFromLive:importLive,seedInfo:()=>read(SEED_META,null)};
+  window.StagingSandbox={
+    environment:"staging",
+    liveFirebaseAccess:"READ ONLY — fallback only when LIVE browser state is unavailable",
+    resetFromLive:refreshFromLiveApp,
+    resetFromCloud:importLiveCloudFallback,
+    mirrorLiveBrowser,
+    seedInfo:()=>read(SEED_META,null)
+  };
 
-  // No Firestore handles are exposed to legacy staging modules, and normal
-  // staging startup performs zero Firestore reads. Only the explicit Refresh
-  // Test Data From Live control invokes importLive().
+  // No Firestore handles are exposed to legacy staging modules. Normal staging
+  // startup mirrors the current LIVE app's same-origin browser state at zero cost.
   void localReady();
 }
