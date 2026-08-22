@@ -10,7 +10,7 @@ function replaceAsset(html,file,oldQuery,build){return html.split(`${file}?${old
 const stageAsset=path=>`${path}?stage=${encodeURIComponent(stageBuild)}&app=${encodeURIComponent(build)}`;
 
 let html=shell;
-html=html.replace('<head>',`<head><base href="../"><meta name="robots" content="noindex,nofollow"><script src="${stageAsset('staging/staging-storage.js')}"></script>`);
+html=html.replace('<head>',`<head><base href="../"><meta name="robots" content="noindex,nofollow"><script src="${stageAsset('staging/staging-local-seed-v1.js')}"></script><script src="${stageAsset('staging/staging-storage.js')}"></script>`);
 html=replaceAsset(html,'style.css','v=100',build);
 html=replaceAsset(html,'app2.css','v=1',build);
 html=replaceAsset(html,'firebase.js','v=6',build);
@@ -36,11 +36,13 @@ check('Staging Firebase adapter present with staging build cache key',html.inclu
 check('Staging database adapter present with staging build cache key',html.includes(stageAsset('staging/staging-database.js')));
 check('Staging app2 adapter present with staging build cache key',html.includes(stageAsset('staging/staging-app2.js')));
 check('Guarded staging fun adapter present with staging build cache key',html.includes(stageAsset('staging/staging-extras-fun.js')));
+check('LIVE browser mirror has staging-specific cache key',html.includes(stageAsset('staging/staging-local-seed-v1.js')));
 check('Staging storage has staging-specific cache key',html.includes(stageAsset('staging/staging-storage.js')));
-check('Staging storage loads before shell application code',html.indexOf('staging/staging-storage.js') < html.indexOf('staging/staging-firebase.js'));
+check('LIVE browser mirror loads before staging storage interception',html.indexOf('staging/staging-local-seed-v1.js') < html.indexOf('staging/staging-storage.js'));
+check('Staging storage loads before Firebase/app application code',html.indexOf('staging/staging-storage.js') < html.indexOf('staging/staging-firebase.js'));
 check('Normal core script still uses current live code build',html.includes(`script.js?v=${build}`));
 check('Normal inventory compatibility shell remains current build',html.includes(`inventory.js?v=${build}`));
 check('Normal dashboard extras remain current build',html.includes(`extras-dashboard.js?v=${build}`));
 
 if(failures.length){console.error('\nSTAGING SHELL TRANSFORM FAILURES:');failures.forEach(x=>console.error('FAIL ',x));process.exit(1);}
-console.log(`\nPASS Staging shell transform — app ${build}, staging ${stageBuild}; live cloud/fun entrypoints cannot survive and staging assets cannot stay stale across staging builds`);
+console.log(`\nPASS Staging shell transform — app ${build}, staging ${stageBuild}; verified-LIVE mirror loads before isolation and live cloud/fun entrypoints cannot survive`);
