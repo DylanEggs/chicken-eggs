@@ -31,9 +31,9 @@
     }
 
     if (source.includes('load("history-back-v1.js");')) {
-      source = source.replace('load("history-back-v1.js");', 'load("history-back-v1.js");\n  load("staging/staging-customer-requests-owner-v1.js");\n  load("staging/staging-customer-requests-regression-v1.js");\n  load("staging/staging-test-ready-gate-v1.js");\n  load("staging/staging-test-memory-runner-v1.js");');
+      source = source.replace('load("history-back-v1.js");', 'load("history-back-v1.js");\n  load("staging/staging-customer-requests-owner-v1.js");\n  load("staging/staging-customer-request-status-test-v1.js");\n  load("staging/staging-customer-requests-regression-v1.js");\n  load("staging/staging-test-ready-gate-v1.js");\n  load("staging/staging-test-memory-runner-v1.js");');
     } else {
-      source = source.replace('load("app2-legacy-safe-loader-v1.js");', 'load("app2-legacy-safe-loader-v1.js");\n  load("staging/staging-customer-requests-owner-v1.js");\n  load("staging/staging-customer-requests-regression-v1.js");\n  load("staging/staging-test-ready-gate-v1.js");\n  load("staging/staging-test-memory-runner-v1.js");');
+      source = source.replace('load("app2-legacy-safe-loader-v1.js");', 'load("app2-legacy-safe-loader-v1.js");\n  load("staging/staging-customer-requests-owner-v1.js");\n  load("staging/staging-customer-request-status-test-v1.js");\n  load("staging/staging-customer-requests-regression-v1.js");\n  load("staging/staging-test-ready-gate-v1.js");\n  load("staging/staging-test-memory-runner-v1.js");');
     }
 
     source = source
@@ -64,6 +64,7 @@
     if (!source.includes('load("staging/staging-12-pack-full-suite-v1.js")')) throw new Error("12-pack full-suite staging layer was not injected");
     if (!source.includes('load("staging/staging-sale-edit-back-regression-v1.js")')) throw new Error("Sale edit return staging regression was not injected");
     if (!source.includes('load("staging/staging-customer-requests-owner-v1.js")')) throw new Error("Customer Requests owner module was not injected");
+    if (!source.includes('load("staging/staging-customer-request-status-test-v1.js")')) throw new Error("Customer Requests status parity helper was not injected");
     if (!source.includes('load("staging/staging-customer-requests-regression-v1.js")')) throw new Error("Customer Requests regression was not injected");
     if (!source.includes('load("staging/staging-test-ready-gate-v1.js")')) throw new Error("Final staging test readiness gate was not injected");
     if (!source.includes('load("staging/staging-test-memory-runner-v1.js")')) throw new Error("In-memory staging test runner was not injected");
