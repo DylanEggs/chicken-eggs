@@ -17,6 +17,8 @@
   async function bootstrap(){
     await load("staging/staging-smart-insights-v1.js",()=>!!window.StagingSmartInsightsV1);
     await load("staging/staging-smart-insights-regression-v1.js",()=>!!window.StagingSmartInsightsRegressionV1);
+    await load("staging/staging-delight-v1.js",()=>!!window.StagingDelightV1);
+    await load("staging/staging-delight-regression-v1.js",()=>!!window.StagingDelightRegressionV1);
     install();
   }
 
@@ -24,22 +26,25 @@
     const base=window.StagingFullTest;
     const farm=window.StagingFarmManagerRegressionV1;
     const smart=window.StagingSmartInsightsRegressionV1;
-    if(!base?.run||!farm?.run||!smart?.run){setTimeout(install,100);return;}
+    const delight=window.StagingDelightRegressionV1;
+    if(!base?.run||!farm?.run||!smart?.run||!delight?.run){setTimeout(install,100);return;}
     if(base.__farmManagerV4)return;
     const baseRun=base.run.bind(base);
     window.StagingFullTest={...base,async run(){
       const first=await baseRun();
       const farmResult=await farm.run();
       const smartResult=await smart.run();
+      const delightResult=await delight.run();
       const farmMapped=(farmResult?.rows||[]).map(r=>({name:`Farm Manager: ${r.name}`,pass:!!r.ok,detail:r.detail||""}));
       const smartMapped=(smartResult?.checks||[]).map(r=>({name:`Smart Insights: ${r.name}`,pass:!!r.pass,detail:r.detail||""}));
-      const results=[...(first?.results||[]),...farmMapped,...smartMapped];
+      const delightMapped=(delightResult?.checks||[]).map(r=>({name:`Home Delight: ${r.name}`,pass:!!r.pass,detail:r.detail||""}));
+      const results=[...(first?.results||[]),...farmMapped,...smartMapped,...delightMapped];
       const failed=results.filter(x=>!x.pass);
-      const report={...first,total:results.length,passed:results.length-failed.length,failed:failed.length,results,suite:`${first?.suite||"staging-full"}+farm-manager+smart-insights-v5`};
-      try{localStorage.setItem("chickenEggStagingFullTestReportV5",JSON.stringify(report));}catch{}
+      const report={...first,total:results.length,passed:results.length-failed.length,failed:failed.length,results,suite:`${first?.suite||"staging-full"}+farm-manager+smart-insights+home-delight-v6`};
+      try{localStorage.setItem("chickenEggStagingFullTestReportV6",JSON.stringify(report));}catch{}
       return report;
-    },last:()=>{try{return JSON.parse(localStorage.getItem("chickenEggStagingFullTestReportV5")||"null")||base.last?.()||null;}catch{return base.last?.()||null;}},__farmManagerV4:true,__smartInsightsV5:true};
-    console.log("🧪 STAGING Full Test v5 active — farm-management + Smart Insights regressions added");
+    },last:()=>{try{return JSON.parse(localStorage.getItem("chickenEggStagingFullTestReportV6")||"null")||base.last?.()||null;}catch{return base.last?.()||null;}},__farmManagerV4:true,__smartInsightsV5:true,__delightV6:true};
+    console.log("🧪 STAGING Full Test v6 active — farm management + Smart Insights + Home Delight regressions added");
   }
 
   setTimeout(bootstrap,900);
