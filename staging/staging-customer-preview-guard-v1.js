@@ -5,14 +5,16 @@
 
   const CORE=["chickenEggApp2V1","chickenEggInventoryV2","chickenEggEntriesV102","chickenEggSettingsV102"];
   let opening=false;
-  const hasSnapshot=()=>CORE.every(k=>{try{return !!localStorage.getItem(k);}catch{return false;}});
+  const hasSnapshot=()=>CORE.every(k=>{try{return localStorage.getItem(k)!==null;}catch{return false;}});
 
-  function mirrorResult(){return window.StagingLocalSeedV1?.result||null;}
-  function refreshMirror(){
-    const r=window.StagingLocalSeedV1?.syncFromLiveBrowser?.();
-    if(r&&window.StagingLocalSeedV1)window.StagingLocalSeedV1.result=r;
+  function sourceResult(){return window.StagingSandbox?.liveSourceResult?.()||window.__StagingLiveSourceResult||window.StagingLocalSeedV1?.result||null;}
+  async function refreshSource(){
+    let r=sourceResult();
+    if(r?.verified&&hasSnapshot())return r;
+    try{await window.StagingSandbox?.resetFromLive?.();}catch{}
+    r=sourceResult();
     renderMirrorBadge();
-    return r||mirrorResult();
+    return r;
   }
   function renderMirrorBadge(){
     const row=document.querySelector("#stagingSafetyBanner .st-row");
@@ -23,14 +25,14 @@
       el.style.cssText="display:inline-flex;align-items:center;padding:7px 9px;border-radius:10px;background:#173d28;color:#d9ffe6;border:1px solid rgba(255,255,255,.35);font-size:11px;font-weight:900;line-height:1.1";
       row.appendChild(el);
     }
-    const r=mirrorResult();
-    if(r?.verified&&r?.hasLiveBrowserData){
-      const removed=Number(r.removedStale)||0;
-      el.textContent=`🪞 LIVE mirror verified • ${Number(r.copied)||0}/${Number(r.eligible)||0} keys${removed?` • ${removed} stale removed`:""} • 0 Firebase reads`;
+    const r=sourceResult();
+    if(r?.verified&&hasSnapshot()){
+      const cloud=String(r.source||"").includes("firebase");
+      el.textContent=cloud?`☁️ LIVE Firebase verified • ${Number(r.copied)||0}/${Number(r.eligible)||0} datasets`:`🪞 LIVE copy verified • ${Number(r.copied)||0}/${Number(r.eligible)||0} datasets`;
       el.style.background="#173d28";
     }else{
-      const skipped=Number(r?.skipped)||0,mismatch=Array.isArray(r?.mismatchedKeys)?r.mismatchedKeys.length:0,stale=Array.isArray(r?.remainingStale)?r.remainingStale.length:0;
-      el.textContent=`⚠️ LIVE mirror not verified • skipped ${skipped} • mismatch ${mismatch} • stale ${stale} • testing locked`;
+      const why=String(r?.error||"").trim();
+      el.textContent=why?`⚠️ LIVE data not verified • ${why.slice(0,70)}`:"⚠️ LIVE data not verified • testing locked";
       el.style.background="#7f1d1d";
     }
   }
@@ -38,19 +40,19 @@
   async function prepareAndOpen(link){
     if(opening)return;opening=true;
     const old=link.textContent;
-    link.textContent="⏳ Verifying LIVE mirror…";
+    link.textContent="⏳ Verifying LIVE data…";
     link.style.pointerEvents="none";
     try{
-      const r=refreshMirror();
-      if(!r?.verified||!r?.hasLiveBrowserData)throw new Error("The current LIVE app browser data could not be mirrored completely and verified for staging.");
-      if(!hasSnapshot())throw new Error("The verified LIVE mirror did not contain all required staging core datasets.");
+      const r=await refreshSource();
+      if(!r?.verified)throw new Error(r?.error||"Fresh LIVE data could not be verified for staging.");
+      if(!hasSnapshot())throw new Error("The verified LIVE snapshot did not contain all required staging core datasets.");
       const url=new URL(link.href,location.href);
       url.searchParams.set("stage",String(window.__ChickenEggsStagingBuild||Date.now()));
-      url.searchParams.set("mirror",String(r.at||Date.now()));
+      url.searchParams.set("live",String(r.at||Date.now()));
       location.href=url.href;
     }catch(error){
       console.error("Could not prepare staging customer preview:",error);
-      alert(`Customer Preview did not open because staging could not verify a complete LIVE mirror. Live data was not changed and no Firebase write was attempted.\n\n${String(error?.message||error)}`);
+      alert(`Customer Preview did not open because TEST/STAGING could not verify fresh LIVE data. Live data was not changed.\n\n${String(error?.message||error)}`);
       opening=false;link.textContent=old;link.style.pointerEvents="";
     }
   }
@@ -61,8 +63,8 @@
     event.preventDefault();event.stopImmediatePropagation();
     void prepareAndOpen(link);
   },true);
-  window.addEventListener("staging-live-browser-mirrored",event=>{if(window.StagingLocalSeedV1&&event?.detail)window.StagingLocalSeedV1.result=event.detail;renderMirrorBadge();});
+  for(const name of ["staging-live-source-verified","staging-live-browser-mirrored","farm-sync-ready"])window.addEventListener(name,renderMirrorBadge);
 
-  window.StagingCustomerPreviewGuardV1={version:5,hasSnapshot,mirrorResult,refreshMirror,renderMirrorBadge,prepareAndOpen};
+  window.StagingCustomerPreviewGuardV1={version:6,hasSnapshot,sourceResult,refreshSource,renderMirrorBadge,prepareAndOpen};
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",renderMirrorBadge,{once:true});else renderMirrorBadge();
 })();
