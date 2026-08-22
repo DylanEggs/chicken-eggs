@@ -4,17 +4,15 @@
   if (window.__StagingCustomerRequestsLiveParityV1) return;
   window.__StagingCustomerRequestsLiveParityV1 = true;
 
-  const KEY = "chickenEggCustomerRequestsV1";
-  const PHYSICAL_KEY = "__chicken_eggs_staging__::" + KEY;
-  const STATUS = ["New","Contacted","Reserved","Fulfilled","Cancelled"];
-  const MSGS = {auto:"Automatic from farm data",available:"In stock now",next_week:"Likely available next week",coming_soon:"Coming soon",none_soon:"Nothing expected soon"};
-  const BIRD_TYPES = {chicks:"Chicks",pullets:"Pullets",roosters:"Roosters"};
-  const whole = v => Math.max(0, Math.round(Number(v) || 0));
-  const nowId = () => `req-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
-  let requestListeners = new Set();
+  const KEY="chickenEggCustomerRequestsV1",PHYSICAL_KEY="__chicken_eggs_staging__::"+KEY;
+  const STATUS=["New","Contacted","Reserved","Fulfilled","Cancelled"];
+  const MSGS={auto:"Automatic from farm data",available:"In stock now",next_week:"Likely available next week",coming_soon:"Coming soon",none_soon:"Nothing expected soon"};
+  const BIRD_TYPES={chicks:"Chicks",pullets:"Pullets",roosters:"Roosters"};
+  const whole=v=>Math.max(0,Math.round(Number(v)||0)),nowId=()=>`req-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
+  let requestListeners=new Set(),suppressEmit=false;
 
-  function blank() { return {version:1,settings:{enabled:false,eggs:"auto",birds:"auto"},requests:[],updatedAt:0}; }
-  function sanitizeRequest(raw, existing=false) {
+  function blank(){return{version:1,settings:{enabled:false,eggs:"auto",birds:"auto"},requests:[],updatedAt:0};}
+  function sanitizeRequest(raw,existing=false){
     const r=raw&&typeof raw==="object"?raw:{},category=r.category==="birds"?"birds":"eggs";
     const birdType=category==="birds"&&BIRD_TYPES[String(r.birdType||"")]?String(r.birdType):"";
     const row={id:String(r.id||nowId()).slice(0,140),name:String(r.name||"").trim().slice(0,80),phone:String(r.phone||"").trim().slice(0,40),email:String(r.email||"").trim().slice(0,120),category,birdType,item:String(r.item||(category==="birds"?(BIRD_TYPES[birdType]||"Birds"):"Eggs")).trim().slice(0,120),quantity:Math.min(999,Math.max(1,whole(r.quantity)||1)),note:String(r.note||"").trim().slice(0,300),status:STATUS.includes(r.status)?r.status:"New",createdAt:whole(r.createdAt||Date.now()),updatedAt:whole(r.updatedAt||Date.now())};
@@ -23,12 +21,12 @@
   }
   function sanitizeState(raw){const x=raw&&typeof raw==="object"?raw:{};return{version:1,settings:{enabled:x.settings?.enabled===true,eggs:MSGS[x.settings?.eggs]?x.settings.eggs:"auto",birds:MSGS[x.settings?.birds]?x.settings.birds:"auto"},requests:(Array.isArray(x.requests)?x.requests:[]).map(r=>sanitizeRequest(r,true)).slice(0,500),updatedAt:whole(x.updatedAt)};}
   function load(){try{return sanitizeState(JSON.parse(localStorage.getItem(KEY)||"null"));}catch{return blank();}}
-  function write(state,notify=true){const next=sanitizeState(state);next.updatedAt=Date.now();localStorage.setItem(KEY,JSON.stringify(next));if(notify)emitRequests();return next;}
+  function write(state,notify=true){const next=sanitizeState(state);next.updatedAt=Date.now();localStorage.setItem(KEY,JSON.stringify(next));if(notify&&!suppressEmit)emitRequests();return next;}
   function reset(state=blank()){return write(state);}
   function createRequest(input){const s=load(),row=sanitizeRequest(input,false);s.requests.unshift(row);write(s);return row;}
   function readSettings(){return{...load().settings};}
   function writeSettings(next){const s=load();s.settings={enabled:next?.enabled===true,eggs:MSGS[next?.eggs]?next.eggs:"auto",birds:MSGS[next?.birds]?next.birds:"auto"};write(s,false);return{...s.settings};}
-  function updateRequest(id,patch){const s=load(),row=s.requests.find(r=>r.id===String(id));if(!row)throw new Error("Request not found.");if(patch&&Object.prototype.hasOwnProperty.call(patch,"status")){if(!STATUS.includes(patch.status))throw new Error("Invalid request status.");row.status=patch.status;}row.updatedAt=whole(patch?.updatedAt||Date.now());write(s,false);emitRequests();return{...row};}
+  function updateRequest(id,patch){const s=load(),row=s.requests.find(r=>r.id===String(id));if(!row)throw new Error("Request not found.");if(patch&&Object.prototype.hasOwnProperty.call(patch,"status")){if(!STATUS.includes(patch.status))throw new Error("Invalid request status.");row.status=patch.status;}row.updatedAt=whole(patch?.updatedAt||Date.now());write(s,false);if(!suppressEmit)emitRequests();return{...row};}
   function snapshots(){return load().requests.map(row=>({id:row.id,data:()=>({...row})}));}
   function emitRequests(){const snap={docs:snapshots()};requestListeners.forEach(fn=>{try{fn(snap);}catch(e){console.error(e);}});}
 
@@ -43,9 +41,8 @@
 
   window.PublicCustomerOwnerAuth={version:"staging-parity",init:async()=>({ready:true,connected:true,uid:"staging-owner",email:"staging@example.test"}),status:()=>({ready:true,connected:true,uid:"staging-owner",email:"staging@example.test"}),publisherDb:async()=>fakeDb,currentOwner:async()=>({uid:"staging-owner",email:"staging@example.test",isAnonymous:false}),signIn:async()=>({uid:"staging-owner",email:"staging@example.test",isAnonymous:false}),disconnect:async()=>({ready:true,connected:true,uid:"staging-owner",email:"staging@example.test"})};
 
-  window.StagingCustomerRequestsLiveParityV1={version:2,key:KEY,statuses:STATUS.slice(),birdTypes:{...BIRD_TYPES},load,reset,createRequest,readSettings,writeSettings,updateRequest,firestoreApi:fakeFs,db:fakeDb,emitRequests};
-
-  window.addEventListener("storage",event=>{if(event.key===PHYSICAL_KEY)emitRequests();});
+  window.StagingCustomerRequestsLiveParityV1={version:3,key:KEY,statuses:STATUS.slice(),birdTypes:{...BIRD_TYPES},load,reset,createRequest,readSettings,writeSettings,updateRequest,firestoreApi:fakeFs,db:fakeDb,emitRequests,setSuppressEmit:value=>{suppressEmit=!!value;}};
+  window.addEventListener("storage",event=>{if(event.key===PHYSICAL_KEY&&!suppressEmit)emitRequests();});
 
   try{
     const build=String(window.__ChickenEggsBuild||Date.now()),stageBuild=String(window.__ChickenEggsStagingBuild||Date.now());
@@ -55,9 +52,17 @@
     const sdkOld=`  async function sdk(){\n    if(fs)return fs;\n    fs=await import("https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js");\n    return fs;\n  }\n  async function ownerDb(){\n    await window.PublicCustomerOwnerAuth?.init?.();\n    if(!authStatus().connected)throw new Error("Connect Customer Page Sync first.");\n    db=await window.PublicCustomerOwnerAuth.publisherDb();\n    await sdk();\n    return db;\n  }`;
     const sdkNew=`  async function sdk(){\n    if(fs)return fs;\n    fs=window.StagingCustomerRequestsLiveParityV1.firestoreApi;\n    return fs;\n  }\n  async function ownerDb(){\n    db=window.StagingCustomerRequestsLiveParityV1.db;\n    await sdk();\n    return db;\n  }`;
     if(!source.includes(sdkOld))throw new Error("Live Customer Requests data-layer signature changed; staging refused to run a non-parity copy.");
-    source=source.replace(sdkOld,sdkNew).replace('window.FarmCustomerRequestsV1={version:2,','window.FarmCustomerRequestsV1={version:"2-staging-parity",');
+    source=source.replace(sdkOld,sdkNew);
+
+    // Candidate fix under test. This is the ONLY behavior patch beyond swapping
+    // Firebase for the sandbox adapter. If staging proves it, this exact function
+    // can replace the live function without being rewritten a second time.
+    const updateOld=`  async function updateStatus(id,status){\n    if(!STATUS.includes(status))return;try{const d=await ownerDb(),a=await sdk();await a.updateDoc(a.doc(d,"customer_requests",String(id)),{status,updatedAt:Date.now()});lastError="";}catch(e){lastError=String(e?.message||e);render();}\n  }`;
+    const updateCandidate=`  async function updateStatus(id,status){\n    if(busy||!STATUS.includes(status))return;\n    const row=rows.find(r=>r.id===String(id));\n    const previous=row?.status||"";\n    const updatedAt=Date.now();\n    busy=true;lastError="";\n    const btn=document.querySelector(\`[data-req-save="\${CSS.escape(String(id))}"]\`);\n    if(btn){btn.disabled=true;btn.textContent="Updating…";}\n    try{\n      const d=await ownerDb(),a=await sdk();\n      await a.updateDoc(a.doc(d,"customer_requests",String(id)),{status,updatedAt});\n      if(row){row.status=status;row.updatedAt=updatedAt;}\n      lastError="";\n    }catch(e){\n      if(row&&previous)row.status=previous;\n      lastError=String(e?.message||e);\n    }finally{\n      busy=false;render();\n    }\n  }`;
+    if(!source.includes(updateOld))throw new Error("Live Customer Requests status-update signature changed; staging refused to test the wrong candidate.");
+    source=source.replace(updateOld,updateCandidate).replace('window.FarmCustomerRequestsV1={version:2,','window.FarmCustomerRequestsV1={version:"2-staging-parity-candidate",');
     (0,eval)(`${source}\n//# sourceURL=staging-customer-requests-live-parity-runtime.js`);
     if(!window.FarmCustomerRequestsV1)throw new Error("Live Customer Requests UI did not initialize in staging.");
-    console.log("🪞 STAGING Customer Requests parity active — live UI/interaction code with sandbox-only data adapter");
+    console.log("🪞 STAGING Customer Requests candidate active — live UI source + sandbox adapter + exact proposed status-update fix");
   }catch(error){console.error("STAGING Customer Requests live parity failed:",error);}
 })();
