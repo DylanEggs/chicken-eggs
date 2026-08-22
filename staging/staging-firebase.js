@@ -40,6 +40,11 @@ if (!window.__ChickenEggsStagingFirebase) {
   }
 
   function localReady(){
+    if(window.StagingStorageSandbox?.overlayActive?.() && lastLiveSourceResult?.verified){
+      readyState=true;refreshAppMemory();unlockSandbox();
+      setStatus(`STAGING • verified LIVE Firebase snapshot • ${Number(lastLiveSourceResult.copied)||0}/${Number(lastLiveSourceResult.eligible)||0} datasets • memory sandbox`);
+      return Promise.resolve(true);
+    }
     const mirror=mirrorLiveBrowser();
     if(mirror?.verified)publishSourceResult({...mirror,source:"live-browser"});
     readyState=true;refreshAppMemory();unlockSandbox();
@@ -89,10 +94,6 @@ if (!window.__ChickenEggsStagingFirebase) {
     importPromise=(async()=>{
       setStatus("STAGING • reading current LIVE Firebase snapshot…");
       const live=await fetchLiveFirebaseSnapshot();
-
-      // The LIVE site already uses most of this origin's localStorage quota.
-      // Keep the refreshed TEST copy in the staging memory overlay instead of
-      // duplicating large farm datasets into the same localStorage quota.
       startQuotaFreeTestMemory();
 
       const keys=[APP2,INVENTORY,DELUXE,BUSINESS,SETTINGS,ENTRIES];
@@ -107,20 +108,7 @@ if (!window.__ChickenEggsStagingFirebase) {
       const verified=requiredPresent&&mismatchedKeys.length===0&&copied===keys.length;
       if(!verified)throw new Error(`TEST memory-copy verification failed after Firebase read (copied ${copied}/${keys.length}; mismatches ${mismatchedKeys.join(", ")||"none"}).`);
 
-      const result={
-        source:"firebase-read-only-memory",
-        verified:true,
-        hasLiveData:true,
-        hasLiveBrowserData:true,
-        inMemory:true,
-        copied,
-        eligible:keys.length,
-        skipped:0,
-        mismatchedKeys:[],
-        remainingStale:[],
-        at:Date.now(),
-        coreEntries:Array.isArray(live[ENTRIES])?live[ENTRIES].length:0
-      };
+      const result={source:"firebase-read-only-memory",verified:true,hasLiveData:true,hasLiveBrowserData:true,inMemory:true,copied,eligible:keys.length,skipped:0,mismatchedKeys:[],remainingStale:[],at:Date.now(),coreEntries:Array.isArray(live[ENTRIES])?live[ENTRIES].length:0};
       write(SEED_META,{completed:true,importedAt:result.at,coreEntries:result.coreEntries,photos:0,fullCoreRefresh:true,source:"verified read-only LIVE Firebase snapshot in staging memory",localMirror:false,inMemory:true,copiedKeys:copied,eligibleKeys:keys.length,skippedKeys:0,mismatchedKeys:0,coreVerified:true,authoritativeVerified:true});
       publishSourceResult(result);
       readyState=true;refreshAppMemory();unlockSandbox();
@@ -143,19 +131,11 @@ if (!window.__ChickenEggsStagingFirebase) {
   async function refreshFromLiveApp(){return importLiveFirebaseSnapshot();}
   async function localSync(){readyState=true;unlockSandbox();setStatus("STAGING • isolated memory sandbox saved");window.dispatchEvent(new CustomEvent("farm-data-synced",{detail:{staging:true,localOnly:true,inMemory:true}}));return true;}
 
-  window.FarmSyncSafety={ready:localReady,isReady:()=>readyState,refresh:localSync,getDirtyKeys:()=>[],version:"STAGING-READONLY-LIVE-FIREBASE-MEMORY-2"};
+  window.FarmSyncSafety={ready:localReady,isReady:()=>readyState,refresh:localSync,getDirtyKeys:()=>[],version:"STAGING-READONLY-LIVE-FIREBASE-MEMORY-3"};
   window.EggSyncAuthorityReady=localReady;
   window.syncFarmNow=localSync;
   window.refreshCoreFromFirebase=localSync;
-  window.StagingSandbox={
-    environment:"staging",
-    liveFirebaseAccess:"READ ONLY — explicit refresh reads authoritative LIVE Firebase and keeps the TEST copy only in the staging memory sandbox",
-    resetFromLive:refreshFromLiveApp,
-    resetFromCloud:importLiveFirebaseSnapshot,
-    mirrorLiveBrowser,
-    liveSourceResult:()=>lastLiveSourceResult||window.__StagingLiveSourceResult||null,
-    seedInfo:()=>read(SEED_META,null)
-  };
+  window.StagingSandbox={environment:"staging",liveFirebaseAccess:"READ ONLY — explicit refresh reads authoritative LIVE Firebase and keeps the TEST copy only in the staging memory sandbox",resetFromLive:refreshFromLiveApp,resetFromCloud:importLiveFirebaseSnapshot,mirrorLiveBrowser,liveSourceResult:()=>lastLiveSourceResult||window.__StagingLiveSourceResult||null,seedInfo:()=>read(SEED_META,null)};
 
   void localReady();
 }
