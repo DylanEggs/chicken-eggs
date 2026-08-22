@@ -58,7 +58,7 @@
         if(html.includes(`type="module" src="firebase.js?v=${build}"`))throw new Error("Safety stop: live firebase.js remained in staging shell");
         if(html.includes(`src="database.js?v=${build}"`))throw new Error("Safety stop: live database.js remained in staging shell");
         if(html.includes(`src="app2.js?v=${build}"`))throw new Error("Safety stop: live app2.js remained in staging shell");
-        if(html.includes(`src="extras-fun.js?v=${build}"))throw new Error("Safety stop: live extras-fun.js remained in staging shell");
+        if(html.includes(`src="extras-fun.js?v=${build}"`))throw new Error("Safety stop: live extras-fun.js remained in staging shell");
 
         window.__ChickenEggsBuild=build;
         window.__ChickenEggsStagingBuild=stageBuild;
