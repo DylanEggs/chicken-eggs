@@ -32,8 +32,8 @@
       el.style.background="#173d28";
     }else{
       const why=String(r?.error||"").trim();
-      el.textContent=why?`⚠️ LIVE data not verified • ${why.slice(0,70)}`:"⚠️ LIVE data not verified • testing locked";
-      el.style.background="#7f1d1d";
+      el.textContent=why?`⚠️ LIVE refresh failed • ${why.slice(0,70)}`:"☁️ LIVE data not loaded yet • Refresh or Run Test";
+      el.style.background=why?"#7f1d1d":"#6b4f00";
     }
   }
 
@@ -65,6 +65,6 @@
   },true);
   for(const name of ["staging-live-source-verified","staging-live-browser-mirrored","farm-sync-ready"])window.addEventListener(name,renderMirrorBadge);
 
-  window.StagingCustomerPreviewGuardV1={version:6,hasSnapshot,sourceResult,refreshSource,renderMirrorBadge,prepareAndOpen};
+  window.StagingCustomerPreviewGuardV1={version:7,hasSnapshot,sourceResult,refreshSource,renderMirrorBadge,prepareAndOpen};
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",renderMirrorBadge,{once:true});else renderMirrorBadge();
 })();
