@@ -74,24 +74,51 @@
     return results;
   }
 
+  function hasRealUserChecks(results){return (Array.isArray(results)?results:[]).filter(x=>String(x?.name||"").startsWith("Real-user flow:")).length>=19;}
+  async function loadRealUserModule(){
+    if(window.StagingRealUserFlowRegressionV1?.run)return true;
+    await new Promise((resolve,reject)=>{
+      const s=document.createElement("script");
+      const stage=encodeURIComponent(String(window.__ChickenEggsStagingBuild||Date.now()));
+      const app=encodeURIComponent(String(window.__ChickenEggsBuild||Date.now()));
+      s.src=`staging/staging-real-user-flow-regression-v1.js?stage=${stage}&app=${app}&force=${Date.now()}`;
+      s.async=false;s.onload=resolve;s.onerror=()=>reject(new Error("Could not load the required real-user click workflow module."));document.body.appendChild(s);
+    });
+    return !!window.StagingRealUserFlowRegressionV1?.run;
+  }
+  async function requiredRealUserChecks(baseResults,verifiedSnap,btn){
+    if(hasRealUserChecks(baseResults))return [];
+    if(btn)btn.textContent="🖱️ Running Real-User Click Test…";
+    const loaded=await loadRealUserModule();
+    if(!loaded)throw new Error("Required real-user click workflow module did not load.");
+    const extra=await window.StagingRealUserFlowRegressionV1.run();
+    restoreMemory(verifiedSnap);
+    if(!hasRealUserChecks(extra))throw new Error(`Real-user click workflow did not complete all 19 required checks. It returned ${(extra||[]).length}.`);
+    return extra;
+  }
+
   async function run(btn){
     if(running||!ready()){try{window.StagingFinalTestReadyGateV1?.refresh?.();}catch{}return;}
-    if(!confirm("Run the full sandbox torture test now? It will refresh current LIVE Firebase read-only, run destructive checks only in memory, restore the verified TEST copy, then run extra live-data integrity and route smoke checks. LIVE data will not be changed."))return;
+    if(!confirm("Run the full sandbox torture test now? It will refresh current LIVE Firebase read-only, run destructive checks and real-user Collect/Sale clicks only in memory, restore the verified TEST copy, then run live-data integrity and route smoke checks. LIVE data will not be changed."))return;
     running=true;let verifiedSnap=null;if(btn){btn.disabled=true;btn.textContent="☁️ Refreshing LIVE test copy…";}
     try{
       const source=await refreshVerifiedLiveSource(btn);verifiedSnap=snapshotMemory();
       if(btn)btn.textContent="🧠 Running Sandbox Test…";
       const base=await window.StagingFullTest.run();if(!base)throw new Error("Full staging test runner did not return a report.");
       restoreMemory(verifiedSnap);
+      const userExtra=await requiredRealUserChecks(base.results||[],verifiedSnap,btn);
+      restoreMemory(verifiedSnap);
       if(btn)btn.textContent="🔎 Running Integrity Checks…";
-      const extra=await integrityChecks(source);const results=[...(base.results||[]),...extra];const failed=results.filter(x=>!x.pass);const result={...base,total:results.length,passed:results.length-failed.length,failed:failed.length,results,suite:`${base.suite||"staging-full"}+live-integrity-v1`};
+      const extra=await integrityChecks(source);const results=[...(base.results||[]),...userExtra,...extra];
+      if(!hasRealUserChecks(results))throw new Error("Safety stop: the final report is missing the required 19 real-user click workflow checks.");
+      const failed=results.filter(x=>!x.pass);const result={...base,total:results.length,passed:results.length-failed.length,failed:failed.length,results,suite:`${base.suite||"staging-full"}+required-real-user-flow+live-integrity-v2`};
       window.__lastStagingFullTestResult=result;
       const sourceNote=`Verified LIVE source: ${String(source.source||"LIVE")} • ${Number(source.copied)||0}/${Number(source.eligible)||0} datasets${Number.isFinite(Number(source.coreEntries))?` • ${Number(source.coreEntries)} egg/sale entries`:""}.`;
-      if(result.failed){alert(`Sandbox torture test finished: ${result.passed}/${result.total} passed, ${result.failed} failed.\n\n${sourceNote}\n\nFAILED CHECKS:\n${failureSummary(result)||"Failure details were not returned."}\n\nThe verified in-memory TEST copy was restored. LIVE data was not changed.`);}else{alert(`✅ Sandbox torture test passed ${result.passed}/${result.total} checks.\n\n${sourceNote}\n\nDestructive tests, live-data integrity, navigation, Customer Preview, Owner Login, and Owner-Gated Farm smoke checks all passed.\n\nThe verified in-memory TEST copy was restored. LIVE data was not changed.`);}
+      if(result.failed){alert(`Sandbox torture test finished: ${result.passed}/${result.total} passed, ${result.failed} failed.\n\n${sourceNote}\n\nFAILED CHECKS:\n${failureSummary(result)||"Failure details were not returned."}\n\nThe verified in-memory TEST copy was restored. LIVE data was not changed.`);}else{alert(`✅ Sandbox torture test passed ${result.passed}/${result.total} checks.\n\n${sourceNote}\n\nRequired real-user Collect/Sale click workflow, destructive tests, live-data integrity, navigation, Customer Preview, Owner Login, and Owner-Gated Farm smoke checks all passed.\n\nThe verified in-memory TEST copy was restored. LIVE data was not changed.`);}
     }catch(error){console.error("STAGING in-memory sandbox test failed:",error);if(verifiedSnap){try{restoreMemory(verifiedSnap);}catch{}}alert(`Sandbox test could not complete: ${String(error?.message||error)}\n\nThe test was stopped and the verified TEST copy was restored when available. LIVE data was not changed.`);}finally{running=false;try{window.StagingFinalTestReadyGateV1?.refresh?.();}catch{}const currentBtn=btn||document.getElementById("stagingRunFullTest");if(currentBtn){currentBtn.disabled=false;currentBtn.textContent="🧪 Run Full Sandbox Test";}}
   }
 
   document.addEventListener("click",event=>{const btn=event.target?.closest?.("#stagingRunFullTest");if(!btn||!ready())return;event.preventDefault();event.stopImmediatePropagation();void run(btn);},true);
-  window.StagingTestMemoryRunnerV1={version:4,ready,isRunning:()=>running,sourceResult,refreshVerifiedLiveSource,refreshVerifiedLiveMirror:refreshVerifiedLiveSource,integrityChecks,run:()=>run(document.getElementById("stagingRunFullTest"))};
-  console.log("🧠 STAGING full-test memory runner v4 active — destructive suite + verified LIVE data integrity + route smoke checks");
+  window.StagingTestMemoryRunnerV1={version:5,ready,isRunning:()=>running,sourceResult,refreshVerifiedLiveSource,refreshVerifiedLiveMirror:refreshVerifiedLiveSource,integrityChecks,requiredRealUserChecks,run:()=>run(document.getElementById("stagingRunFullTest"))};
+  console.log("🧠 STAGING full-test memory runner v5 active — 19 real-user click checks are mandatory; silent 237-only passes are blocked");
 })();
