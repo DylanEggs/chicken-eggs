@@ -12,6 +12,7 @@
     if(window.StagingCustomerRequestsV1)return;
     const p=window.StagingCustomerRequestsLiveParityV1,ui=window.FarmCustomerRequestsV1;
     if(!p||!ui||!String(ui.version||"").includes("staging-parity")){setTimeout(boot,100);return;}
+    void Promise.resolve(ui.openInbox?.()).catch(()=>{});
     function physicalEggs(){const i=read(INVENTORY,{});return whole(i.dozens)*12+whole(i.packs18)*18+whole(i.loose);}
     function reservedEggs(){const a=read(APP2,{});return (Array.isArray(a.orders)?a.orders:[]).filter(o=>o?.status==="pending").reduce((s,o)=>s+whole(o.dozen)*12+whole(o.packs18)*18,0);}
     function autoAvailability(kind){
