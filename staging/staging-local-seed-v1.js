@@ -8,6 +8,7 @@
   const proto = Storage.prototype;
   const native = {getItem:proto.getItem,setItem:proto.setItem,removeItem:proto.removeItem,key:proto.key};
   const stageKey = key => PREFIX + String(key);
+  const REQUIRED_CORE = ["chickenEggApp2V1","chickenEggInventoryV2","chickenEggEntriesV102","chickenEggSettingsV102"];
   const PRIVATE_OR_HEAVY = [
     /^chickenEggCustomerRequestsV1$/i,
     /^chickenEggLocalBirdPhotosV1$/i,
@@ -31,42 +32,49 @@
     return text;
   }
   function hash(text){let h=2166136261>>>0;const s=String(text??"");for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)>>>0;}return h.toString(16).padStart(8,"0");}
-  function hasLiveBrowserData(){return liveKeys().some(key=>/chickenEgg(App2V1|InventoryV2|EntriesV102|SettingsV102)/i.test(key));}
-  function hasStagingCore(){for(const key of ["chickenEggApp2V1","chickenEggInventoryV2","chickenEggEntriesV102","chickenEggSettingsV102"]){try{if(native.getItem.call(local,stageKey(key)))return true;}catch{}}return false;}
+  function liveCorePresent(){return REQUIRED_CORE.every(key=>{try{return native.getItem.call(local,key)!=null;}catch{return false;}});}
+  function hasLiveBrowserData(){return liveCorePresent();}
+  function hasStagingCore(){return REQUIRED_CORE.every(key=>{try{return native.getItem.call(local,stageKey(key))!=null;}catch{return false;}});}
 
   function syncFromLiveBrowser(){
-    const keys=liveKeys();let copied=0,skipped=0,bytes=0;const copiedKeys=[],mismatchedKeys=[];const fingerprints={};
+    const keys=liveKeys();let copied=0,skipped=0,bytes=0;const copiedKeys=[],skippedKeys=[],mismatchedKeys=[];const fingerprints={};
     for(const key of keys){
       try{
-        const raw=native.getItem.call(local,key);if(raw==null)continue;
+        const raw=native.getItem.call(local,key);if(raw==null){skipped+=1;skippedKeys.push(key);continue;}
         const value=compactValue(key,raw);
-        if(value.length>900000){skipped+=1;continue;}
         native.setItem.call(local,stageKey(key),value);
         const staged=native.getItem.call(local,stageKey(key));
         const sourceHash=hash(value),stageHash=hash(staged);
         fingerprints[key]={sourceHash,stageHash,chars:value.length};
         if(sourceHash!==stageHash)mismatchedKeys.push(key);
         copied+=1;bytes+=value.length;copiedKeys.push(key);
-      }catch(error){skipped+=1;console.warn("STAGING live-browser mirror skipped",key,error);}
+      }catch(error){skipped+=1;skippedKeys.push(key);console.warn("STAGING live-browser mirror could not copy",key,error);}
     }
     const at=Date.now();
+    const coreVerified=REQUIRED_CORE.every(key=>{
+      try{
+        const live=native.getItem.call(local,key),stage=native.getItem.call(local,stageKey(key));
+        return live!=null&&stage!=null&&hash(compactValue(key,live))===hash(stage);
+      }catch{return false;}
+    });
+    const verified=liveCorePresent()&&coreVerified&&keys.length>0&&copied===keys.length&&skipped===0&&mismatchedKeys.length===0;
     try{
       native.setItem.call(local,stageKey("chickenEggStagingSeedV1"),JSON.stringify({
-        completed:(copied>0||hasStagingCore())&&mismatchedKeys.length===0,
+        completed:verified,
         importedAt:at,
         coreEntries:(()=>{try{const raw=native.getItem.call(local,stageKey("chickenEggEntriesV102"));const rows=raw?JSON.parse(raw):[];return Array.isArray(rows)?rows.length:0;}catch{return 0;}})(),
         photos:0,fullCoreRefresh:false,
-        source:"current LIVE app browser mirror; zero Firebase reads",
-        localMirror:true,copiedKeys:copied,skippedKeys:skipped,mirroredBytes:bytes,mismatchedKeys:mismatchedKeys.length
+        source:"complete current LIVE app browser mirror; zero Firebase reads",
+        localMirror:true,copiedKeys:copied,eligibleKeys:keys.length,skippedKeys:skipped,mirroredBytes:bytes,mismatchedKeys:mismatchedKeys.length,coreVerified
       }));
     }catch{}
-    const result={copied,skipped,bytes,copiedKeys,mismatchedKeys,fingerprints,verified:mismatchedKeys.length===0&&copied>0,at,hasLiveBrowserData:keys.length>0};
+    const result={copied,eligible:keys.length,skipped,bytes,copiedKeys,skippedKeys,mismatchedKeys,fingerprints,coreVerified,verified,at,hasLiveBrowserData:liveCorePresent()};
     if(window.StagingLocalSeedV1)window.StagingLocalSeedV1.result=result;
     window.dispatchEvent(new CustomEvent("staging-live-browser-mirrored",{detail:result}));
     return result;
   }
 
   const result=syncFromLiveBrowser();
-  window.StagingLocalSeedV1={version:4,prefix:PREFIX,hasLiveBrowserData,hasStagingCore,liveKeys,syncFromLiveBrowser,result};
-  console.log(`🪞 STAGING mirrored ${result.copied} current LIVE browser keys (${result.bytes} chars); verified=${result.verified}; 0 Firebase reads`);
+  window.StagingLocalSeedV1={version:5,prefix:PREFIX,requiredCore:REQUIRED_CORE.slice(),hasLiveBrowserData,hasStagingCore,liveKeys,syncFromLiveBrowser,result};
+  console.log(`🪞 STAGING mirrored ${result.copied}/${result.eligible} eligible LIVE browser keys (${result.bytes} chars); coreVerified=${result.coreVerified}; verified=${result.verified}; 0 Firebase reads`);
 })();
