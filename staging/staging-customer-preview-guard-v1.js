@@ -3,47 +3,47 @@
   if (!window.__ChickenEggsStagingMode || window.__StagingCustomerPreviewGuardV1) return;
   window.__StagingCustomerPreviewGuardV1 = true;
 
-  const SEED="chickenEggStagingSeedV1";
   const CORE=["chickenEggApp2V1","chickenEggInventoryV2","chickenEggEntriesV102","chickenEggSettingsV102"];
-  const LOCAL_COPY=[...CORE,"chickenEggWeatherIntelligenceV2","chickenEggDeluxeV1","chickenEggBusinessV1"];
   let opening=false;
   const hasSnapshot=()=>CORE.some(k=>{try{return !!localStorage.getItem(k);}catch{return false;}});
 
-  function copyFromLiveBrowserStorage(){
-    const values={};
-    const old=window.__ChickenEggsStagingMode;
-    try{
-      window.__ChickenEggsStagingMode=false;
-      for(const key of LOCAL_COPY){
-        try{const value=localStorage.getItem(key);if(value!=null)values[key]=value;}catch{}
-      }
-    }finally{window.__ChickenEggsStagingMode=old;}
-    for(const [key,value] of Object.entries(values)){
-      try{localStorage.setItem(key,value);}catch{}
+  function mirrorResult(){return window.StagingLocalSeedV1?.result||null;}
+  function refreshMirror(){
+    const r=window.StagingLocalSeedV1?.syncFromLiveBrowser?.();
+    if(r&&window.StagingLocalSeedV1)window.StagingLocalSeedV1.result=r;
+    renderMirrorBadge();
+    return r||mirrorResult();
+  }
+  function renderMirrorBadge(){
+    const row=document.querySelector("#stagingSafetyBanner .st-row");
+    if(!row){setTimeout(renderMirrorBadge,120);return;}
+    let el=document.getElementById("stagingLiveMirrorState");
+    if(!el){
+      el=document.createElement("span");el.id="stagingLiveMirrorState";
+      el.style.cssText="display:inline-flex;align-items:center;padding:7px 9px;border-radius:10px;background:#173d28;color:#d9ffe6;border:1px solid rgba(255,255,255,.35);font-size:11px;font-weight:900;line-height:1.1";
+      row.appendChild(el);
     }
-    return Object.keys(values).length;
+    const r=mirrorResult();
+    if(r?.verified&&r?.hasLiveBrowserData){el.textContent=`🪞 LIVE mirror verified • ${Number(r.copied)||0} keys • 0 Firebase reads`;el.style.background="#173d28";}
+    else{el.textContent="⚠️ LIVE mirror not verified • testing locked";el.style.background="#7f1d1d";}
   }
 
   async function prepareAndOpen(link){
     if(opening)return;opening=true;
     const old=link.textContent;
-    link.textContent="⏳ Preparing Customer Preview…";
+    link.textContent="⏳ Verifying LIVE mirror…";
     link.style.pointerEvents="none";
     try{
-      // First repair from the current LIVE browser copy. This is local-only and
-      // uses ZERO Firestore reads, so opening Customer Preview never creates a bill.
-      if(!hasSnapshot())copyFromLiveBrowserStorage();
-      if(!hasSnapshot())throw new Error("No local staging snapshot is available. Use Refresh Test Data From Live once, then open Customer Preview again.");
-      let seed=null;try{seed=JSON.parse(localStorage.getItem(SEED)||"null");}catch{}
-      if(!seed?.completed){
-        localStorage.setItem(SEED,JSON.stringify({completed:true,importedAt:Date.now(),source:"prepared from local browser farm copy; zero Firebase reads",previewPrepared:true}));
-      }
+      const r=refreshMirror();
+      if(!r?.verified||!r?.hasLiveBrowserData)throw new Error("The current LIVE app browser data could not be verified for staging.");
+      if(!hasSnapshot())throw new Error("The verified LIVE mirror did not produce a usable staging snapshot.");
       const url=new URL(link.href,location.href);
       url.searchParams.set("stage",String(window.__ChickenEggsStagingBuild||Date.now()));
+      url.searchParams.set("mirror",String(r.at||Date.now()));
       location.href=url.href;
     }catch(error){
       console.error("Could not prepare staging customer preview:",error);
-      alert(`Customer Preview could not open because the staging snapshot is not ready. Live data was not changed and no Firebase write was attempted.\n\n${String(error?.message||error)}`);
+      alert(`Customer Preview did not open because staging could not verify the LIVE mirror. Live data was not changed and no Firebase write was attempted.\n\n${String(error?.message||error)}`);
       opening=false;link.textContent=old;link.style.pointerEvents="";
     }
   }
@@ -51,10 +51,11 @@
   document.addEventListener("click",event=>{
     const link=event.target?.closest?.("#stagingSafetyBanner a.st-customer");
     if(!link)return;
-    event.preventDefault();
-    event.stopImmediatePropagation();
+    event.preventDefault();event.stopImmediatePropagation();
     void prepareAndOpen(link);
   },true);
+  window.addEventListener("staging-live-browser-mirrored",event=>{if(window.StagingLocalSeedV1&&event?.detail)window.StagingLocalSeedV1.result=event.detail;renderMirrorBadge();});
 
-  window.StagingCustomerPreviewGuardV1={version:3,hasSnapshot,copyFromLiveBrowserStorage,prepareAndOpen};
+  window.StagingCustomerPreviewGuardV1={version:4,hasSnapshot,mirrorResult,refreshMirror,renderMirrorBadge,prepareAndOpen};
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",renderMirrorBadge,{once:true});else renderMirrorBadge();
 })();
