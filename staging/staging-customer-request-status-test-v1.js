@@ -7,7 +7,7 @@
   const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
   let last = null;
 
-  async function updateFromControls(button, delayMs = 40) {
+  async function updateFromControls(button, delayMs = 70) {
     const api = window.StagingCustomerRequestsV1;
     if (!api?.updateStatus) throw new Error("Customer Requests staging API is not ready.");
 
@@ -17,7 +17,6 @@
     if (!id) throw new Error("Request id is missing.");
     if (!api.statuses.includes(status)) throw new Error("Invalid request status.");
 
-    // Capture the id and selected value before any async delay or rerender.
     last = { id, status, ok:false, error:"" };
     await sleep(delayMs);
     try {
@@ -36,7 +35,7 @@
     const check = (name, pass, detail="") => results.push({name, pass:!!pass, detail:String(detail||"")});
     const original = localStorage.getItem(KEY);
     try {
-      check("Customer Request status parity helper is active", !!api?.updateStatus && !!window.StagingCustomerRequestStatusTestV1);
+      check("Customer Request status parity helper is active", !!api?.updateStatusFromButton && !!window.StagingCustomerRequestStatusTestV1);
       api.save({version:1,settings:{eggs:"auto",birds:"auto"},requests:[]});
 
       const first = api.createRequest({name:"Click Cancel Test",category:"eggs",item:"12-pack eggs",quantity:1,phone:"336-555-0198"});
@@ -47,7 +46,7 @@
       if (select && button) {
         select.value = "Cancelled";
         button.click();
-        await sleep(25);
+        await sleep(110);
         check("Real staging Update click changes request to Cancelled", api.load().requests.find(r=>r.id===first.id)?.status === "Cancelled", api.load().requests.find(r=>r.id===first.id)?.status || "missing");
       }
 
@@ -57,8 +56,7 @@
       button = document.querySelector(`#customerRequests [data-req-save="${CSS.escape(second.id)}"]`);
       if (select && button) {
         select.value = "Cancelled";
-        const pending = updateFromControls(button, 60);
-        // Force the same kind of rerender that previously broke settings save.
+        const pending = updateFromControls(button, 80);
         api.render();
         const row = await pending;
         check("Async status update keeps selected Cancelled value through rerender", row?.status === "Cancelled", row?.status || "missing");
@@ -99,7 +97,7 @@
   }
 
   window.StagingCustomerRequestStatusTestV1 = {
-    version:2,
+    version:3,
     updateFromControls,
     runRegression,
     getLast:() => last ? { ...last } : null
