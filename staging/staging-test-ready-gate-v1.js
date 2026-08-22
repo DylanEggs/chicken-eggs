@@ -46,13 +46,29 @@
   function ready(){return dataReady()&&suiteReady();}
   function button(){return document.getElementById("stagingRunFullTest");}
 
+  function lockedReason(){
+    const mirror = window.StagingLocalSeedV1?.result;
+    if (!dataReady()) return "STAGING is still loading or refreshing its test data.";
+    if (!mirrorReady()) {
+      const copied=Number(mirror?.copied)||0;
+      const eligible=Number(mirror?.eligible)||0;
+      const skipped=Number(mirror?.skipped)||0;
+      const mismatch=Array.isArray(mirror?.mismatchedKeys)?mirror.mismatchedKeys.length:(Number(mirror?.mismatchedKeys)||0);
+      return `The LIVE mirror is not verified yet. Copied ${copied}/${eligible}, skipped ${skipped}, mismatches ${mismatch}. Use “Refresh Test Data From Live” first.`;
+    }
+    if (!suiteReady()) return "The LIVE mirror is verified, but one or more sandbox regression-test modules have not finished loading yet. Wait a few seconds and try again.";
+    return "The sandbox test is not ready yet.";
+  }
+
   function refresh(){
     const btn=button();if(!btn)return;
-    const sync=dataReady(),mirror=mirrorReady(),suite=suiteReady(),ok=sync&&suite;
-    btn.disabled=!ok;
+    const ok=ready();
+    // Do NOT use the native disabled attribute: disabled buttons swallow clicks
+    // completely. Keep it clickable so a locked test explains what is wrong.
+    btn.disabled=false;
     btn.dataset.finalSuiteReady=ok?"true":"false";
-    // Keep the control recognizable at all times. The separate staging status
-    // badge explains why it is locked instead of making the test button vanish.
+    btn.dataset.testLocked=ok?"false":"true";
+    btn.setAttribute("aria-disabled",ok?"false":"true");
     btn.textContent="🧪 Run Full Sandbox Test";
     if(ok){
       btn.title="Verified current LIVE browser mirror + Customer Preview guard + live-parity Customer Requests UI + in-memory torture suite are ready.";
@@ -63,24 +79,21 @@
       }
     }else{
       announcedReady=false;
-      if(!sync||!mirror){
-        btn.title="Locked until the current LIVE farm datasets are copied into TEST/STAGING and verified. Use Refresh Test Data From Live if needed.";
-      }else{
-        btn.title="LIVE mirror is verified; waiting for the remaining sandbox regression tests to attach.";
-      }
+      btn.title=lockedReason();
     }
   }
 
-  function start(){refresh();setInterval(refresh,120);}
+  function start(){refresh();setInterval(refresh,180);}
   document.addEventListener("click",event=>{
     const btn=event.target?.closest?.("#stagingRunFullTest");
     if(!btn||ready())return;
     event.preventDefault();
     event.stopImmediatePropagation();
     refresh();
+    alert(lockedReason());
   },true);
   for(const name of ["farm-sync-ready","core-data-synced","farm-data-synced","staging-baseline-restored","staging-final-suite-changed","staging-storage-overlay","staging-live-browser-mirrored"])window.addEventListener(name,refresh);
 
-  window.StagingFinalTestReadyGateV1={version:8,ready,dataReady,suiteReady,mirrorReady,copyInProgress,refresh,requiresMemoryRunner:true,requiresCustomerRequestsLiveParity:true,requiresVerifiedLiveBrowserMirror:true,requiresCustomerPreviewGuard:true};
+  window.StagingFinalTestReadyGateV1={version:9,ready,dataReady,suiteReady,mirrorReady,copyInProgress,lockedReason,refresh,requiresMemoryRunner:true,requiresCustomerRequestsLiveParity:true,requiresVerifiedLiveBrowserMirror:true,requiresCustomerPreviewGuard:true};
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",start,{once:true});else start();
 })();
