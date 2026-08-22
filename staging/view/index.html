@@ -6,13 +6,13 @@
   <meta name="robots" content="noindex,nofollow" />
   <meta name="theme-color" content="#f7b928" />
   <title>Rose Family Poultry — Customer Preview</title>
-  <link rel="stylesheet" href="view.css" />
-  <link rel="stylesheet" href="view-v2.css" />
+  <link rel="stylesheet" href="view.css?v=20260821-stage-53" />
+  <link rel="stylesheet" href="view-v2.css?v=20260821-stage-53" />
 </head>
 <body>
   <div class="preview-bar">
     <span>🧪 CUSTOMER VIEW PREVIEW</span>
-    <span class="preview-note">Read-only staging data</span>
+    <span class="preview-note">Sandbox-only customer data</span>
     <a href="../">Back to Test Farm</a>
   </div>
 
@@ -60,24 +60,24 @@
       <div class="flock-grid" id="flockGrid"></div><div class="empty-flock" id="emptyFlock" hidden>No flock profiles match this view yet.</div>
     </section>
 
-    <footer class="site-footer"><div class="footer-chicken">🐓</div><strong id="footerFarmName">Rose Family Poultry</strong><span>Fresh eggs, real flock updates, and absolutely no boring spreadsheets for customers.</span><small>This customer page is view-only. Availability, predictions and stats can change as the farm updates.</small></footer>
+    <footer class="site-footer"><div class="footer-chicken">🐓</div><strong id="footerFarmName">Rose Family Poultry</strong><span>Fresh eggs, real flock updates, and absolutely no boring spreadsheets for customers.</span><small>This customer page is a sandbox preview. Nothing submitted here writes to live Firebase.</small></footer>
   </main>
 
   <div class="profile-modal" id="profileModal" hidden><div class="modal-backdrop" data-close-profile></div><article class="profile-sheet" role="dialog" aria-modal="true" aria-labelledby="profileName"><button type="button" class="modal-close" data-close-profile aria-label="Close chicken profile">×</button><div class="profile-photo" id="profilePhoto"><span>🐔</span></div><div class="section-kicker">Flock profile</div><h2 id="profileName">Chicken</h2><div class="profile-facts" id="profileFacts"></div><div class="profile-signoff">🐾 Certified member of the feathered production team.</div></article></div>
 
-  <div class="missing-data" id="missingData" hidden><div class="missing-card"><div class="missing-icon">🧪</div><h2>Customer preview needs a staging snapshot</h2><p>Open the Test / Staging farm once so it can make the isolated read-only copy, then come back here.</p><a href="../">Open Test / Staging Farm</a></div></div>
+  <div class="missing-data" id="missingData" hidden><div class="missing-card"><div class="missing-icon">🧪</div><h2>Customer preview needs staging data</h2><p>Return to the Test / Staging farm. The Customer Preview button there now prepares the isolated snapshot automatically before opening this page.</p><a href="../">Open Test / Staging Farm</a></div></div>
 
-  <script src="../../customer-public-builder-v1.js"></script>
-  <script src="../../customer-public-builder-v2.js"></script>
-  <script src="../../customer-facts-v1.js"></script>
-  <script src="../customer-public-data-v1.js"></script>
-  <script src="../customer-public-data-v2.js"></script>
-  <script src="../customer-public-bird-sales-v1.js"></script>
-  <script src="view.js"></script>
-  <script src="year-forecast-v1.js"></script>
-  <script src="view-v2.js"></script>
-  <script src="bird-sales-v1.js"></script>
-  <script src="customer-requests-v1.js?v=20260821-stage-40"></script>
-  <script src="customer-requests-ui-test-v1.js?v=20260821-stage-40"></script>
+  <script src="../../customer-public-builder-v1.js?v=20260821-stage-53"></script>
+  <script src="../../customer-public-builder-v2.js?v=20260821-stage-53"></script>
+  <script src="../../customer-facts-v1.js?v=20260821-stage-53"></script>
+  <script src="../customer-public-data-v1.js?v=20260821-stage-53"></script>
+  <script src="../customer-public-data-v2.js?v=20260821-stage-53"></script>
+  <script src="../customer-public-bird-sales-v1.js?v=20260821-stage-53"></script>
+  <script src="view.js?v=20260821-stage-53"></script>
+  <script src="year-forecast-v1.js?v=20260821-stage-53"></script>
+  <script src="view-v2.js?v=20260821-stage-53"></script>
+  <script src="bird-sales-v1.js?v=20260821-stage-53"></script>
+  <script src="customer-requests-live-parity-v1.js?v=20260821-stage-53"></script>
+  <script src="customer-requests-ui-test-v1.js?v=20260821-stage-53"></script>
 </body>
 </html>
