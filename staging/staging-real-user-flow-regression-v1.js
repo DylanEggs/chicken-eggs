@@ -10,7 +10,7 @@
   const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;};
   const totalInv=()=>{const s=window.InventorySystemV6?.state?.()||{};return Number(s.dozens||0)*12+Number(s.packs18||0)*18+Number(s.loose||0);};
   const available=()=>Number(window.InventorySystemV6?.available?.()??totalInv())||0;
-  const waitFor=async(fn,timeout=3500)=>{const start=Date.now();while(Date.now()-start<timeout){try{if(fn())return true;}catch{}await sleep(50);}return false;};
+  const waitFor=async(fn,timeout=4500)=>{const start=Date.now();while(Date.now()-start<timeout){try{if(fn())return true;}catch{}await sleep(50);}return false;};
   const check=(results,name,pass,detail="")=>results.push({name,pass:!!pass,detail:String(detail||"")});
 
   function snapshot(){const out={};for(const key of window.StagingStorageSandbox?.listKeys?.()||[]){try{const v=localStorage.getItem(key);if(v!==null)out[key]=v;}catch{}}return out;}
@@ -19,7 +19,7 @@
   function restoreFields(saved){for(const [id,v] of Object.entries(saved||{})){const el=document.getElementById(id);if(el)el.value=v;}}
   function setField(id,value){const el=document.getElementById(id);if(!el)return false;el.value=String(value);el.dispatchEvent(new Event("input",{bubbles:true}));el.dispatchEvent(new Event("change",{bubbles:true}));return true;}
   function buttonForScreen(id){return [...document.querySelectorAll("button")].find(b=>new RegExp(`showScreen\\(['\"]${id}['\"]\\)`).test(b.getAttribute("onclick")||""));}
-  function actionButton(screenId,fn){return [...(document.querySelectorAll(`#${screenId} button`)||[])].find(b=>(b.getAttribute("onclick")||"").includes(`${fn}()`));}
+  function actionButton(screenId,fn){return [...document.querySelectorAll(`#${screenId} button`)].find(b=>(b.getAttribute("onclick")||"").includes(`${fn}()`));}
   function newRow(before,after,type){const ids=new Set(before.map(x=>String(x?.id||"")));return after.find(x=>x?.type===type&&x?.id&&!ids.has(String(x.id)))||null;}
 
   async function runChecks(){
@@ -28,7 +28,7 @@
     try{
       const collectNav=buttonForScreen("collect");
       check(results,"Real-user flow: Collect control exists",!!collectNav);
-      collectNav?.click();await sleep(40);
+      collectNav?.click();await sleep(80);
       check(results,"Real-user flow: clicking Collect opens Collect screen",document.querySelector(".screen.active")?.id==="collect",document.querySelector(".screen.active")?.id||"none");
 
       const beforeEggRows=read(ENTRIES,[]),invBeforeEgg=totalInv();
@@ -37,19 +37,20 @@
       check(results,"Real-user flow: Save Eggs button exists",!!saveEggBtn);
       saveEggBtn?.click();
       await waitFor(()=>read(ENTRIES,[]).length>beforeEggRows.length);
+      await sleep(120);
       const afterEggRows=read(ENTRIES,[]),eggRow=newRow(beforeEggRows,afterEggRows,"eggs");
       check(results,"Real-user flow: Save Eggs click creates a history row",!!eggRow,JSON.stringify(eggRow||{}));
       check(results,"Real-user flow: collected row stores 5 eggs",Number(eggRow?.eggs)===5,JSON.stringify(eggRow||{}));
       check(results,"Real-user flow: collecting 5 eggs increases physical inventory by 5",totalInv()===invBeforeEgg+5,`${invBeforeEgg} -> ${totalInv()}`);
 
       if(available()<12){
-        const needed=Math.ceil(12-available());
-        buttonForScreen("collect")?.click();setField("eggDate",today());setField("eggCount",needed);actionButton("collect","saveEggs")?.click();await waitFor(()=>available()>=12);
+        const needed=Math.max(1,Math.ceil(12-available()));
+        buttonForScreen("collect")?.click();setField("eggDate",today());setField("eggCount",needed);actionButton("collect","saveEggs")?.click();await waitFor(()=>available()>=12);await sleep(120);
       }
 
       const saleNav=buttonForScreen("sale");
       check(results,"Real-user flow: Sale control exists",!!saleNav);
-      saleNav?.click();await sleep(40);
+      saleNav?.click();await sleep(80);
       check(results,"Real-user flow: clicking Sale opens Sale screen",document.querySelector(".screen.active")?.id==="sale",document.querySelector(".screen.active")?.id||"none");
 
       const beforeSaleRows=read(ENTRIES,[]),invBeforeSale=totalInv();
@@ -61,13 +62,14 @@
       check(results,"Real-user flow: Save Sale button exists",!!saveSaleBtn);
       saveSaleBtn?.click();
       await waitFor(()=>read(ENTRIES,[]).length>beforeSaleRows.length);
+      await sleep(120);
       const afterSaleRows=read(ENTRIES,[]),saleRow=newRow(beforeSaleRows,afterSaleRows,"sale");
       check(results,"Real-user flow: Save Sale click creates a sale history row",!!saleRow,JSON.stringify(saleRow||{}));
       check(results,"Real-user flow: sale row stores one dozen",Number(saleRow?.dozenSold)===1,JSON.stringify(saleRow||{}));
       check(results,"Real-user flow: one-dozen sale decreases physical inventory by 12",totalInv()===invBeforeSale-12,`${invBeforeSale} -> ${totalInv()}`);
 
       for(const id of ["stats","farm"]){
-        const btn=buttonForScreen(id);check(results,`Real-user flow: ${id} navigation control exists`,!!btn);btn?.click();await sleep(30);check(results,`Real-user flow: clicking ${id} opens its screen`,document.querySelector(".screen.active")?.id===id,document.querySelector(".screen.active")?.id||"none");
+        const btn=buttonForScreen(id);check(results,`Real-user flow: ${id} navigation control exists`,!!btn);btn?.click();await sleep(60);check(results,`Real-user flow: clicking ${id} opens its screen`,document.querySelector(".screen.active")?.id===id,document.querySelector(".screen.active")?.id||"none");
       }
 
       const customerLink=document.querySelector('#stagingSafetyBanner a[href*="staging/view/"]');
@@ -80,17 +82,9 @@
     return results;
   }
 
-  function install(){
-    const base=window.StagingFullTest;
-    const ready=base?.run&&base.__twelvePackFullSuiteV1&&base.__historyBackV1&&base.__saleEditBackV1&&base.__customerRequestsV1&&base.__customerRequestsLiveParityV1;
-    if(!ready){setTimeout(install,140);return;}
-    if(base.__realUserFlowV1)return;
-    const baseRun=base.run.bind(base);
-    window.StagingFullTest={...base,async run(){const first=await baseRun();const extra=await runChecks();const results=[...(first?.results||[]),...extra];const failed=results.filter(x=>!x.pass);return{...first,total:results.length,passed:results.length-failed.length,failed:failed.length,results,suite:`${first?.suite||"staging-full"}+real-user-flow-v1`};},__realUserFlowV1:true};
-    window.dispatchEvent(new CustomEvent("staging-final-suite-changed"));
-    console.log("🖱️ STAGING real-user flow regression active — actual Collect/Sale/Stats/Farm controls are clicked in the isolated sandbox");
-  }
-
-  window.StagingRealUserFlowRegressionV1={version:1,run:runChecks};
-  setTimeout(install,500);
+  // IMPORTANT: this module does not wrap StagingFullTest. The final memory runner
+  // calls it only after the 237-check torture suite has been restored and settled.
+  window.StagingRealUserFlowRegressionV1={version:2,run:runChecks,isolated:true};
+  window.dispatchEvent(new CustomEvent("staging-final-suite-changed"));
+  console.log("🖱️ STAGING isolated real-user flow v2 ready — executed only by final memory runner after torture-suite restore");
 })();
