@@ -22,12 +22,12 @@
   function actionButton(screenId,fn){return [...document.querySelectorAll(`#${screenId} button`)].find(b=>(b.getAttribute("onclick")||"").includes(`${fn}()`));}
   function newRow(before,after,type){const ids=new Set(before.map(x=>String(x?.id||"")));return after.find(x=>x?.type===type&&x?.id&&!ids.has(String(x.id)))||null;}
 
-  async function freshCleanStart(results){
-    // Let every timer from the 237-check destructive suite finish first.
+  async function freshCleanStart(){
+    // The 237-check suite uses delayed UI/data work. Let it fully finish, then
+    // reload authoritative LIVE data read-only before the real click test.
     await sleep(1400);
     const ok=await window.StagingSandbox?.resetFromLive?.();
     const source=window.StagingSandbox?.liveSourceResult?.()||window.__StagingLiveSourceResult||null;
-    check(results,"Real-user flow: clean LIVE snapshot refreshed before click test",ok!==false&&source?.verified===true,String(source?.source||source?.error||"missing"));
     if(ok===false||!source?.verified)throw new Error(source?.error||"Could not refresh a clean LIVE snapshot for the real-user click test.");
     await sleep(350);
     try{window.loadLocal?.();}catch{}try{window.loadFarmSettings?.();}catch{}try{window.__reloadFarm2Memory?.();}catch{}try{window.updateApp?.();}catch{}try{window.InventorySystemV6?.render?.();}catch{}
@@ -36,7 +36,7 @@
 
   async function runChecks(){
     const results=[];
-    await freshCleanStart(results);
+    await freshCleanStart();
     const snap=snapshot(),savedFields=fields(),activeBefore=document.querySelector(".screen.active")?.id||"dashboard";
     const oldAlert=window.alert,oldConfirm=window.confirm;const alerts=[];window.alert=m=>alerts.push(String(m||""));window.confirm=()=>true;
     try{
@@ -50,17 +50,13 @@
       const saveEggBtn=actionButton("collect","saveEggs");
       check(results,"Real-user flow: Save Eggs button exists",!!saveEggBtn);
       saveEggBtn?.click();
-      await waitFor(()=>read(ENTRIES,[]).length>beforeEggRows.length);
-      await sleep(150);
+      await waitFor(()=>read(ENTRIES,[]).length>beforeEggRows.length);await sleep(150);
       const afterEggRows=read(ENTRIES,[]),eggRow=newRow(beforeEggRows,afterEggRows,"eggs");
       check(results,"Real-user flow: Save Eggs click creates a history row",!!eggRow,JSON.stringify(eggRow||{}));
       check(results,"Real-user flow: collected row stores 5 eggs",Number(eggRow?.eggs)===5,JSON.stringify(eggRow||{}));
       check(results,"Real-user flow: collecting 5 eggs increases physical inventory by 5",totalInv()===invBeforeEgg+5,`${invBeforeEgg} -> ${totalInv()}`);
 
-      if(available()<12){
-        const needed=Math.max(1,Math.ceil(12-available()));
-        buttonForScreen("collect")?.click();setField("eggDate",today());setField("eggCount",needed);actionButton("collect","saveEggs")?.click();await waitFor(()=>available()>=12);await sleep(150);
-      }
+      if(available()<12){const needed=Math.max(1,Math.ceil(12-available()));buttonForScreen("collect")?.click();setField("eggDate",today());setField("eggCount",needed);actionButton("collect","saveEggs")?.click();await waitFor(()=>available()>=12);await sleep(150);}
 
       const saleNav=buttonForScreen("sale");
       check(results,"Real-user flow: Sale control exists",!!saleNav);
@@ -75,16 +71,13 @@
       const saveSaleBtn=actionButton("sale","saveSale");
       check(results,"Real-user flow: Save Sale button exists",!!saveSaleBtn);
       saveSaleBtn?.click();
-      await waitFor(()=>read(ENTRIES,[]).length>beforeSaleRows.length);
-      await sleep(150);
+      await waitFor(()=>read(ENTRIES,[]).length>beforeSaleRows.length);await sleep(150);
       const afterSaleRows=read(ENTRIES,[]),saleRow=newRow(beforeSaleRows,afterSaleRows,"sale");
       check(results,"Real-user flow: Save Sale click creates a sale history row",!!saleRow,JSON.stringify(saleRow||{}));
       check(results,"Real-user flow: sale row stores one dozen",Number(saleRow?.dozenSold)===1,JSON.stringify(saleRow||{}));
       check(results,"Real-user flow: one-dozen sale decreases physical inventory by 12",totalInv()===invBeforeSale-12,`${invBeforeSale} -> ${totalInv()}`);
 
-      for(const id of ["stats","farm"]){
-        const btn=buttonForScreen(id);check(results,`Real-user flow: ${id} navigation control exists`,!!btn);btn?.click();await sleep(60);check(results,`Real-user flow: clicking ${id} opens its screen`,document.querySelector(".screen.active")?.id===id,document.querySelector(".screen.active")?.id||"none");
-      }
+      for(const id of ["stats","farm"]){const btn=buttonForScreen(id);check(results,`Real-user flow: ${id} navigation control exists`,!!btn);btn?.click();await sleep(60);check(results,`Real-user flow: clicking ${id} opens its screen`,document.querySelector(".screen.active")?.id===id,document.querySelector(".screen.active")?.id||"none");}
 
       const customerLink=document.querySelector('#stagingSafetyBanner a[href*="staging/view/"]');
       const loginLink=document.querySelector('#stagingSafetyBanner a[href*="staging/owner-login/"]');
@@ -96,9 +89,7 @@
     return results;
   }
 
-  // IMPORTANT: this module does not wrap StagingFullTest. The final memory runner
-  // calls it only after the 237-check torture suite has been restored and settled.
-  window.StagingRealUserFlowRegressionV1={version:3,run:runChecks,isolated:true,refreshesCleanLiveBeforeRun:true};
+  window.StagingRealUserFlowRegressionV1={version:4,run:runChecks,isolated:true,refreshesCleanLiveBeforeRun:true,scoredChecks:19};
   window.dispatchEvent(new CustomEvent("staging-final-suite-changed"));
-  console.log("🖱️ STAGING isolated real-user flow v3 ready — fresh LIVE snapshot is loaded after torture-suite settle, then actual controls are clicked");
+  console.log("🖱️ STAGING isolated real-user flow v4 ready — clean LIVE refresh is setup-only; exactly 19 click checks are scored");
 })();
