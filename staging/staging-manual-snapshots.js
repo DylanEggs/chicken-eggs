@@ -5,19 +5,19 @@
   if (!window.__ChickenEggsStagingMode) return;
 
   const BASELINE_KEY = "chickenEggManualStagingBaselineV1";
-  const HEAVY_CACHE_KEYS = new Set([
-    "chickenEggLocalBirdPhotosV1",
-    "chickenEggBirdPhotoMetaV4",
-    "chickenEggApp2SnapshotsV1"
-  ]);
-  const testArtifact = key => window.StagingStorageSandbox?.isTestArtifactKey?.(key) || (/^chickenEggStaging/i.test(String(key || "")) && /test/i.test(String(key || "")));
-  const excluded = key => String(key) === BASELINE_KEY || HEAVY_CACHE_KEYS.has(String(key)) || testArtifact(key);
+  const BASELINE_KEYS = [
+    "chickenEggApp2V1",
+    "chickenEggInventoryV2",
+    "chickenEggEntriesV102",
+    "chickenEggSettingsV102",
+    "chickenEggDeluxeV1",
+    "chickenEggBusinessV1",
+    "chickenEggCustomerRequestsV1"
+  ];
 
   function snapshot() {
     const out = {};
-    const keys = window.StagingStorageSandbox?.listKeys?.() || [];
-    for (const key of keys) {
-      if (excluded(key)) continue;
+    for (const key of BASELINE_KEYS) {
       try {
         const value = localStorage.getItem(key);
         if (value !== null) out[key] = value;
@@ -32,9 +32,9 @@
     try { window.__reloadFarm2Memory?.(); } catch {}
     try { window.updateApp?.(); } catch {}
     try { window.InventorySystemV6?.render?.(); } catch {}
+    try { window.StagingCustomerRequestsV1?.render?.(); } catch {}
     window.dispatchEvent(new CustomEvent("core-data-synced", { detail:{ staging:true, manualSnapshot:true, reason } }));
     window.dispatchEvent(new CustomEvent("farm-data-synced", { detail:{ staging:true, manualSnapshot:true, reason, key:"manual-snapshot" } }));
-    window.dispatchEvent(new CustomEvent("bird-photos-changed", { detail:{ staging:true, manualSnapshot:true, reason } }));
   }
 
   function baselineInfo() {
@@ -42,10 +42,8 @@
       const raw = localStorage.getItem(BASELINE_KEY);
       if (!raw) return null;
       const parsed = JSON.parse(raw);
-      return parsed && parsed.version === 1 ? parsed : null;
-    } catch {
-      return null;
-    }
+      return parsed && parsed.version >= 1 ? parsed : null;
+    } catch { return null; }
   }
 
   async function saveBaseline(label = "Manual test baseline") {
@@ -53,21 +51,17 @@
     const data = snapshot();
     const seed = window.StagingSandbox?.seedInfo?.() || null;
     const record = {
-      version: 1,
+      version: 2,
       label: String(label || "Manual test baseline"),
       savedAt: Date.now(),
       sourceSeedAt: Number(seed?.importedAt) || 0,
       sourceCoreEntries: Number(seed?.coreEntries) || 0,
-      sourcePhotos: Number(seed?.photos) || 0,
       keys: Object.keys(data).length,
-      excludedHeavyCaches: Array.from(HEAVY_CACHE_KEYS),
+      baselineKeys: BASELINE_KEYS.slice(),
       data
     };
-    try {
-      localStorage.setItem(BASELINE_KEY, JSON.stringify(record));
-    } catch (error) {
-      throw new Error(`Test baseline could not be saved in browser storage: ${String(error?.message || error)}`);
-    }
+    try { localStorage.setItem(BASELINE_KEY, JSON.stringify(record)); }
+    catch (error) { throw new Error(`Test baseline could not be saved: ${String(error?.message || error)}`); }
     window.dispatchEvent(new CustomEvent("staging-baseline-saved", { detail:{ ...record, data:undefined } }));
     return { saved:true, ...record, data:undefined };
   }
@@ -78,12 +72,11 @@
     const oldRemote = window.__farmApplyingRemote;
     window.__farmApplyingRemote = true;
     try {
-      for (const key of window.StagingStorageSandbox?.listKeys?.() || []) {
-        if (excluded(key)) continue;
+      for (const key of BASELINE_KEYS) {
         try { localStorage.removeItem(key); } catch {}
       }
       for (const [key, value] of Object.entries(record.data)) {
-        if (excluded(key)) continue;
+        if (!BASELINE_KEYS.includes(key)) continue;
         localStorage.setItem(key, String(value));
       }
     } finally { window.__farmApplyingRemote = oldRemote; }
@@ -92,27 +85,33 @@
     return { restored:true, savedAt:record.savedAt, keys:record.keys };
   }
 
+  function sourceResult() {
+    return window.StagingSandbox?.liveSourceResult?.() || window.__StagingLiveSourceResult || window.StagingLocalSeedV1?.result || null;
+  }
+
   async function refreshFromLiveAndSaveBaseline() {
     const ok = await window.StagingSandbox?.resetFromLive?.();
-    if (ok === false) throw new Error("Live snapshot refresh was unavailable.");
-    const mirror = window.StagingLocalSeedV1?.result;
-    if (!mirror?.verified) {
-      throw new Error(`LIVE mirror did not verify (copied ${Number(mirror?.copied)||0}/${Number(mirror?.eligible)||0}, skipped ${Number(mirror?.skipped)||0}, mismatches ${Array.isArray(mirror?.mismatchedKeys)?mirror.mismatchedKeys.length:Number(mirror?.mismatchedKeys)||0}).`);
+    const source = sourceResult();
+    if (ok === false || !source?.verified) {
+      const detail = source?.error || `source=${String(source?.source||"unknown")}, copied ${Number(source?.copied)||0}/${Number(source?.eligible)||0}`;
+      throw new Error(`Fresh LIVE data could not be verified in TEST/STAGING: ${detail}`);
     }
-    const saved = await saveBaseline("Fresh live-data baseline");
+    const saved = await saveBaseline("Fresh verified live-data baseline");
     reloadMemory("refresh-live-baseline");
-    return saved;
+    return { ...saved, liveSource:source.source || "verified-live" };
   }
 
   window.StagingManualSnapshots = {
-    version: 3,
+    version: 4,
     baselineKey: BASELINE_KEY,
+    baselineKeys: BASELINE_KEYS.slice(),
     snapshot,
     info: baselineInfo,
     saveBaseline,
     restoreBaseline,
+    sourceResult,
     refreshFromLiveAndSaveBaseline
   };
 
-  console.log("🧪 Manual staging baseline controls ready — large photo/snapshot caches excluded");
+  console.log("🧪 Manual staging baseline controls ready — compact authoritative baseline only");
 })();
