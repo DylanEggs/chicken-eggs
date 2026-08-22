@@ -21,6 +21,8 @@
     await load("staging/staging-delight-regression-v1.js",()=>!!window.StagingDelightRegressionV1);
     await load("staging/staging-action-center-v1.js",()=>!!window.StagingActionCenterV1);
     await load("staging/staging-action-center-regression-v1.js",()=>!!window.StagingActionCenterRegressionV1);
+    await load("staging/staging-unit-economics-v1.js",()=>!!window.StagingUnitEconomicsV1);
+    await load("staging/staging-unit-economics-regression-v1.js",()=>!!window.StagingUnitEconomicsRegressionV1);
     install();
   }
 
@@ -30,7 +32,8 @@
     const smart=window.StagingSmartInsightsRegressionV1;
     const delight=window.StagingDelightRegressionV1;
     const actions=window.StagingActionCenterRegressionV1;
-    if(!base?.run||!farm?.run||!smart?.run||!delight?.run||!actions?.run){setTimeout(install,100);return;}
+    const economics=window.StagingUnitEconomicsRegressionV1;
+    if(!base?.run||!farm?.run||!smart?.run||!delight?.run||!actions?.run||!economics?.run){setTimeout(install,100);return;}
     if(base.__farmManagerV4)return;
     const baseRun=base.run.bind(base);
     window.StagingFullTest={...base,async run(){
@@ -39,17 +42,19 @@
       const smartResult=await smart.run();
       const delightResult=await delight.run();
       const actionResult=await actions.run();
+      const economicsResult=await economics.run();
       const farmMapped=(farmResult?.rows||[]).map(r=>({name:`Farm Manager: ${r.name}`,pass:!!r.ok,detail:r.detail||""}));
       const smartMapped=(smartResult?.checks||[]).map(r=>({name:`Smart Insights: ${r.name}`,pass:!!r.pass,detail:r.detail||""}));
       const delightMapped=(delightResult?.checks||[]).map(r=>({name:`Home Delight: ${r.name}`,pass:!!r.pass,detail:r.detail||""}));
       const actionMapped=(actionResult?.checks||[]).map(r=>({name:`Farm Today: ${r.name}`,pass:!!r.pass,detail:r.detail||""}));
-      const results=[...(first?.results||[]),...farmMapped,...smartMapped,...delightMapped,...actionMapped];
+      const economicsMapped=(economicsResult?.checks||[]).map(r=>({name:`Egg Cost: ${r.name}`,pass:!!r.pass,detail:r.detail||""}));
+      const results=[...(first?.results||[]),...farmMapped,...smartMapped,...delightMapped,...actionMapped,...economicsMapped];
       const failed=results.filter(x=>!x.pass);
-      const report={...first,total:results.length,passed:results.length-failed.length,failed:failed.length,results,suite:`${first?.suite||"staging-full"}+farm-manager+smart-insights+home-delight+farm-today-v7`};
-      try{localStorage.setItem("chickenEggStagingFullTestReportV7",JSON.stringify(report));}catch{}
+      const report={...first,total:results.length,passed:results.length-failed.length,failed:failed.length,results,suite:`${first?.suite||"staging-full"}+farm-manager+smart-insights+home-delight+farm-today+egg-cost-v8`};
+      try{localStorage.setItem("chickenEggStagingFullTestReportV8",JSON.stringify(report));}catch{}
       return report;
-    },last:()=>{try{return JSON.parse(localStorage.getItem("chickenEggStagingFullTestReportV7")||"null")||base.last?.()||null;}catch{return base.last?.()||null;}},__farmManagerV4:true,__smartInsightsV5:true,__delightV6:true,__farmTodayV7:true};
-    console.log("🧪 STAGING Full Test v7 active — Farm Today action center regression added");
+    },last:()=>{try{return JSON.parse(localStorage.getItem("chickenEggStagingFullTestReportV8")||"null")||base.last?.()||null;}catch{return base.last?.()||null;}},__farmManagerV4:true,__smartInsightsV5:true,__delightV6:true,__farmTodayV7:true,__eggCostV8:true};
+    console.log("🧪 STAGING Full Test v8 active — Egg Cost & Break-Even regression added");
   }
 
   setTimeout(bootstrap,900);
