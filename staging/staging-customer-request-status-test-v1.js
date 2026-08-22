@@ -1,84 +1,66 @@
 (() => {
   "use strict";
   if (!window.__ChickenEggsStagingMode) return;
-  if (window.StagingCustomerRequestStatusTestV1) return;
+  if (window.__StagingCustomerRequestLiveParityBootV1) return;
+  window.__StagingCustomerRequestLiveParityBootV1 = true;
 
-  const KEY = "chickenEggCustomerRequestsV1";
   const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
-  let last = null;
+  let parityReady = false;
 
-  async function updateFromControls(button, delayMs = 70) {
-    const api = window.StagingCustomerRequestsV1;
-    if (!api?.updateStatus) throw new Error("Customer Requests staging API is not ready.");
-
-    const id = String(button?.dataset?.reqSave || "");
-    const select = button?.closest?.(".req-actions")?.querySelector?.("select[data-req-status]");
-    const status = String(select?.value || "");
-    if (!id) throw new Error("Request id is missing.");
-    if (!api.statuses.includes(status)) throw new Error("Invalid request status.");
-
-    last = { id, status, ok:false, error:"" };
-    await sleep(delayMs);
-    try {
-      api.updateStatus(id, status);
-      last.ok = true;
-      return api.load().requests.find(row => row.id === id) || null;
-    } catch (error) {
-      last.error = String(error?.message || error);
-      throw error;
-    }
-  }
-
-  async function runRegression() {
-    const api = window.StagingCustomerRequestsV1;
-    const results = [];
-    const check = (name, pass, detail="") => results.push({name, pass:!!pass, detail:String(detail||"")});
+  async function runParityChecks() {
+    const results = [], check = (name, pass, detail="") => results.push({name,pass:!!pass,detail:String(detail||"")});
+    const data = window.StagingCustomerRequestsLiveParityV1;
+    const ui = window.FarmCustomerRequestsV1;
+    const KEY = data?.key || "chickenEggCustomerRequestsV1";
     const original = localStorage.getItem(KEY);
     try {
-      check("Customer Request status parity helper is active", !!api?.updateStatusFromButton && !!window.StagingCustomerRequestStatusTestV1);
-      api.save({version:1,settings:{eggs:"auto",birds:"auto"},requests:[]});
+      check("Staging uses the live Customer Requests UI module", !!ui && String(ui.version).includes("staging-parity"), String(ui?.version||"missing"));
+      check("Live-parity staging data adapter is active", !!data?.firestoreApi && !!data?.createRequest);
+      data.reset({version:1,settings:{enabled:false,eggs:"auto",birds:"auto"},requests:[]});
+      await ui.openInbox();
+      await sleep(40);
 
-      const first = api.createRequest({name:"Click Cancel Test",category:"eggs",item:"12-pack eggs",quantity:1,phone:"336-555-0198"});
-      api.render();
-      let select = document.querySelector(`#customerRequests [data-req-status="${CSS.escape(first.id)}"]`);
-      let button = document.querySelector(`#customerRequests [data-req-save="${CSS.escape(first.id)}"]`);
-      check("Owner inbox renders status dropdown and Update button", !!select && !!button);
+      check("Staging owner screen has the same enable checkbox as live", !!document.getElementById("reqPublicEnabled"));
+      check("Staging owner screen has the same Save Customer Request Settings button as live", document.getElementById("reqSaveSettings")?.textContent?.includes("Save Customer Request Settings"));
+      check("Staging owner screen shows the same private owner connection state", document.getElementById("customerRequestOwnerBody")?.textContent?.includes("Private owner connection is active"));
+
+      const enabled = document.getElementById("reqPublicEnabled");
+      if (enabled) enabled.checked = true;
+      document.getElementById("reqSaveSettings")?.click();
+      await sleep(70);
+      check("Real live-parity Save click keeps request form enabled", data.readSettings().enabled === true, JSON.stringify(data.readSettings()));
+      check("Enable checkbox stays checked after live-parity rerender", document.getElementById("reqPublicEnabled")?.checked === true);
+
+      const row = data.createRequest({name:"Live Parity Cancel Test",category:"birds",birdType:"pullets",item:"Any pullets",quantity:1,phone:"336-555-0199"});
+      await sleep(40);
+      let select = document.querySelector(`#customerRequests [data-req-status="${CSS.escape(row.id)}"]`);
+      let button = document.querySelector(`#customerRequests [data-req-save="${CSS.escape(row.id)}"]`);
+      check("Live-parity inbox renders the real status dropdown and Update button", !!select && !!button);
       if (select && button) {
+        const originalUpdate = data.firestoreApi.updateDoc;
+        data.firestoreApi.updateDoc = async (...args) => { await sleep(90); return originalUpdate(...args); };
         select.value = "Cancelled";
         button.click();
-        await sleep(110);
-        check("Real staging Update click changes request to Cancelled", api.load().requests.find(r=>r.id===first.id)?.status === "Cancelled", api.load().requests.find(r=>r.id===first.id)?.status || "missing");
-      }
-
-      const second = api.createRequest({name:"Async Cancel Test",category:"birds",birdType:"pullets",item:"Any pullets",quantity:1,email:"async@example.test"});
-      api.render();
-      select = document.querySelector(`#customerRequests [data-req-status="${CSS.escape(second.id)}"]`);
-      button = document.querySelector(`#customerRequests [data-req-save="${CSS.escape(second.id)}"]`);
-      if (select && button) {
-        select.value = "Cancelled";
-        const pending = updateFromControls(button, 80);
-        api.render();
-        const row = await pending;
-        check("Async status update keeps selected Cancelled value through rerender", row?.status === "Cancelled", row?.status || "missing");
-        check("Async status update persists Cancelled in staging storage", api.load().requests.find(r=>r.id===second.id)?.status === "Cancelled", api.load().requests.find(r=>r.id===second.id)?.status || "missing");
-      } else {
-        check("Async status update keeps selected Cancelled value through rerender", false, "controls missing");
-        check("Async status update persists Cancelled in staging storage", false, "controls missing");
+        ui.render();
+        await sleep(150);
+        data.firestoreApi.updateDoc = originalUpdate;
+        const saved = data.load().requests.find(r => r.id === row.id);
+        check("Exact live Update click persists Cancelled through async rerender", saved?.status === "Cancelled", saved?.status || "missing");
+        check("Live-parity owner UI visibly rerenders the request as Cancelled", document.getElementById("customerRequestOwnerBody")?.textContent?.includes("Cancelled"));
       }
     } catch (error) {
-      check("Customer Request status click regression completed without exception", false, String(error?.stack || error));
+      check("Live-parity Customer Requests regression completed without exception", false, String(error?.stack || error));
     } finally {
       if (original == null) localStorage.removeItem(KEY); else localStorage.setItem(KEY, original);
-      try { api?.render?.(); } catch {}
+      try { await window.FarmCustomerRequestsV1?.openInbox?.(); } catch {}
     }
     return results;
   }
 
-  function installRegression() {
+  function attachSuite() {
     const base = window.StagingFullTest;
-    const ready = base?.run && base.__customerRequestsV1;
-    if (!ready || base.__customerRequestStatusParityV1) {
-      setTimeout(installRegression, 160);
+    if (!parityReady || !base?.run || !base.__customerRequestsV1 || base.__customerRequestsLiveParityV1) {
+      setTimeout(attachSuite, 160);
       return;
     }
     const baseRun = base.run.bind(base);
@@ -86,22 +68,43 @@
       ...base,
       async run() {
         const first = await baseRun();
-        const extra = await runRegression();
+        const extra = await runParityChecks();
         const results = [...(first?.results || []), ...extra];
         const failed = results.filter(x => !x.pass);
-        return {...first,total:results.length,passed:results.length-failed.length,failed:failed.length,results,suite:`${first?.suite||"staging-full"}+customer-request-status-click-v1`};
+        return {...first,total:results.length,passed:results.length-failed.length,failed:failed.length,results,suite:`${first?.suite||"staging-full"}+customer-requests-live-parity-v1`};
       },
-      __customerRequestStatusParityV1:true
+      __customerRequestsLiveParityV1:true
     };
-    console.log("📨 STAGING customer request status click regression active");
+    window.dispatchEvent(new CustomEvent("staging-final-suite-changed"));
+    console.log("🪞 STAGING Customer Requests live-parity regression attached");
+  }
+
+  function loadParity() {
+    // Let the legacy staging copy finish its one-time startup timers, then remove
+    // its duplicate screen. From this point on, the visible staging screen is
+    // generated by the current live Customer Requests source.
+    document.getElementById("customerRequests")?.remove();
+    document.getElementById("customerRequestsHubBtn")?.remove();
+
+    const build = String(window.__ChickenEggsBuild || Date.now());
+    const stage = String(window.__ChickenEggsStagingBuild || Date.now());
+    const s = document.createElement("script");
+    s.src = `staging/staging-customer-requests-live-parity-v1.js?app=${encodeURIComponent(build)}&stage=${encodeURIComponent(stage)}`;
+    s.onload = () => {
+      parityReady = !!window.StagingCustomerRequestsLiveParityV1 && !!window.FarmCustomerRequestsV1;
+      attachSuite();
+      try { window.FarmCustomerRequestsV1?.render?.(); } catch {}
+      window.dispatchEvent(new CustomEvent("staging-final-suite-changed"));
+    };
+    s.onerror = () => console.error("STAGING live-parity Customer Requests script failed to load");
+    document.head.appendChild(s);
   }
 
   window.StagingCustomerRequestStatusTestV1 = {
-    version:3,
-    updateFromControls,
-    runRegression,
-    getLast:() => last ? { ...last } : null
+    version:4,
+    parityReady:()=>parityReady,
+    runRegression:runParityChecks
   };
 
-  setTimeout(installRegression, 2800);
+  setTimeout(loadParity, 2300);
 })();
