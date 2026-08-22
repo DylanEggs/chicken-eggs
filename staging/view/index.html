@@ -6,8 +6,8 @@
   <meta name="robots" content="noindex,nofollow" />
   <meta name="theme-color" content="#f7b928" />
   <title>Rose Family Poultry — Customer Preview</title>
-  <link rel="stylesheet" href="view.css?v=20260821-stage-53" />
-  <link rel="stylesheet" href="view-v2.css?v=20260821-stage-53" />
+  <link rel="stylesheet" href="view.css?v=20260821-stage-55" />
+  <link rel="stylesheet" href="view-v2.css?v=20260821-stage-55" />
 </head>
 <body>
   <div class="preview-bar">
@@ -65,19 +65,24 @@
 
   <div class="profile-modal" id="profileModal" hidden><div class="modal-backdrop" data-close-profile></div><article class="profile-sheet" role="dialog" aria-modal="true" aria-labelledby="profileName"><button type="button" class="modal-close" data-close-profile aria-label="Close chicken profile">×</button><div class="profile-photo" id="profilePhoto"><span>🐔</span></div><div class="section-kicker">Flock profile</div><h2 id="profileName">Chicken</h2><div class="profile-facts" id="profileFacts"></div><div class="profile-signoff">🐾 Certified member of the feathered production team.</div></article></div>
 
-  <div class="missing-data" id="missingData" hidden><div class="missing-card"><div class="missing-icon">🧪</div><h2>Customer preview needs staging data</h2><p>Return to the Test / Staging farm. The Customer Preview button there now prepares the isolated snapshot automatically before opening this page.</p><a href="../">Open Test / Staging Farm</a></div></div>
+  <div class="missing-data" id="missingData" hidden><div class="missing-card"><div class="missing-icon">🧪</div><h2>Customer preview needs staging data</h2><p>Return to the Test / Staging farm. The Customer Preview button there prepares the isolated snapshot automatically before opening this page.</p><a href="../">Open Test / Staging Farm</a></div></div>
 
-  <script src="../../customer-public-builder-v1.js?v=20260821-stage-53"></script>
-  <script src="../../customer-public-builder-v2.js?v=20260821-stage-53"></script>
-  <script src="../../customer-facts-v1.js?v=20260821-stage-53"></script>
-  <script src="../customer-public-data-v1.js?v=20260821-stage-53"></script>
-  <script src="../customer-public-data-v2.js?v=20260821-stage-53"></script>
-  <script src="../customer-public-bird-sales-v1.js?v=20260821-stage-53"></script>
-  <script src="view.js?v=20260821-stage-53"></script>
-  <script src="year-forecast-v1.js?v=20260821-stage-53"></script>
-  <script src="view-v2.js?v=20260821-stage-53"></script>
-  <script src="bird-sales-v1.js?v=20260821-stage-53"></script>
-  <script src="customer-requests-live-parity-v1.js?v=20260821-stage-53"></script>
-  <script src="customer-requests-ui-test-v1.js?v=20260821-stage-53"></script>
+  <script src="../../customer-public-builder-v1.js?v=20260821-stage-55"></script>
+  <script src="../../customer-public-builder-v2.js?v=20260821-stage-55"></script>
+  <script src="../../customer-facts-v1.js?v=20260821-stage-55"></script>
+  <script src="../customer-public-data-v1.js?v=20260821-stage-55"></script>
+  <script src="../customer-public-data-v2.js?v=20260821-stage-55"></script>
+  <script src="../customer-public-bird-sales-v1.js?v=20260821-stage-55"></script>
+  <script src="view.js?v=20260821-stage-55"></script>
+  <script src="year-forecast-v1.js?v=20260821-stage-55"></script>
+  <script src="view-v2.js?v=20260821-stage-55"></script>
+  <script src="bird-sales-v1.js?v=20260821-stage-55"></script>
+  <script>
+    (()=>{
+      const stage=new URLSearchParams(location.search).get("stage")||String(Date.now());
+      const load=src=>new Promise((resolve,reject)=>{const s=document.createElement("script");s.src=`${src}?v=${encodeURIComponent(stage)}&t=${Date.now()}`;s.onload=resolve;s.onerror=()=>reject(new Error(`Could not load ${src}`));document.body.appendChild(s);});
+      (async()=>{try{await load("customer-requests-live-parity-v1.js");await load("customer-requests-ui-test-v1.js");}catch(error){console.error("STAGING customer request preview boot failed:",error);}})();
+    })();
+  </script>
 </body>
 </html>
