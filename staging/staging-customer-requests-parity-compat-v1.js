@@ -28,9 +28,10 @@
     }
     function publicAvailability(kind){const s=p.readSettings(),v=s[kind]||"auto";return v==="auto"?autoAvailability(kind):MSGS[v];}
     function setAvailability(kind,value){if(!["eggs","birds"].includes(kind)||!MSGS[value])throw new Error("Invalid availability setting.");const s=p.readSettings();s[kind]=value;p.writeSettings(s);ui.render();return publicAvailability(kind);}
+    function createRequest(input){if(whole(input?.quantity)<1)throw new Error("Quantity must be at least 1.");return p.createRequest(input);}
     function updateStatus(id,status){return p.updateRequest(id,{status,updatedAt:Date.now()});}
     function render(){return ui.render();}
-    window.StagingCustomerRequestsV1={version:"live-parity",key:p.key,load:p.load,save:p.reset,createRequest:p.createRequest,updateStatus,setAvailability,publicAvailability,autoAvailability,render,statuses:p.statuses.slice(),birdTypes:{...BIRD_TYPES}};
+    window.StagingCustomerRequestsV1={version:"live-parity",key:p.key,load:p.load,save:p.reset,createRequest,updateStatus,setAvailability,publicAvailability,autoAvailability,render,statuses:p.statuses.slice(),birdTypes:{...BIRD_TYPES}};
     window.dispatchEvent(new CustomEvent("staging-final-suite-changed"));
     console.log("🪞 STAGING Customer Requests compatibility API now points to the live UI parity layer");
   }
