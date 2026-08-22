@@ -2,12 +2,19 @@
   "use strict";
   if(window.__CustomerViewV2)return;window.__CustomerViewV2=true;
   const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
+  const BRAND="Rose Family Poultry, LLC";
   function signed(v){const x=Number(v)||0;return `${x>0?"+":""}${x.toFixed(1)}%`;}
   function ensureTabs(){
     const app=document.getElementById("customerApp");if(!app||document.getElementById("customerTabs"))return;
     const tabs=document.createElement("nav");tabs.id="customerTabs";tabs.className="customer-tabs";tabs.setAttribute("aria-label","Customer farm pages");
     tabs.innerHTML='<a class="active" href="./">🏡 Farm View</a><a href="stats.html">📊 Egg Stats</a>';
     const header=app.querySelector(".site-header");header?.insertAdjacentElement("afterend",tabs);
+  }
+  function renderBranding(){
+    document.title=`${BRAND} — Customer Preview`;
+    const farm=document.getElementById("farmName");if(farm)farm.textContent=BRAND;
+    const footer=document.getElementById("footerFarmName");if(footer)footer.textContent=BRAND;
+    const loc=document.getElementById("farmLocation");if(loc&&!String(loc.textContent||"").trim())loc.textContent="High Point, NC";
   }
   function renderImpact(){
     const app=document.getElementById("customerApp");if(!app)return;
@@ -24,7 +31,7 @@
       card.innerHTML='<div class="section-kicker">🌦️ Weather + laying</div><h2>The flock is still teaching us</h2><p>We are collecting enough matching weather and laying days before calling anything a real pattern. The Stats page will fill in automatically as the history grows.</p><p class="weather-impact-note"><a href="stats.html">Open egg stats →</a></p>';
     }
   }
-  function render(){ensureTabs();renderImpact();}
-  const start=()=>{render();setTimeout(render,150);setInterval(render,15000);};
+  function render(){ensureTabs();renderBranding();renderImpact();}
+  const start=()=>{render();setTimeout(render,150);["staging-customer-data-ready","core-data-synced","farm-data-synced"].forEach(name=>window.addEventListener(name,render));};
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",start,{once:true});else start();
 })();
