@@ -13,6 +13,7 @@
     "staging-customer-requests-parity-compat-v1.js",
     "staging-customer-requests-regression-v1.js",
     "staging-customer-request-status-test-v1.js",
+    "staging-real-user-flow-regression-v1.js",
     "staging-test-memory-runner-v1.js"
   ];
 
@@ -29,6 +30,7 @@
     if(!s?.__saleEditBackV1)missing.push("sale edit/back suite");
     if(!s?.__customerRequestsV1)missing.push("customer requests suite");
     if(!s?.__customerRequestsLiveParityV1)missing.push("customer request live-parity suite");
+    if(!s?.__realUserFlowV1)missing.push("real-user click workflow suite");
     if(!window.StagingCustomerRequestStatusTestV1?.parityReady?.())missing.push("customer request status parity");
     if(window.StagingCustomerRequestsV1?.version!=="live-parity")missing.push("customer request parity API");
     if(!String(window.FarmCustomerRequestsV1?.version||"").includes("staging-parity"))missing.push("live customer request UI parity");
@@ -91,7 +93,7 @@
     btn.textContent="🧪 Run Full Sandbox Test";
     if(ready()){
       btn.title=sourceReady()?"Ready. The test will refresh LIVE Firebase again before running.":"Ready. The test will fetch LIVE Firebase read-only before running.";
-      if(!announcedReady){announcedReady=true;window.dispatchEvent(new CustomEvent("staging-final-test-ready",{detail:{selfLoading:true,selfRefreshesLiveSource:true,inMemory:true}}));console.log("✅ STAGING full sandbox suite ready");}
+      if(!announcedReady){announcedReady=true;window.dispatchEvent(new CustomEvent("staging-final-test-ready",{detail:{selfLoading:true,selfRefreshesLiveSource:true,inMemory:true,realUserFlow:true}}));console.log("✅ STAGING full sandbox suite ready");}
     }else{announcedReady=false;btn.title=lockedReason();}
   }
 
@@ -119,7 +121,7 @@
 
   for(const name of ["farm-sync-ready","core-data-synced","farm-data-synced","staging-final-suite-changed","staging-storage-overlay","staging-live-source-verified"])window.addEventListener(name,refresh);
 
-  window.StagingFinalTestReadyGateV1={version:12,ready,dataReady,suiteReady,sourceReady,sourceResult,missingModules,ensureModules,lockedReason,refresh,prepareAndRun,selfLoadsRegressionModules:true,selfRefreshesVerifiedLiveSource:true};
+  window.StagingFinalTestReadyGateV1={version:13,ready,dataReady,suiteReady,sourceReady,sourceResult,missingModules,ensureModules,lockedReason,refresh,prepareAndRun,selfLoadsRegressionModules:true,selfRefreshesVerifiedLiveSource:true,requiresRealUserFlow:true};
 
   async function start(){refresh();await ensureModules();refresh();}
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",()=>void start(),{once:true});else void start();
