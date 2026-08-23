@@ -7,6 +7,9 @@
   const CACHE = "chickenEggLocalBirdPhotosV1";
   const META = "chickenEggBirdPhotoMetaV4";
   const listeners = new Set();
+  const publicPhotos = new Map();
+  let publicHydratePromise = null;
+  let publicHydrated = false;
 
   const read = (key, fallback) => {
     try { return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback)); }
@@ -20,8 +23,11 @@
     window.dispatchEvent(new CustomEvent("bird-photos-changed", { detail:{ birdId:id, staging:true } }));
   }
   function get(id) {
-    const src = read(CACHE, {})[String(id || "")];
-    return image(src) ? src : "";
+    id = String(id || "");
+    const src = read(CACHE, {})[id];
+    if (image(src)) return src;
+    const publicSrc = publicPhotos.get(id);
+    return image(publicSrc) ? publicSrc : "";
   }
   function toJpeg(file, size=168, quality=.46) {
     return new Promise(resolve => {
@@ -65,12 +71,47 @@
     id=String(id||"");
     const cache=read(CACHE,{}), meta=read(META,{});
     delete cache[id];
+    publicPhotos.delete(id);
     meta[id]={updatedAt:Date.now(),deleted:true,sourceRank:99,stagingOnly:true};
     write(CACHE,cache); write(META,meta); notify(id);
   }
+
+  async function hydratePublicPhotosOnce() {
+    if (publicHydrated) return publicPhotos.size;
+    if (publicHydratePromise) return publicHydratePromise;
+    publicHydratePromise=(async()=>{
+      try {
+        await import("../customer-public-reader-v2.js");
+        const reader=window.FarmPublicCustomerReaderV2;
+        if(!reader?.load) return 0;
+        const snapshot=await reader.load();
+        const flock=Array.isArray(snapshot?.flock)?snapshot.flock:[];
+        let added=0;
+        for(const bird of flock){
+          const id=String(bird?.id||"");
+          const src=bird?.photo;
+          if(id && image(src)){publicPhotos.set(id,src);added++;}
+        }
+        publicHydrated=true;
+        notify("public-hydration");
+        try { window.FlockManagerV7?.render?.(); } catch {}
+        console.log(`🖼️ STAGING main flock hydrated ${added} sanitized public photos with one one-time public snapshot load`);
+        return added;
+      } catch(error) {
+        console.warn("STAGING main flock public photo hydration unavailable:",error);
+        return 0;
+      } finally {
+        publicHydratePromise=null;
+      }
+    })();
+    return publicHydratePromise;
+  }
+
   const service={
     get, saveFile, savePrepared, saveUrl, remove,
     prepareFile:file=>toJpeg(file), flush:async()=>true, ready:async()=>true,
+    hydratePublicPhotosOnce,
+    publicPhotoCount:()=>publicPhotos.size,
     subscribe(fn){ if(typeof fn==="function")listeners.add(fn); return()=>listeners.delete(fn); }
   };
   window.FarmBirdPhotosV4=service;
@@ -81,27 +122,33 @@
     const flock=read(APP,{}).flock || [];
     const cache=read(CACHE,{});
     const currentIds=new Set(flock.map(b=>String(b?.id||"")));
-    const visible=Object.keys(cache).filter(id=>currentIds.has(id) && image(cache[id])).length;
+    const visible=Array.from(currentIds).filter(id=>image(cache[id]) || image(publicPhotos.get(id))).length;
     return {
       currentFlock: flock.length,
-      cloudActive: 0,
+      cloudActive: publicPhotos.size,
       currentMatched: visible,
       orphanActive: 0,
       aliasesInUse: 0,
       recovered: [],
       unresolved: [],
       visibleNow: visible,
-      initialScanDone: true,
+      initialScanDone: publicHydrated,
       staging: true
     };
   }
   window.FarmBirdPhotoRecoveryV2={
-    scan:async()=>recoveryStats(),
+    scan:async()=>{await hydratePublicPhotosOnce();return recoveryStats();},
     stats:recoveryStats,
     // Returning null prevents storage cleanup from treating a staging-only photo
     // as a verified cloud copy and deleting it.
     getCloudRecord:()=>null
   };
 
-  console.log("🧪 STAGING photo service active — photo edits stay in sandbox");
+  // Main STAGING keeps its flock/egg test data isolated in memory. Photos are not part
+  // of that six-dataset mirror, so pull only the already-sanitized public flock photos
+  // once per page session. Nothing is copied to LIVE and no Firebase listener is opened.
+  void hydratePublicPhotosOnce();
+  window.addEventListener("farm-data-synced",()=>void hydratePublicPhotosOnce());
+
+  console.log("🧪 STAGING photo service active — photo edits stay in sandbox; public flock photos hydrate read-only once");
 })();
