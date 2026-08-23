@@ -75,3 +75,12 @@
 
   window.StagingFarmFactsV1 = {version:1, brand:BRAND, facts:FACTS.slice(), greeting, dayIndex, currentFact, nextFact, render, networkCalls:0, firebaseReads:0, firebaseWrites:0};
 })();
+
+(() => {
+  if (!window.__ChickenEggsStagingMode || window.__StagingBirdSalesInsightsLoaderV1) return;
+  window.__StagingBirdSalesInsightsLoaderV1 = true;
+  const base = document.currentScript?.src || location.href;
+  const load = path => { const s=document.createElement("script"); s.src=new URL(path,base).href + (path.includes("?")?"&":"?") + "stage=" + encodeURIComponent(window.__ChickenEggsStagingBuild || Date.now()); document.head.appendChild(s); };
+  load("staging-bird-sales-insights-v1.js");
+  load("staging-bird-sales-insights-regression-v1.js");
+})();
