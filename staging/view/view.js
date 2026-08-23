@@ -71,7 +71,7 @@
   }
 
   function renderWeather() {
-    const w = data.weather;
+    const w = data.weather || {};
     setText("weatherEmoji", w.emoji || "🌤️");
     setText("weatherTemp", w.temperature == null ? "—" : w.temperature);
     setText("weatherCondition", w.condition || "Weather unavailable");
@@ -175,7 +175,15 @@
     return data;
   }
 
-  async function hydratePublicPhotosOnce() {
+  function usablePublicWeather(w) {
+    return !!(w && typeof w === "object" && (
+      w.temperature != null || w.high != null || w.low != null ||
+      w.humidity != null || w.rainChance != null ||
+      (typeof w.condition === "string" && w.condition && w.condition !== "Weather")
+    ));
+  }
+
+  async function hydratePublicDataOnce() {
     if (publicPhotosLoaded || publicPhotosLoading) return;
     publicPhotosLoading = true;
     try {
@@ -190,13 +198,25 @@
           .map(b => [String(b.id), b.photo])
       );
       publicPhotosLoaded = true;
+
+      // The staging mirror intentionally keeps only the six authoritative farm datasets.
+      // Weather is already present in the sanitized public customer summary fetched above
+      // for photo hydration, so reuse it here with zero additional Firebase reads.
+      const publicWeather = snapshot?.summary?.weather;
+      if (data && usablePublicWeather(publicWeather)) {
+        data.weather = { ...(data.weather || {}), ...publicWeather };
+        if (snapshot?.summary?.farm?.location) data.farm.location = snapshot.summary.farm.location;
+        renderWeather();
+        setText("farmLocation", data.farm.location);
+      }
+
       if (data) {
         renderChickenOfDay();
         renderFlock();
       }
-      console.log(`🖼️ STAGING customer preview hydrated ${publicPhotoMap.size} public flock photos with a one-time read`);
+      console.log(`🖼️🌤️ STAGING customer preview hydrated ${publicPhotoMap.size} public flock photos and sanitized public weather with one read`);
     } catch (error) {
-      console.warn("STAGING customer preview photo hydration unavailable:", error);
+      console.warn("STAGING customer preview public hydration unavailable:", error);
     } finally {
       publicPhotosLoading = false;
     }
@@ -212,7 +232,7 @@
   document.addEventListener("keydown", event => { if (event.key === "Escape") closeProfile(); });
 
   window.CustomerViewStaging = {
-    version: 2,
+    version: 3,
     environment: "staging-customer-preview",
     refresh: render,
     getData: () => data,
@@ -223,5 +243,5 @@
   };
 
   render();
-  void hydratePublicPhotosOnce();
+  void hydratePublicDataOnce();
 })();
