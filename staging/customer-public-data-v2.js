@@ -6,9 +6,26 @@
   const legacy=window.StagingCustomerPublicData;
   if(!legacy?.build||!window.FarmPublicCustomerBuilderV2?.build)return;
   const PREFIX="__chicken_eggs_staging__::";
+  const PREVIEW_SESSION="chickenEggStagingCustomerPreviewV2";
   const KEYS={app2:"chickenEggApp2V1",inventory:"chickenEggInventoryV2",entries:"chickenEggEntriesV102",settings:"chickenEggSettingsV102",weather:"chickenEggWeatherIntelligenceV2",deluxe:"chickenEggDeluxeV1",photos:"chickenEggLocalBirdPhotosV1",seed:"chickenEggStagingSeedV1"};
 
-  function read(key,fallback){try{const raw=localStorage.getItem(PREFIX+key);return raw==null?fallback:JSON.parse(raw);}catch{return fallback;}}
+  let sessionValues=null;
+  function previewValues(){
+    if(sessionValues)return sessionValues;
+    try{
+      const payload=JSON.parse(sessionStorage.getItem(PREVIEW_SESSION)||"null");
+      sessionValues=payload?.values&&typeof payload.values==="object"?payload.values:{};
+    }catch{sessionValues={};}
+    return sessionValues;
+  }
+  function read(key,fallback){
+    try{
+      const staged=previewValues();
+      if(Object.prototype.hasOwnProperty.call(staged,key))return staged[key];
+      const raw=localStorage.getItem(PREFIX+key);
+      return raw==null?fallback:JSON.parse(raw);
+    }catch{return fallback;}
+  }
   function factDeck(old){const full=window.CustomerChickenFactsV1?.facts?.();return Array.isArray(full)&&full.length?full:(Array.isArray(old?.facts)?old.facts:legacy.facts?.()||[]);}
   function build(){
     const old=legacy.build();
@@ -48,6 +65,6 @@
     };
   }
 
-  window.StagingCustomerPublicData={version:2,prefix:PREFIX,build,facts:()=>factDeck(legacy.build?.()||{})};
-  console.log("🧪 Customer preview v2 active — shared sanitized stats, weather insights, and full fact deck");
+  window.StagingCustomerPublicData={version:3,prefix:PREFIX,previewSessionKey:PREVIEW_SESSION,build,facts:()=>factDeck(legacy.build?.()||{})};
+  console.log("🧪 Customer preview v3 active — navigation snapshot + shared sanitized stats + one-time public photo hydration");
 })();
