@@ -4,6 +4,8 @@
   window.__StagingCustomerPreviewGuardV1 = true;
 
   const CORE=["chickenEggApp2V1","chickenEggInventoryV2","chickenEggEntriesV102","chickenEggSettingsV102"];
+  const PREVIEW_KEYS=[...CORE,"chickenEggWeatherIntelligenceV2","chickenEggDeluxeV1"];
+  const PREVIEW_SESSION="chickenEggStagingCustomerPreviewV2";
   let opening=false;
   const hasSnapshot=()=>CORE.every(k=>{try{return localStorage.getItem(k)!==null;}catch{return false;}});
 
@@ -37,6 +39,41 @@
     }
   }
 
+  function previewValue(key){
+    try{
+      const raw=localStorage.getItem(key);
+      if(raw==null)return null;
+      const value=JSON.parse(raw);
+      if(key==="chickenEggDeluxeV1"&&value&&typeof value==="object"){
+        const compact={...value};
+        if(compact.birdPhotoUrls&&typeof compact.birdPhotoUrls==="object")compact.birdPhotoUrls={};
+        return compact;
+      }
+      return value;
+    }catch{return null;}
+  }
+
+  function preparePreviewSnapshot(r){
+    const values={};
+    for(const key of PREVIEW_KEYS){
+      const value=previewValue(key);
+      if(value!==null)values[key]=value;
+    }
+    values.chickenEggStagingSeedV1={
+      importedAt:Number(r?.at)||Date.now(),
+      source:String(r?.source||"verified-live-read-only"),
+      verified:!!r?.verified,
+      copied:Number(r?.copied)||0,
+      eligible:Number(r?.eligible)||0
+    };
+    const payload={version:2,createdAt:Date.now(),values};
+    sessionStorage.setItem(PREVIEW_SESSION,JSON.stringify(payload));
+    const parsed=JSON.parse(sessionStorage.getItem(PREVIEW_SESSION)||"{}");
+    const saved=parsed?.values||{};
+    if(!CORE.every(k=>saved[k]!=null))throw new Error("Could not prepare the isolated Customer Preview snapshot.");
+    return {ok:true,keys:Object.keys(saved).length,at:payload.createdAt};
+  }
+
   async function prepareAndOpen(link){
     if(opening)return;opening=true;
     const old=link.textContent;
@@ -46,13 +83,14 @@
       const r=await refreshSource();
       if(!r?.verified)throw new Error(r?.error||"Fresh LIVE data could not be verified for staging.");
       if(!hasSnapshot())throw new Error("The verified LIVE snapshot did not contain all required staging core datasets.");
+      preparePreviewSnapshot(r);
       const url=new URL(link.href,location.href);
       url.searchParams.set("stage",String(window.__ChickenEggsStagingBuild||Date.now()));
       url.searchParams.set("live",String(r.at||Date.now()));
       location.href=url.href;
     }catch(error){
       console.error("Could not prepare staging customer preview:",error);
-      alert(`Customer Preview did not open because TEST/STAGING could not verify fresh LIVE data. Live data was not changed.\n\n${String(error?.message||error)}`);
+      alert(`Customer Preview did not open because TEST/STAGING could not prepare fresh verified data. Live data was not changed.\n\n${String(error?.message||error)}`);
       opening=false;link.textContent=old;link.style.pointerEvents="";
     }
   }
@@ -65,6 +103,6 @@
   },true);
   for(const name of ["staging-live-source-verified","staging-live-browser-mirrored","farm-sync-ready"])window.addEventListener(name,renderMirrorBadge);
 
-  window.StagingCustomerPreviewGuardV1={version:7,hasSnapshot,sourceResult,refreshSource,renderMirrorBadge,prepareAndOpen};
+  window.StagingCustomerPreviewGuardV1={version:8,hasSnapshot,sourceResult,refreshSource,renderMirrorBadge,preparePreviewSnapshot,prepareAndOpen,previewSessionKey:PREVIEW_SESSION};
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",renderMirrorBadge,{once:true});else renderMirrorBadge();
 })();
