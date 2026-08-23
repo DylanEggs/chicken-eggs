@@ -17,8 +17,30 @@
 
     const payload=a.buildPayload();
     rows.push(check("backup schema is staging-only",payload?.schema==="rose-family-poultry-staging-business-backup-v1"&&payload?.environment==="staging",`${payload?.schema||""} / ${payload?.environment||""}`));
-    const valid=a.validatePayload(payload);
-    rows.push(check("generated backup validates",!!valid?.ok,valid?.error||`${valid?.keys?.length||0} sections`));
+
+    // The full torture suite intentionally starts from a clean memory overlay containing
+    // only the authoritative LIVE mirror. The new STAGING-only business stores can
+    // therefore be empty even though the backup tool is working correctly. When that
+    // happens, add one temporary recognized record, build a real backup, validate it,
+    // then restore the sandbox exactly to its prior state. This tests the generator and
+    // validator together without weakening validation or touching LIVE/Firebase.
+    const fixtureKey="rfpBusinessSuiteV1";
+    const fixtureBefore=localStorage.getItem(fixtureKey);
+    let validationPayload=payload;
+    let fixtureUsed=false;
+    try{
+      if(!Object.keys(payload?.data||{}).length){
+        fixtureUsed=true;
+        localStorage.setItem(fixtureKey,JSON.stringify({version:1,expenses:[],mileage:[],receipts:[],regressionFixture:true}));
+        validationPayload=a.buildPayload();
+      }
+      const valid=a.validatePayload(validationPayload);
+      rows.push(check("generated backup validates",!!valid?.ok,valid?.error||`${valid?.keys?.length||0} sections${fixtureUsed?" • isolated test fixture":""}`));
+    }finally{
+      if(fixtureBefore===null)localStorage.removeItem(fixtureKey);
+      else localStorage.setItem(fixtureKey,fixtureBefore);
+    }
+
     rows.push(check("backup size calculation works",Number(a.payloadBytes(payload))>0,String(a.payloadBytes(payload))));
 
     const bad=a.validatePayload({schema:"wrong",version:1,data:{rfpBusinessSuiteV1:{}}});
@@ -50,6 +72,6 @@
     console.log("🧪 STAGING Full Test v11 active — Business Backup regression added");
   }
 
-  window.StagingBusinessBackupRegressionV1={version:1,run};
+  window.StagingBusinessBackupRegressionV1={version:2,run};
   setTimeout(attach,1400);
 })();
