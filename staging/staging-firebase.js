@@ -11,7 +11,7 @@ if (!window.__ChickenEggsStagingFirebase) {
 
   const SEED_META="chickenEggStagingSeedV1",APP2="chickenEggApp2V1",INVENTORY="chickenEggInventoryV2",DELUXE="chickenEggDeluxeV1",BUSINESS="chickenEggBusinessV1",ENTRIES="chickenEggEntriesV102",SETTINGS="chickenEggSettingsV102";
   const REQUIRED=[APP2,INVENTORY,ENTRIES,SETTINGS];
-  let readyState=false,importPromise=null,lastLiveSourceResult=null;
+  let readyState=false,importPromise=null,lastLiveSourceResult=null,flockRepairPromise=null;
 
   const read=(key,fallback)=>{try{return JSON.parse(localStorage.getItem(key)||JSON.stringify(fallback));}catch{return fallback;}};
   function write(key,value){
@@ -37,6 +37,35 @@ if (!window.__ChickenEggsStagingFirebase) {
     if(window.StagingLocalSeedV1&&result)window.StagingLocalSeedV1.result={...result,hasLiveBrowserData:!!result.verified};
     window.dispatchEvent(new CustomEvent("staging-live-source-verified",{detail:result||{}}));
     window.dispatchEvent(new CustomEvent("staging-live-browser-mirrored",{detail:result||{}}));
+  }
+
+  async function ensureFlockIfMissing(){
+    const current=read(APP2,{}),currentFlock=Array.isArray(current?.flock)?current.flock:[];
+    if(currentFlock.length)return {loaded:false,count:currentFlock.length,source:"staging-copy"};
+    if(flockRepairPromise)return flockRepairPromise;
+    flockRepairPromise=(async()=>{
+      try{
+        setStatus("STAGING • loading flock profiles from LIVE read-only source…");
+        await ensureAuth();
+        const snap=await getDoc(doc(db,"entries","farm_app_2_v1"));
+        if(!snap.exists())throw new Error("LIVE Firebase is missing farm_app_2_v1.");
+        const liveApp=snap.data()?.farmApp2||{};
+        const flock=Array.isArray(liveApp?.flock)?liveApp.flock:[];
+        if(!flock.length)throw new Error("LIVE flock profile list is empty.");
+        write(APP2,liveApp);
+        refreshAppMemory();
+        window.dispatchEvent(new CustomEvent("farm-data-synced",{detail:{staging:true,flockRepair:true,firebaseReadOnly:true,count:flock.length}}));
+        window.dispatchEvent(new CustomEvent("farm-sync-ready",{detail:{staging:true,flockRepair:true,firebaseReadOnly:true,count:flock.length}}));
+        setStatus(`STAGING • flock loaded • ${flock.length} profiles • 1 read-only Firebase document`);
+        console.log(`🐔 STAGING restored ${flock.length} flock profiles with one targeted read-only Firebase document read`);
+        return {loaded:true,count:flock.length,source:"firebase-one-doc-read-only"};
+      }catch(error){
+        console.warn("STAGING targeted flock load unavailable:",error);
+        setStatus("STAGING • flock load unavailable — LIVE data unchanged");
+        return {loaded:false,count:0,error:String(error?.message||error)};
+      }finally{flockRepairPromise=null;}
+    })();
+    return flockRepairPromise;
   }
 
   function localReady(){
@@ -131,11 +160,11 @@ if (!window.__ChickenEggsStagingFirebase) {
   async function refreshFromLiveApp(){return importLiveFirebaseSnapshot();}
   async function localSync(){readyState=true;unlockSandbox();setStatus("STAGING • isolated memory sandbox saved");window.dispatchEvent(new CustomEvent("farm-data-synced",{detail:{staging:true,localOnly:true,inMemory:true}}));return true;}
 
-  window.FarmSyncSafety={ready:localReady,isReady:()=>readyState,refresh:localSync,getDirtyKeys:()=>[],version:"STAGING-READONLY-LIVE-FIREBASE-MEMORY-3"};
+  window.FarmSyncSafety={ready:localReady,isReady:()=>readyState,refresh:localSync,getDirtyKeys:()=>[],version:"STAGING-READONLY-LIVE-FIREBASE-MEMORY-4"};
   window.EggSyncAuthorityReady=localReady;
   window.syncFarmNow=localSync;
   window.refreshCoreFromFirebase=localSync;
-  window.StagingSandbox={environment:"staging",liveFirebaseAccess:"READ ONLY — explicit refresh reads authoritative LIVE Firebase and keeps the TEST copy only in the staging memory sandbox",resetFromLive:refreshFromLiveApp,resetFromCloud:importLiveFirebaseSnapshot,mirrorLiveBrowser,liveSourceResult:()=>lastLiveSourceResult||window.__StagingLiveSourceResult||null,seedInfo:()=>read(SEED_META,null)};
+  window.StagingSandbox={environment:"staging",liveFirebaseAccess:"READ ONLY — explicit refresh reads authoritative LIVE Firebase and keeps the TEST copy only in the staging memory sandbox",resetFromLive:refreshFromLiveApp,resetFromCloud:importLiveFirebaseSnapshot,ensureFlockIfMissing,mirrorLiveBrowser,liveSourceResult:()=>lastLiveSourceResult||window.__StagingLiveSourceResult||null,seedInfo:()=>read(SEED_META,null)};
 
-  void localReady();
+  void localReady().then(()=>ensureFlockIfMissing());
 }
