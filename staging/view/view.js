@@ -15,6 +15,7 @@
 
   const $ = id => document.getElementById(id);
   const esc = value => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
+  const isBiscuit = bird => String(bird?.name || "").trim().toLowerCase() === "biscuit";
   const resolvedPhoto = bird => {
     const direct = typeof bird?.photo === "string" ? bird.photo : "";
     if (direct) return direct;
@@ -22,8 +23,11 @@
   };
   const photoHtml = (bird, className = "") => {
     const photo = resolvedPhoto(bird);
+    const biscuitStyle = isBiscuit(bird)
+      ? ' style="object-fit:contain;object-position:center;background:#edf7ee;padding:7px"'
+      : "";
     return photo
-      ? `<img class="${className}" src="${esc(photo)}" alt="${esc(bird?.name || "Chicken")}">`
+      ? `<img class="${className}" src="${esc(photo)}" alt="${esc(bird?.name || "Chicken")}"${biscuitStyle}>`
       : `<span aria-hidden="true">${["Rooster","Cockerel"].includes(bird?.sex) ? "🐓" : "🐔"}</span>`;
   };
 
@@ -199,9 +203,6 @@
       );
       publicPhotosLoaded = true;
 
-      // The staging mirror intentionally keeps only the six authoritative farm datasets.
-      // Weather is already present in the sanitized public customer summary fetched above
-      // for photo hydration, so reuse it here with zero additional Firebase reads.
       const publicWeather = snapshot?.summary?.weather;
       if (data && usablePublicWeather(publicWeather)) {
         data.weather = { ...(data.weather || {}), ...publicWeather };
@@ -232,7 +233,7 @@
   document.addEventListener("keydown", event => { if (event.key === "Escape") closeProfile(); });
 
   window.CustomerViewStaging = {
-    version: 3,
+    version: 4,
     environment: "staging-customer-preview",
     refresh: render,
     getData: () => data,
