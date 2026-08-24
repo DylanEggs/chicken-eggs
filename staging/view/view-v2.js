@@ -55,6 +55,13 @@
     const today=todayKey();const values=Object.entries(map).filter(([d,v])=>d<today&&finite(v)).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,10).map(([,v])=>Number(v));
     return values.length?median(values):null;
   }
+  function weatherSimilarity(row,temp,kind){
+    const delta=temp==null||!finite(row?.temp)?99:Math.abs(Number(row.temp)-Number(temp));
+    const sameKind=row?.kind===kind;
+    const kindScore=sameKind?60:0;
+    const tempScore=Math.max(0,40-Math.min(40,delta*4));
+    return {score:kindScore+tempScore,delta,sameKind};
+  }
   function matchedPrediction(data={}){
     const entries=read(ENTRY_KEY,[]),weather=read(WEATHER_KEY,{}),map=eggMap(entries),history=weather?.history&&typeof weather.history==="object"?weather.history:{};
     const temp=todayTemp(data),band=temp==null?null:tempBand(temp),kind=todayKind(data),base=recentBaseline(map)||Number(data?.production?.dailyPace)||0;
@@ -62,13 +69,18 @@
     for(const [date,w] of Object.entries(history)){
       if(!map[date]||!finite(w?.max))continue;
       const local=localBaseline(date,map);if(!local||local<=0)continue;
-      rows.push({date,band:tempBand(w.max),kind:historicalKind(w),ratio:Math.max(.5,Math.min(1.5,map[date]/local))});
+      const row={date,temp:Number(w.max),band:tempBand(w.max),kind:historicalKind(w),ratio:Math.max(.5,Math.min(1.5,map[date]/local))};
+      Object.assign(row,weatherSimilarity(row,temp,kind));
+      rows.push(row);
     }
-    let matches=band?rows.filter(r=>r.band===band&&r.kind===kind):[];
-    let matchLabel=band?`${band} + ${kind}`:kind;
-    let confidence="Strong match";
-    if(matches.length<4&&band){matches=rows.filter(r=>r.band===band);matchLabel=`${band} days`;confidence="Broader weather match";}
-    if(matches.length<4){matches=rows.filter(r=>r.kind===kind);matchLabel=`${kind} days`;confidence="Broader weather match";}
+    let matches=temp==null?rows.filter(r=>r.kind===kind):rows.filter(r=>r.sameKind&&r.delta<=6);
+    let matchLabel=temp==null?`${kind} days`:`${kind} days within 6°F`;
+    let confidence="Strong weather match";
+    if(matches.length<4&&temp!=null){matches=rows.filter(r=>r.sameKind&&r.delta<=12);matchLabel=`${kind} days within 12°F`;confidence="Good weather match";}
+    if(matches.length<4&&band){matches=rows.filter(r=>r.band===band&&r.kind===kind);matchLabel=`${band} + ${kind}`;confidence="Broader weather match";}
+    if(matches.length<4&&band){matches=rows.filter(r=>r.band===band);matchLabel=`${band} days`;confidence="Broader temperature match";}
+    if(matches.length<4){matches=rows.filter(r=>r.kind===kind);matchLabel=`${kind} days`;confidence="Broader sky-condition match";}
+    matches=matches.slice().sort((a,b)=>b.score-a.score||a.delta-b.delta||String(b.date).localeCompare(String(a.date))).slice(0,18);
     if(matches.length<4||!base){
       const pace=Math.max(0,Number(data?.production?.dailyPace)||base||0),low=Math.max(0,Math.round(pace*.85)),high=Math.max(low,Math.round(pace*1.15));
       return {low,high,samples:matches.length,kind,band,matchLabel:"recent flock pace",confidence:"Still learning similar weather",exact:false};
@@ -116,5 +128,5 @@
   function render(){ensureTabs();renderBranding();renderImpact();renderEggTrail();}
   const start=()=>{render();setTimeout(render,180);["staging-customer-data-ready","core-data-synced","farm-data-synced"].forEach(name=>window.addEventListener(name,render));};
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",start,{once:true});else start();
-  window.CustomerViewWeatherMatchV1={matchedPrediction,tempBand,historicalKind,todayKind,eggMap,networkCalls:0,firebaseReads:0,firebaseWrites:0};
+  window.CustomerViewWeatherMatchV1={matchedPrediction,weatherSimilarity,tempBand,historicalKind,todayKind,eggMap,networkCalls:0,firebaseReads:0,firebaseWrites:0};
 })();
