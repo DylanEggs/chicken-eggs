@@ -39,6 +39,7 @@
 
     source = source
       .replace('load("sale-edit-back-v1.js");', '')
+      .replace('load("receipts-expenses-v1.js");', '')
       .replace('load("bird-photo-service-v4.js");', 'load("staging/staging-photo-service.js");')
       .replace('load("bird-photo-recovery-v2.js");', '')
       .replace('load("flock-manager-v7.js");', 'load("flock-manager-v7.js");\n  load("bird-sales-v1.js");')
@@ -53,6 +54,7 @@
 
     if (source.includes('load("storage-health-v1.js")')) throw new Error("Live storage health remained in staging");
     if (!source.includes('load("staging/staging-storage-health-v1.js")')) throw new Error("Staging-safe storage health was not injected");
+    if (source.includes('load("receipts-expenses-v1.js")')) throw new Error("Live receipts module remained duplicated in staging");
     if (source.includes('load("staging/staging-customer-requests-owner-v1.js")')) throw new Error("Old homemade staging Customer Requests UI remained loaded");
     if (source.includes('load("customer-requests-owner-v1.js")')) throw new Error("Live Customer Requests owner module remained directly connected in staging");
     if (source.includes('load("sale-edit-back-v1.js")')) throw new Error("Live sale edit back module remained in staging");
