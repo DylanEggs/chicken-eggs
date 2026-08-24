@@ -12,20 +12,22 @@
   let publicHydratePromise = null;
   let publicHydrated = false;
 
-  // High-quality but storage-conscious profile. Most iPhone photos should remain
-  // at 480x480 / 82% JPEG. Only unusually detailed images step down enough to
-  // keep the per-photo payload reasonable.
+  // Full-frame high-quality test profile. Do not square-crop chicken portraits.
+  // Staging edits stay memory-only, so we can test genuinely sharp images without
+  // bloating localStorage or touching LIVE. The final step remains comfortably
+  // below a Firestore document-sized payload if this profile is later promoted.
   const PHOTO_PROFILE = Object.freeze({
-    targetSize:480,
-    targetQuality:.82,
-    maxDataUrlChars:90000,
+    targetMaxEdge:1280,
+    targetQuality:.92,
+    maxDataUrlChars:700000,
+    cropMode:"none",
     steps:Object.freeze([
-      Object.freeze({size:480,quality:.82}),
-      Object.freeze({size:480,quality:.76}),
-      Object.freeze({size:440,quality:.74}),
-      Object.freeze({size:400,quality:.72}),
-      Object.freeze({size:360,quality:.70}),
-      Object.freeze({size:340,quality:.64})
+      Object.freeze({maxEdge:1280,quality:.92}),
+      Object.freeze({maxEdge:1200,quality:.90}),
+      Object.freeze({maxEdge:1080,quality:.89}),
+      Object.freeze({maxEdge:960,quality:.88}),
+      Object.freeze({maxEdge:840,quality:.86}),
+      Object.freeze({maxEdge:720,quality:.84})
     ])
   });
 
@@ -39,6 +41,40 @@
     return image(src) ? src : "";
   };
 
+  function installDisplayCss() {
+    if (document.getElementById("stagingSharpPhotoDisplayV1")) return;
+    const style=document.createElement("style");
+    style.id="stagingSharpPhotoDisplayV1";
+    style.textContent=`
+      .farm-flock-photo-v7,
+      #farm2BirdPhotoPreviewV7 img,
+      .xphoto img{
+        object-fit:contain!important;
+        object-position:center center!important;
+        background:rgba(31,122,58,.08)!important;
+      }
+      .farm-flock-photo-v7{
+        width:104px!important;
+        height:118px!important;
+      }
+      #farm2BirdPhotoPreviewV7{
+        width:96px!important;
+        height:112px!important;
+      }
+      .xphoto img,.xphoto .xph{
+        width:112px!important;
+        height:132px!important;
+        flex:0 0 auto!important;
+      }
+      @media(max-width:430px){
+        .farm-flock-photo-v7{width:98px!important;height:112px!important}
+        .xphoto img,.xphoto .xph{width:104px!important;height:124px!important}
+      }
+    `;
+    document.head.appendChild(style);
+  }
+  installDisplayCss();
+
   function notify(id) {
     for (const fn of listeners) { try { fn({ birdId:id, staging:true }); } catch {} }
     window.dispatchEvent(new CustomEvent("bird-photos-changed", { detail:{ birdId:id, staging:true } }));
@@ -47,35 +83,38 @@
   function get(id) {
     id = String(id || "");
     if (!id || removedPhotos.has(id)) return "";
+
+    // A freshly selected STAGING photo always wins.
     const staged = testPhotos.get(id);
     if (image(staged)) return staged;
 
-    // Preserve compatibility with any tiny staging photo left from an older build,
-    // but never depend on the persistent cache for new high-quality test uploads.
-    const legacyStage = read(CACHE, {})[id];
-    if (image(legacyStage)) return legacyStage;
-
-    // Best zero-read fallback on the same device: the LIVE browser photo cache was
-    // captured before staging localStorage isolation was installed.
+    // Prefer the current same-device LIVE/public sources over an old tiny staging
+    // thumbnail so stale 168px test copies cannot make the new UI look blurry.
     const liveLocal = liveBrowserPhoto(id);
     if (liveLocal) return liveLocal;
 
-    // Final fallback is the already-sanitized public Customer View snapshot.
     const publicSrc = publicPhotos.get(id);
-    return image(publicSrc) ? publicSrc : "";
+    if (image(publicSrc)) return publicSrc;
+
+    // Last-resort compatibility only for an older staging-only photo.
+    const legacyStage = read(CACHE, {})[id];
+    return image(legacyStage) ? legacyStage : "";
   }
 
-  function encodeSquare(img, size, quality) {
+  function encodePhoto(img, maxEdge, quality) {
     const w=img.naturalWidth||img.width, h=img.naturalHeight||img.height;
     if (!w || !h) return "";
-    const side=Math.min(w,h), sx=Math.max(0,(w-side)/2), sy=Math.max(0,(h-side)/2);
+    const scale=Math.min(1,Number(maxEdge||1280)/Math.max(w,h));
+    const width=Math.max(1,Math.round(w*scale));
+    const height=Math.max(1,Math.round(h*scale));
     const canvas=document.createElement("canvas");
-    canvas.width=size; canvas.height=size;
+    canvas.width=width;
+    canvas.height=height;
     const ctx=canvas.getContext("2d",{alpha:false});
     if (!ctx) return "";
     ctx.imageSmoothingEnabled=true;
     try { ctx.imageSmoothingQuality="high"; } catch {}
-    ctx.drawImage(img,sx,sy,side,side,0,0,size,size);
+    ctx.drawImage(img,0,0,w,h,0,0,width,height);
     return canvas.toDataURL("image/jpeg",quality);
   }
 
@@ -90,7 +129,7 @@
         try {
           let best="";
           for (const step of PHOTO_PROFILE.steps) {
-            const out=encodeSquare(img,step.size,step.quality);
+            const out=encodePhoto(img,step.maxEdge,step.quality);
             if (!out) continue;
             best=out;
             if (out.length<=PHOTO_PROFILE.maxDataUrlChars) break;
@@ -108,9 +147,8 @@
     id=String(id||"");
     if (!id || !image(src)) return {saved:false,synced:false};
 
-    // High-quality staging uploads are intentionally MEMORY ONLY. The staging
-    // storage sandbox protects LIVE by compacting large photo caches, so persisting
-    // 480px data URLs there can make later photos disappear. Memory avoids that.
+    // High-quality staging uploads are MEMORY ONLY. This gives a true visual test
+    // of the better photo profile without adding Firebase traffic or local quota risk.
     testPhotos.set(id,src);
     removedPhotos.delete(id);
     notify(id);
@@ -213,19 +251,14 @@
   window.FarmBirdPhotoRecoveryV2={
     scan:async()=>{await hydratePublicPhotosOnce();return recoveryStats();},
     stats:recoveryStats,
-    // Returning null prevents storage cleanup from treating a staging-only photo
-    // as a verified cloud copy and deleting it.
     getCloudRecord:()=>null
   };
 
-  // Pull only the already-sanitized public snapshot once. Same-device LIVE photos
-  // are available from the zero-write pre-storage memory capture. No Firebase
-  // listener or direct photo query is opened by this STAGING service.
   void hydratePublicPhotosOnce();
   window.addEventListener("farm-data-synced",()=>void hydratePublicPhotosOnce());
   window.addEventListener("staging-live-source-verified",event=>{
     if(event?.detail?.verified) clearTestPhotoEdits();
   });
 
-  console.log("🧪 STAGING photo service active — sharp 480px uploads stay memory-only; LIVE photo fallbacks are read-only");
+  console.log("🧪 STAGING photo service active — full-frame portrait uploads up to 1280px stay memory-only; no square crop; LIVE fallbacks read-only");
 })();
