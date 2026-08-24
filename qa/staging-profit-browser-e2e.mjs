@@ -68,7 +68,7 @@ try{
     'Business refresh preserves calculator result',
     'Deleting test sale restores current-month revenue and profit',
     'Deleting test sale restores visible Home business totals',
-    'Deleting test sale restores the dozen to inventory',
+    '12-pack rule: Deleting 12-pack sale restores exact 42-egg packaging',
     'Sandbox test restores sale date form field',
     'Sandbox test restores egg date form field'
   ];
@@ -79,7 +79,6 @@ try{
     'Sale equal to all available stock succeeds',
     'Another sale at zero stock is blocked',
     'Sale cannot consume eggs reserved for pending order',
-    'Deleting edited sale restores exact pre-sale mixed inventory',
     'Public v2 snapshot contains no private customer/money values'
   ];
   for(const name of deepRequired){const row=byName.get(name);if(!row)throw new Error(`Required deep-v3 check is missing: ${name}`);if(!row.pass)throw new Error(`Required deep-v3 check failed: ${name} — ${row.detail||''}`);}

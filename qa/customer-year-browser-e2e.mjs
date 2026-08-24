@@ -28,13 +28,18 @@ try{
 
   const result=await customer.evaluate(()=>{
     const calc=window.CustomerYearForecastV1.calculate(),card=document.getElementById('yearForecastCard'),value=document.getElementById('yearForecast')?.textContent?.trim()||'';
-    const visibleFields=[...document.querySelectorAll('input,textarea,select')].filter(el=>{const sec=el.closest('#customerRequestSection');return !sec||sec.hidden===false;}).length;
-    return {calc,value,visible:!!card&&getComputedStyle(card).display!=='none',label:/predicted this year/i.test(card?.innerText||''),visibleFields,firestoreExposed:!!window.FirestoreDB,firebaseUserExposed:!!window.FirebaseUser};
+    const fields=[...document.querySelectorAll('input,textarea,select')];
+    const requestSection=document.getElementById('customerRequestSection');
+    const visible=el=>el.getClientRects().length>0&&getComputedStyle(el).visibility!=='hidden';
+    const requestFields=fields.filter(el=>el.closest('#customerRequestSection')&&visible(el)).length;
+    const nonRequestFields=fields.filter(el=>!el.closest('#customerRequestSection')&&visible(el)).length;
+    return {calc,value,visible:!!card&&getComputedStyle(card).display!=='none',label:/predicted this year/i.test(card?.innerText||''),requestVisible:requestSection?.hidden===false,requestFields,nonRequestFields,requestSendVisible:document.getElementById('reqPubSend')?.getClientRects().length>0,firestoreExposed:!!window.FirestoreDB,firebaseUserExposed:!!window.FirebaseUser};
   });
   if(!result.visible||!result.label)throw new Error('Year forecast card is missing');
   if(Number(result.value)!==result.calc.predictedYear)throw new Error(`Year forecast UI mismatch ${result.value} != ${result.calc.predictedYear}`);
   if(result.calc.predictedYear<result.calc.yearCollected||result.calc.yearCollected<=0)throw new Error('Year forecast did not include mirrored year-to-date collections');
-  if(result.visibleFields!==0)throw new Error('Customer page has visible editable fields while request form is disabled');
+  if(result.nonRequestFields!==0)throw new Error('Customer page exposed editable fields outside the request form');
+  if(!result.requestVisible||result.requestFields<7||!result.requestSendVisible)throw new Error(`Customer request form is not visibly ready: ${JSON.stringify(result)}`);
   if(result.firestoreExposed||result.firebaseUserExposed)throw new Error('Customer page exposed private Firebase handles');
   const serious=[...errors,...customerErrors].filter(x=>!/favicon|ResizeObserver/i.test(x));if(serious.length)throw new Error(`Browser errors: ${serious.slice(0,4).join(' | ')}`);
   console.log(`PASS Customer yearly forecast browser E2E — verified LIVE mirror; ${result.calc.yearCollected} collected YTD; ${result.calc.predictedYear} predicted`);

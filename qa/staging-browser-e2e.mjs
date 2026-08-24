@@ -69,8 +69,8 @@ try{
   if(safety.environment!=='staging'||safety.readOnly!==true||safety.firestoreExposed||safety.firebaseUserExposed)throw new Error('Staging safety boundary failed');
   if(!safety.mirror?.verified||!safety.mirror?.coreVerified||safety.mirror?.skipped!==0||safety.mirror?.mismatchedKeys?.length)throw new Error(`LIVE browser mirror did not verify: ${JSON.stringify(safety.mirror)}`);
   if(!safety.seed?.completed||!safety.testReady)throw new Error('Staging did not reach verified ready state');
-  if(!/LIVE mirror verified/i.test(safety.mirrorBadge)||!/0 Firebase reads/i.test(safety.mirrorBadge))throw new Error(`Mirror proof badge missing: ${safety.mirrorBadge}`);
-  if(safety.syncVersion!=='STAGING-LIVE-BROWSER-MIRROR-6')throw new Error(`Unexpected staging sync version: ${safety.syncVersion}`);
+  if(!/LIVE (?:copy|mirror) verified/i.test(safety.mirrorBadge)||!/zero Firebase reads/i.test(safety.seed?.source||''))throw new Error(`Mirror proof is stale: ${JSON.stringify({badge:safety.mirrorBadge,source:safety.seed?.source||''})}`);
+  if(safety.syncVersion!=='STAGING-READONLY-LIVE-FIREBASE-MEMORY-4')throw new Error(`Unexpected staging sync version: ${safety.syncVersion}`);
 
   const mirrorExact=await page.evaluate(()=>{
     const prefix='__chicken_eggs_staging__::';

@@ -6,10 +6,18 @@ const base='https://dylaneggs.github.io/chicken-eggs/staging/';
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 
 async function fetchText(file){
-  const join=file.includes('?')?'&':'?';
-  const r=await fetch(`${base}${file}${join}qa=${Date.now()}-${Math.random().toString(36).slice(2)}`,{cache:'no-store',headers:{'cache-control':'no-cache'}});
-  if(!r.ok)throw new Error(`${file} returned HTTP ${r.status}`);
-  return r.text();
+  let lastError=null;
+  for(let attempt=1;attempt<=5;attempt++){
+    try{
+      const join=file.includes('?')?'&':'?';
+      const r=await fetch(`${base}${file}${join}qa=${Date.now()}-${Math.random().toString(36).slice(2)}`,{cache:'no-store',headers:{'cache-control':'no-cache'}});
+      if(r.ok)return r.text();
+      lastError=new Error(`${file} returned HTTP ${r.status}`);
+      if(r.status<500)break;
+    }catch(error){lastError=error;}
+    await sleep(1200);
+  }
+  throw lastError||new Error(`${file} could not be loaded`);
 }
 
 (async()=>{

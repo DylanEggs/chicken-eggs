@@ -28,7 +28,7 @@ try{
     return {mirror,changed,restoredEntries:localStorage.getItem('chickenEggEntriesV102')===beforeEntries,restoredApp:localStorage.getItem('chickenEggApp2V1')===beforeApp,saved:!!saved?.saved,fullButton:!!document.getElementById('stagingRunFullTest'),refreshButton:!!document.getElementById('stagingRefreshLive'),saveButton:!!document.getElementById('stagingSaveBaseline'),restoreButton:!!document.getElementById('stagingRestoreBaseline'),firestoreExposed:!!window.FirestoreDB,firebaseUserExposed:!!window.FirebaseUser,badge:document.getElementById('stagingLiveMirrorState')?.textContent||''};
   });
   console.log('MANUAL STAGING CONTROLS',JSON.stringify(baseline));
-  if(!baseline.mirror?.verified||!/LIVE mirror verified/i.test(baseline.badge))throw new Error('Manual controls did not start from verified LIVE mirror');
+  if(!baseline.mirror?.verified||!/LIVE (?:copy|mirror) verified/i.test(baseline.badge))throw new Error('Manual controls did not start from verified LIVE data');
   if(!baseline.saved||!baseline.changed||!baseline.restoredEntries||!baseline.restoredApp)throw new Error('Manual staging save/restore baseline failed in browser');
   if(!baseline.fullButton||!baseline.refreshButton||!baseline.saveButton||!baseline.restoreButton)throw new Error('One or more manual staging buttons are missing');
   if(baseline.firestoreExposed||baseline.firebaseUserExposed)throw new Error('Manual staging exposed live Firebase handles');
