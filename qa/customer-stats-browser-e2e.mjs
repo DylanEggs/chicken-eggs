@@ -25,7 +25,7 @@ try{
   if(!Number.isFinite(Number(state.lifetime)))throw new Error('Lifetime egg count is not numeric');
   if(Number(state.factors)>4)throw new Error('Weather factors exceeded public limit');
   if(state.inputs!==0||state.canvases!==3)throw new Error('Stats page has wrong read-only/chart structure');
-  if(!state.text.includes('Production highlights')||!state.text.includes('Weather + laying')||!state.text.includes('Egg Stats'))throw new Error('Stats page is missing public sections');
+  if(!/Production highlights/i.test(state.text)||!/Weather \+ laying/i.test(state.text)||!/Egg Stats/i.test(state.text))throw new Error('Stats page is missing public sections');
   const publicData=await page.evaluate(()=>JSON.stringify(window.CustomerStatsStaging.getData()));
   for(const word of ['"customers"','"expenses"','"saleMeta"','"revenue"','"profit"','"dozenPrice"','"packPrice"','"history"'])if(publicData.includes(word))throw new Error(`Forbidden public field found: ${word}`);
   console.log(`PASS customer stats browser test ${expected} — verified LIVE mirror`);

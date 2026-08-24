@@ -12,6 +12,7 @@ const firebase=read('staging/staging-firebase.js');
 const database=read('staging/staging-database.js');
 const photos=read('staging/staging-photo-service.js');
 const app2=read('staging/staging-app2.js');
+const backupParity=read('staging/staging-audit-finish-parity-v1.js');
 const banner=read('staging/staging-banner.js');
 const previewGuard=read('staging/staging-customer-preview-guard-v1.js');
 const requestParity=read('staging/staging-customer-requests-live-parity-v1.js');
@@ -51,6 +52,8 @@ check('Staging app2 removes live photo recovery',app2.includes('.replace(\'load(
 check('Staging app2 removes real customer owner auth',app2.includes('.replace(\'load("public-customer-owner-auth-v1.js");\', \'\')'));
 check('Staging app2 removes real customer publisher',app2.includes('.replace(\'load("public-customer-publisher-v1.js");\', \'\')'));
 check('Staging app2 removes real customer sync UI',app2.includes('.replace(\'load("public-customer-sync-ui-v1.js");\', \'\')'));
+check('Staging app2 replaces live backup restore with the parity candidate',app2.includes('load("staging/staging-audit-finish-parity-v1.js")')&&app2.includes('Live backup restore module remained directly loaded in staging'));
+check('Staging backup candidate orders App2, entries and exact inventory restore safely',backupParity.includes('__reloadFarm2Memory')&&backupParity.indexOf('localStorage.setItem(E')<backupParity.indexOf('await restoreInventory')&&backupParity.includes('__inventoryRestoreV6=true'));
 check('Staging app2 rejects old homemade Customer Requests UI',app2.includes('Old homemade staging Customer Requests UI remained loaded'));
 check('Staging app2 injects live-parity Customer Requests layer',app2.includes('staging/staging-customer-requests-live-parity-v1.js'));
 check('Staging app2 loads bird-sales manager through sandboxed runtime',app2.includes('load("bird-sales-v1.js")'));
