@@ -59,6 +59,7 @@ async function coherentBuild() {
     'storage-health-v1.js',
     'inventory-system-v6.js',
     'business-lifetime-v1.js',
+    'receipts-expenses-v1.js',
     'extras-dashboard.js',
     'extras-dashboard-legacy-v1.js',
     'inventory.js',
@@ -126,6 +127,15 @@ async function coherentBuild() {
   if (loaded['business-lifetime-v1.js'].includes('bizLifetimeHome')) throw new Error('Live lifetime financial card still targets Home');
   if (!loaded['business-lifetime-v1.js'].includes('net: revenue - costs')) throw new Error('Live lifetime profit/loss calculation is missing');
   if (loaded['business-lifetime-v1.js'].includes('MutationObserver') || loaded['business-lifetime-v1.js'].includes('setInterval(')) throw new Error('Live lifetime financials use obsolete polling/observer rendering');
+
+  const receipts = loaded['receipts-expenses-v1.js'];
+  if (!loaded['app2.js'].includes('load("receipts-expenses-v1.js")')) throw new Error('Live app2.js is missing simplified Receipts & Expenses');
+  if (!receipts.includes('Receipts & Expenses') || !receipts.includes('const APP2 = "chickenEggApp2V1"') || !receipts.includes('const BUSINESS = "chickenEggBusinessV1"')) throw new Error('Live Receipts & Expenses is not wired to authoritative farm datasets');
+  if (!receipts.includes('Array.isArray(app2.expenses)') || !receipts.includes('net: revenue - expenses')) throw new Error('Live Receipts & Expenses does not use the Home expense source for profit/loss');
+  if (!receipts.includes('write(APP2, next)') || !receipts.includes('write(BUSINESS, next)')) throw new Error('Live Receipts & Expenses persistence paths are incomplete');
+  if (!receipts.includes('...b,') || !receipts.includes('receipts: [...b.receipts, receipt]')) throw new Error('Live receipt save may overwrite existing business data');
+  if (/(firebase-firestore|setDoc\(|addDoc\(|updateDoc\(|deleteDoc\(|getDoc\(|fetch\(|XMLHttpRequest)/.test(receipts)) throw new Error('Live Receipts & Expenses bypasses the protected farm sync path');
+
   if (!loaded['app2.js'].includes('load("inventory-system-v6.js")')) throw new Error('Live app2.js is missing InventorySystemV6');
   if (loaded['app2.js'].includes('load("core-inventory-authority-v3.js")')) throw new Error('Live app2.js still loads old inventory authority');
   if (!loaded['inventory.js'].includes('__legacyInventoryRuntimeRetired = true')) throw new Error('Live legacy inventory.js is not retired');
