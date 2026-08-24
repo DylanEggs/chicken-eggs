@@ -31,7 +31,7 @@
 
   async function waitBuilder(timeout=8000){
     const start=Date.now();
-    while(Date.now()-start<timeout){if(window.FarmPublicCustomerBuilderV2?.build||window.FarmPublicCustomerBuilderV1?.build)return true;await new Promise(r=>setTimeout(r,50));}
+    while(Date.now()-start<timeout){if(window.FarmPublicCustomerBuilderV4?.build||window.FarmPublicCustomerBuilderV3?.build||window.FarmPublicCustomerBuilderV2?.build||window.FarmPublicCustomerBuilderV1?.build)return true;await new Promise(r=>setTimeout(r,50));}
     return false;
   }
   async function firestoreApi(){
@@ -68,7 +68,7 @@
     return user&&!user.isAnonymous&&String(user.uid||"")===OWNER_UID&&window.FirestoreDB?{user,db:window.FirestoreDB,source:"farm-owner-current"}:null;
   }
   function build(){
-    const builder=window.FarmPublicCustomerBuilderV2||window.FarmPublicCustomerBuilderV1;
+    const builder=window.FarmPublicCustomerBuilderV4||window.FarmPublicCustomerBuilderV3||window.FarmPublicCustomerBuilderV2||window.FarmPublicCustomerBuilderV1;
     if(!builder?.build)throw new Error("Public customer builder is not ready");
     return builder.build({
       app2:read(KEYS.app2,{}),inventory:read(KEYS.inventory,{}),entries:read(KEYS.entries,[]),settings:read(KEYS.settings,{}),weather:read(KEYS.weather,{}),deluxe:read(KEYS.deluxe,{}),photoResolver
@@ -205,6 +205,6 @@
     if(mainReady())maybeRepairSoon();
   }
 
-  window.FarmPublicCustomerPublisherV1={version:6,publishNow,schedule,repairCustomerPhotos,buildPreview:build,last:()=>lastResult,ownerUid:()=>OWNER_UID};
+  window.FarmPublicCustomerPublisherV1={version:7,publishNow,schedule,repairCustomerPhotos,buildPreview:build,last:()=>lastResult,ownerUid:()=>OWNER_UID};
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",install,{once:true});else install();
 })();
