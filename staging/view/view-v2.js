@@ -63,6 +63,8 @@
     return {score:kindScore+tempScore,delta,sameKind};
   }
   function matchedPrediction(data={}){
+    const safe=data?.customerStory?.todayMatch;
+    if(safe&&finite(safe.low)&&finite(safe.high))return {...safe};
     const entries=read(ENTRY_KEY,[]),weather=read(WEATHER_KEY,{}),map=eggMap(entries),history=weather?.history&&typeof weather.history==="object"?weather.history:{};
     const temp=todayTemp(data),band=temp==null?null:tempBand(temp),kind=todayKind(data),base=recentBaseline(map)||Number(data?.production?.dailyPace)||0;
     const rows=[];
@@ -121,7 +123,9 @@
     const data=window.CustomerViewStaging?.getData?.()||window.StagingCustomerPublicData?.build?.();if(!data?.stats)return;
     let section=document.getElementById("customerEggTrail");
     if(!section){section=document.createElement("section");section.id="customerEggTrail";section.className="egg-trail-card";document.getElementById("customerWeatherImpact")?.insertAdjacentElement("afterend",section);}
-    const daily=(data.stats.daily30||[]).slice(-14),max=Math.max(1,...daily.map(x=>Number(x.eggs)||0)),r=data.stats.records||{};
+    const safeDaily=Array.isArray(data?.customerStory?.daily14)?data.customerStory.daily14:null;
+    const daily=safeDaily||((data.stats.daily30||[]).slice(-14));
+    const max=Math.max(1,...daily.map(x=>Number(x.eggs)||0)),r=data.stats.records||{};
     const bars=daily.map((x,i)=>{const h=Math.max(5,Math.round((Number(x.eggs)||0)/max*100));const label=new Date(`${x.date}T12:00:00`).toLocaleDateString(undefined,{weekday:"narrow"});return `<div class="egg-trail-day" title="${esc(x.date)}: ${Number(x.eggs)||0} eggs"><i style="height:${h}%"></i><b>${Number(x.eggs)||0}</b><span>${esc(label)}</span></div>`;}).join("");
     section.innerHTML=`<div class="section-heading"><div><div class="section-kicker">🥚 Two weeks in the nest boxes</div><h2>A little look at the laying rhythm</h2></div><a class="tiny-link" href="stats.html">More stats →</a></div><div class="egg-trail-chart" aria-label="Eggs collected during the last 14 days">${bars}</div><div class="egg-trail-records"><div><span>🏆 Best day</span><strong>${Number(r.bestDay?.eggs)||0} eggs</strong></div><div><span>🔥 Current streak</span><strong>${Number(r.streak)||0} days</strong></div><div><span>🥚 Farm lifetime</span><strong>${Number(r.lifetimeEggs)||0}</strong></div></div>`;
   }
