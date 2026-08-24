@@ -1,0 +1,22 @@
+/* LIVE: keep multi-digit availability clear of the label on iPhone. */
+#availabilityTitle #availableEggs {
+  display: inline-block;
+  margin-right: .16em;
+  margin-inline-end: .16em;
+  white-space: nowrap;
+  vertical-align: baseline;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.03em;
+}
+
+@media (max-width: 430px) {
+  #availabilityTitle {
+    letter-spacing: -1.1px;
+  }
+
+  #availabilityTitle #availableEggs {
+    margin-right: .2em;
+    margin-inline-end: .2em;
+    letter-spacing: -.02em;
+  }
+}
