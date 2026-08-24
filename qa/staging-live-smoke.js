@@ -56,6 +56,7 @@ async function fetchText(file){
   if(/(setDoc|addDoc|updateDoc|deleteDoc|runTransaction|writeBatch|onSnapshot)\s*[,}]/.test(loaded['staging-firebase.js']))throw new Error('Staging Firebase unexpectedly contains a Firestore write/listener API import');
   if(loaded['staging-firebase.js'].includes('window.FirestoreDB =')||loaded['staging-firebase.js'].includes('window.FirebaseUser ='))throw new Error('Staging exposes live Firestore handles to app code');
   if(!loaded['staging-firebase.js'].includes('window.__farmApplyingRemote=true')||!loaded['staging-firebase.js'].includes('runBypass(doWrite)'))throw new Error('Staging live seed is not marked authoritative for inventory firewall');
+  if(!loaded['staging-firebase.js'].includes('if(window.__farmApplyingRemote===true)')||!loaded['staging-firebase.js'].includes('LIVE mirror refresh paused'))throw new Error('Staging restore readiness can overwrite the sandbox from the LIVE mirror');
   if(!loaded['staging-firebase.js'].includes('FarmBootstrapSafety?.unlock?.()'))throw new Error('Staging cannot release normal startup write lock');
   if(loaded['staging-photo-service.js'].includes('firebasejs')||loaded['staging-photo-service.js'].includes('FirestoreDB'))throw new Error('Staging photo service can reach Firebase');
   if(!loaded['staging-banner.js'].includes('LIVE FIREBASE IS READ-ONLY'))throw new Error('Staging safety banner missing');
