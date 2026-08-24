@@ -12,6 +12,7 @@
   <link rel="manifest" href="manifest.webmanifest?v=20260818-1830" />
   <link rel="icon" href="app-icon.svg?v=20260818-1830" type="image/svg+xml" />
   <link rel="stylesheet" href="view.css?v=20260818-1830" />
+  <link rel="stylesheet" href="view-v2.css?v=20260824-2010" />
 </head>
 <body>
   <main class="customer-app" id="customerApp">
@@ -34,7 +35,7 @@
       <div class="section-heading"><div><div class="section-kicker">📈 From the laying boxes</div><h2 id="coopReportTitle">Today’s coop report</h2></div><span class="mini-chip" id="forecastConfidence">Learning the flock</span></div>
       <div class="metric-grid">
         <article class="metric-card yellow"><span class="metric-icon">🥚</span><strong id="todayCollected">—</strong><span>collected today</span></article>
-        <article class="metric-card green"><span class="metric-icon">🔮</span><strong id="todayForecast">—</strong><span>today’s flock outlook</span></article>
+        <article class="metric-card green"><span class="metric-icon">🔮</span><strong id="todayForecast">—</strong><span>today’s weather-matched outlook</span></article>
         <article class="metric-card blue"><span class="metric-icon">📅</span><strong id="weekForecast">—</strong><span>predicted this week</span></article>
         <article class="metric-card purple"><span class="metric-icon">🌙</span><strong id="monthForecast">—</strong><span>predicted this month</span></article>
       </div>
@@ -90,8 +91,7 @@
   <div class="missing-data" id="missingData" hidden><div class="missing-card"><div class="missing-icon">🐔</div><h2>The live flock view is coming online</h2><p>Rose Family Poultry is finishing the connection between the private farm app and this customer view. No private farm information is available from this page.</p></div></div>
 
   <script src="../customer-facts-v1.js?v=20260818-1830"></script>
-  <script type="module" src="view.js?v=20260818-1830"></script>
+  <script type="module" src="view.js?v=20260824-2010"></script>
   <script type="module" src="bird-sales-v1.js?v=20260819-1870"></script>
-  <script type="module" src="customer-requests-v1.js?v=20260821-1950"></script>
 </body>
 </html>
