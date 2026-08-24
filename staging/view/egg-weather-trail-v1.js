@@ -41,14 +41,31 @@
     return null;
   }
 
+  function friendlyDate(value) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value || ""));
+    if (!m) return String(value || "");
+    const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
+    return d.toLocaleDateString(undefined, { month: "short", day: "numeric", timeZone: "UTC" });
+  }
+
+  function detailText(row = {}, w = {}) {
+    const eggs = Math.max(0, Math.round(Number(row.eggs) || 0));
+    const temp = tempFor(w);
+    const kind = weatherKind(w);
+    return `${friendlyDate(row.date)} • ${eggs} egg${eggs === 1 ? "" : "s"} • ${iconFor(w)} ${kind}${temp == null ? "" : ` • ${temp}°F`}`;
+  }
+
   function css() {
     if (document.getElementById("customerEggWeatherTrailCss")) return;
     const s = document.createElement("style");
     s.id = "customerEggWeatherTrailCss";
     s.textContent = `
-      .egg-trail-day{position:relative}.egg-trail-weather{display:block;min-height:16px;margin-top:2px;font-size:12px;line-height:1;text-align:center;filter:saturate(.9)}
+      .egg-trail-day{position:relative;cursor:pointer;border-radius:10px;outline:none;transition:background .16s ease,transform .16s ease}.egg-trail-day:focus-visible{box-shadow:0 0 0 3px rgba(31,122,58,.2)}
+      @media(hover:hover) and (pointer:fine){.egg-trail-day:hover{background:rgba(31,122,58,.06);transform:translateY(-1px)}}
+      .egg-trail-weather{display:block;min-height:16px;margin-top:2px;font-size:12px;line-height:1;text-align:center;filter:saturate(.9)}
       .egg-trail-weather-note{margin:8px 0 0;text-align:center;font-size:10px;font-weight:800;color:#758178}
-      @media(max-width:420px){.egg-trail-weather{font-size:11px}.egg-trail-weather-note{font-size:9px}}
+      .egg-trail-detail{margin:8px auto 0;padding:8px 10px;max-width:420px;border-radius:12px;background:rgba(31,122,58,.07);border:1px solid rgba(31,122,58,.1);text-align:center;font-size:11px;font-weight:850;color:#35513d;line-height:1.35}
+      @media(max-width:420px){.egg-trail-weather{font-size:11px}.egg-trail-weather-note{font-size:9px}.egg-trail-detail{font-size:10px}}
     `;
     document.head.appendChild(s);
   }
@@ -62,21 +79,44 @@
     const daily = Array.isArray(data.stats.daily30) ? data.stats.daily30.slice(-14) : [];
     const history = read(WEATHER_KEY, {})?.history || {};
     const days = Array.from(section.querySelectorAll(".egg-trail-day"));
+    let detail = section.querySelector(".egg-trail-detail");
 
     days.forEach((day, i) => {
       const row = daily[i];
+      day.querySelector(".egg-trail-weather")?.remove();
+      day.removeAttribute("role");
+      day.removeAttribute("tabindex");
+      day.onclick = null;
+      day.onkeydown = null;
       if (!row?.date) return;
       const w = history[row.date];
-      day.querySelector(".egg-trail-weather")?.remove();
       if (!w) return;
       const weather = document.createElement("span");
       weather.className = "egg-trail-weather";
       weather.textContent = iconFor(w);
-      const temp = tempFor(w);
-      const eggs = Math.max(0, Math.round(Number(row.eggs) || 0));
-      weather.title = `${row.date}: ${eggs} eggs • ${weatherKind(w)}${temp == null ? "" : ` • ${temp}°F`}`;
-      weather.setAttribute("aria-label", `${weatherKind(w)} weather${temp == null ? "" : `, ${temp} degrees`}`);
+      const text = detailText(row, w);
+      weather.title = text;
+      weather.setAttribute("aria-hidden", "true");
       day.appendChild(weather);
+      day.setAttribute("role", "button");
+      day.setAttribute("tabindex", "0");
+      day.setAttribute("aria-label", `${text}. Show day details.`);
+      const show = () => {
+        if (!detail) {
+          detail = document.createElement("div");
+          detail.className = "egg-trail-detail";
+          detail.setAttribute("aria-live", "polite");
+          section.appendChild(detail);
+        }
+        detail.textContent = text;
+      };
+      day.onclick = show;
+      day.onkeydown = e => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          show();
+        }
+      };
     });
 
     let note = section.querySelector(".egg-trail-weather-note");
@@ -87,7 +127,7 @@
         note.className = "egg-trail-weather-note";
         section.appendChild(note);
       }
-      note.textContent = "☀️ ☁️ 🌧️ Weather icons line up each laying day with the farm’s saved weather history.";
+      note.textContent = "☀️ ☁️ 🌧️ Tap a laying day to see its eggs + saved farm weather.";
     } else if (note) note.remove();
     return true;
   }
@@ -108,10 +148,12 @@
   else start();
 
   window.StagingCustomerEggWeatherTrailV1 = {
-    version: 1,
+    version: 2,
     weatherKind,
     iconFor,
     tempFor,
+    friendlyDate,
+    detailText,
     render,
     networkCalls: 0,
     firebaseReads: 0,
