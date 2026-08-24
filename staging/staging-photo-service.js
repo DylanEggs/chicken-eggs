@@ -11,6 +11,23 @@
   let publicHydratePromise = null;
   let publicHydrated = false;
 
+  // High-quality but storage-conscious profile. Most iPhone photos should remain
+  // at 480x480 / 82% JPEG. Only unusually detailed images step down enough to
+  // keep dozens of flock photos from exhausting browser storage.
+  const PHOTO_PROFILE = Object.freeze({
+    targetSize:480,
+    targetQuality:.82,
+    maxDataUrlChars:90000,
+    steps:Object.freeze([
+      Object.freeze({size:480,quality:.82}),
+      Object.freeze({size:480,quality:.76}),
+      Object.freeze({size:440,quality:.74}),
+      Object.freeze({size:400,quality:.72}),
+      Object.freeze({size:360,quality:.70}),
+      Object.freeze({size:340,quality:.64})
+    ])
+  });
+
   const read = (key, fallback) => {
     try { return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback)); }
     catch { return fallback; }
@@ -29,20 +46,38 @@
     const publicSrc = publicPhotos.get(id);
     return image(publicSrc) ? publicSrc : "";
   }
-  function toJpeg(file, size=168, quality=.46) {
+
+  function encodeSquare(img, size, quality) {
+    const w=img.naturalWidth||img.width, h=img.naturalHeight||img.height;
+    if (!w || !h) return "";
+    const side=Math.min(w,h), sx=Math.max(0,(w-side)/2), sy=Math.max(0,(h-side)/2);
+    const canvas=document.createElement("canvas");
+    canvas.width=size; canvas.height=size;
+    const ctx=canvas.getContext("2d",{alpha:false});
+    if (!ctx) return "";
+    ctx.imageSmoothingEnabled=true;
+    try { ctx.imageSmoothingQuality="high"; } catch {}
+    ctx.drawImage(img,sx,sy,side,side,0,0,size,size);
+    return canvas.toDataURL("image/jpeg",quality);
+  }
+
+  function toJpeg(file) {
     return new Promise(resolve => {
       if (!file) return resolve("");
-      const url = URL.createObjectURL(file);
+      let url="";
+      try { url=URL.createObjectURL(file); }
+      catch { return resolve(""); }
       const img = new Image();
       img.onload = () => {
         try {
-          const w=img.naturalWidth||img.width, h=img.naturalHeight||img.height;
-          const side=Math.min(w,h), sx=Math.max(0,(w-side)/2), sy=Math.max(0,(h-side)/2);
-          const canvas=document.createElement("canvas");
-          canvas.width=size; canvas.height=size;
-          const ctx=canvas.getContext("2d",{alpha:false});
-          ctx.drawImage(img,sx,sy,side,side,0,0,size,size);
-          resolve(canvas.toDataURL("image/jpeg",quality));
+          let best="";
+          for (const step of PHOTO_PROFILE.steps) {
+            const out=encodeSquare(img,step.size,step.quality);
+            if (!out) continue;
+            best=out;
+            if (out.length<=PHOTO_PROFILE.maxDataUrlChars) break;
+          }
+          resolve(best);
         } catch { resolve(""); }
         finally { try { URL.revokeObjectURL(url); } catch {} }
       };
@@ -50,6 +85,7 @@
       img.src=url;
     });
   }
+
   async function savePrepared(id, src) {
     id=String(id||"");
     if (!id || !image(src)) return {saved:false,synced:false};
@@ -112,6 +148,8 @@
     prepareFile:file=>toJpeg(file), flush:async()=>true, ready:async()=>true,
     hydratePublicPhotosOnce,
     publicPhotoCount:()=>publicPhotos.size,
+    qualityProfile:PHOTO_PROFILE,
+    firebaseReads:0,firebaseWrites:0,networkWrites:0,
     subscribe(fn){ if(typeof fn==="function")listeners.add(fn); return()=>listeners.delete(fn); }
   };
   window.FarmBirdPhotosV4=service;
@@ -150,5 +188,5 @@
   void hydratePublicPhotosOnce();
   window.addEventListener("farm-data-synced",()=>void hydratePublicPhotosOnce());
 
-  console.log("🧪 STAGING photo service active — photo edits stay in sandbox; public flock photos hydrate read-only once");
+  console.log("🧪 STAGING photo service active — high-quality 480px flock uploads stay in sandbox; public flock photos hydrate read-only once");
 })();
