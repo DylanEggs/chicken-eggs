@@ -32,6 +32,8 @@
   load("records-daily-totals-v1.js");
   load("prediction-fix-v1.js");
   load("weather-intelligence-v2.js");
+  // Pure deterministic selector shared by owner Home and the sanitized Customer View.
+  load("chicken-of-day-rotation-v1.js");
   load("bird-photo-service-v4.js");
   // Historical photo recovery remains in the repository for manual recovery,
   // but is no longer auto-loaded on every owner-app startup. The current photo
@@ -55,6 +57,7 @@
   load("customer-public-builder-v2.js");
   load("customer-public-builder-v3.js");
   load("customer-public-builder-v4.js");
+  load("customer-public-chicken-rotation-v1.js");
   load("public-customer-owner-auth-v1.js");
   // Customer Requests stay out of LIVE. The public Customer View is view-only,
   // and the owner app does not load a request inbox while that feature is retired.
