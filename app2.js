@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const BUILD = String(window.__ChickenEggsBuild || "20260824-2012");
+  const BUILD = String(window.__ChickenEggsBuild || "20260824-2013");
   const load = (src, module = false) => document.write(`<script${module?' type="module"':''} src="${src}?v=${encodeURIComponent(BUILD)}"><\/script>`);
 
   load("sync-safety-preload-v1.js");
