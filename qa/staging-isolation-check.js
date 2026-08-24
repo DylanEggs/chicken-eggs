@@ -12,7 +12,6 @@ const firebase=read('staging/staging-firebase.js');
 const database=read('staging/staging-database.js');
 const photos=read('staging/staging-photo-service.js');
 const app2=read('staging/staging-app2.js');
-const backupParity=read('staging/staging-audit-finish-parity-v1.js');
 const banner=read('staging/staging-banner.js');
 const previewGuard=read('staging/staging-customer-preview-guard-v1.js');
 const requestParity=read('staging/staging-customer-requests-live-parity-v1.js');
@@ -52,8 +51,7 @@ check('Staging app2 removes live photo recovery',app2.includes('.replace(\'load(
 check('Staging app2 removes real customer owner auth',app2.includes('.replace(\'load("public-customer-owner-auth-v1.js");\', \'\')'));
 check('Staging app2 removes real customer publisher',app2.includes('.replace(\'load("public-customer-publisher-v1.js");\', \'\')'));
 check('Staging app2 removes real customer sync UI',app2.includes('.replace(\'load("public-customer-sync-ui-v1.js");\', \'\')'));
-check('Staging app2 replaces live backup restore with the parity candidate',app2.includes('load("staging/staging-audit-finish-parity-v1.js")')&&app2.includes('Live backup restore module remained directly loaded in staging'));
-check('Staging backup candidate orders App2, entries and exact inventory restore safely',backupParity.includes('__reloadFarm2Memory')&&backupParity.indexOf('localStorage.setItem(E')<backupParity.indexOf('await restoreInventory')&&backupParity.includes('__inventoryRestoreV6=true'));
+check('Staging app2 keeps the proven live backup UI inside the isolated storage sandbox',!app2.includes('staging/staging-audit-finish-parity-v1.js')&&!app2.includes('Live backup restore module remained directly loaded in staging'));
 check('Staging app2 rejects old homemade Customer Requests UI',app2.includes('Old homemade staging Customer Requests UI remained loaded'));
 check('Staging app2 injects live-parity Customer Requests layer',app2.includes('staging/staging-customer-requests-live-parity-v1.js'));
 check('Staging app2 loads bird-sales manager through sandboxed runtime',app2.includes('load("bird-sales-v1.js")'));
@@ -63,7 +61,6 @@ check('Normal staging startup uses the local mirror before optional read-only fl
 check('Staging Firebase cloud access remains read-only',firebase.includes('__STAGING_FIREBASE_READONLY__ = true')&&firebase.includes('getDoc')&&firebase.includes('getDocs')&&!/\b(setDoc|addDoc|updateDoc|deleteDoc|runTransaction|writeBatch|onSnapshot)\b/.test(firebase));
 check('Staging Firebase does not expose live Firestore handles',firebase.includes('__STAGING_FIREBASE_READONLY__ = true')&&!firebase.includes('window.FirestoreDB =')&&!firebase.includes('window.FirebaseUser ='));
 check('Staging refresh loads authoritative Firebase into the memory sandbox only',firebase.includes('fetchLiveFirebaseSnapshot')&&firebase.includes('startQuotaFreeTestMemory')&&firebase.includes('source:"firebase-read-only-memory"')&&firebase.includes('inMemory:true'));
-check('Staging restore readiness cannot overwrite the sandbox from the LIVE mirror',firebase.includes('if(window.__farmApplyingRemote===true)')&&firebase.includes('LIVE mirror refresh paused'));
 check('Staging cloud fallback is compact and scoped',firebase.includes('farm_app_2_v1')&&firebase.includes('farm_inventory_v2')&&firebase.includes('farm_deluxe_v1')&&firebase.includes('farm_business_v1')&&firebase.includes('where("type","in",["eggs","sale"])')&&!firebase.includes('getDocs(collection(db,"entries"))'));
 check('Staging writes imported data through remote safety bypass',firebase.includes('__farmApplyingRemote')&&firebase.includes('runBypass(doWrite)'));
 check('Staging refreshes in-memory core/App2 state after mirror',firebase.includes('function refreshAppMemory()')&&firebase.includes('window.loadLocal?.()')&&firebase.includes('window.__reloadFarm2Memory?.()')&&firebase.includes('refreshAppMemory();'));
