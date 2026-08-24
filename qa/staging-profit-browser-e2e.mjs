@@ -79,6 +79,7 @@ try{
     'Sale equal to all available stock succeeds',
     'Another sale at zero stock is blocked',
     'Sale cannot consume eggs reserved for pending order',
+    'Deleting edited sale restores exact pre-sale mixed inventory',
     'Public v2 snapshot contains no private customer/money values'
   ];
   for(const name of deepRequired){const row=byName.get(name);if(!row)throw new Error(`Required deep-v3 check is missing: ${name}`);if(!row.pass)throw new Error(`Required deep-v3 check failed: ${name} — ${row.detail||''}`);}
