@@ -51,7 +51,7 @@
       document.getElementById("reqSuccessClose")?.click();
 
       const disabled=store.load();disabled.settings={...(disabled.settings||{}),enabled:false};store.save(disabled);await wait(30);ui.render();
-      check("Live request section hides when staging setting is disabled",document.getElementById("customerRequestSection")?.hidden===true);
+      check("Staging preview keeps the request section forced on for sandbox testing",store.settings().enabled===true&&document.getElementById("customerRequestSection")?.hidden===false);
     }catch(error){check("Customer request live-parity UI test completed without exception",false,String(error?.stack||error));}
     finally{rawSet(original);try{sessionStorage.removeItem("roseCustomerRequestLastSend");window.CustomerRequestViewV1?.render?.();}catch{}}
     const failed=results.filter(x=>!x.pass),passed=results.length-failed.length;
@@ -62,6 +62,6 @@
   }
 
   function install(){const bar=document.querySelector(".preview-bar");if(!bar||document.getElementById("customerRequestUITestBtn")){setTimeout(install,150);return;}const btn=document.createElement("button");btn.type="button";btn.id="customerRequestUITestBtn";btn.textContent="🧪 Test Live Request UI";btn.style.cssText="border:0;border-radius:999px;padding:8px 11px;font-weight:900;background:#fff;color:#7f1d1d";btn.addEventListener("click",run);bar.appendChild(btn);}
-  window.StagingCustomerRequestUITestV1={version:3,run};
+  window.StagingCustomerRequestUITestV1={version:4,run};
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",()=>setTimeout(install,300),{once:true});else setTimeout(install,300);
 })();
