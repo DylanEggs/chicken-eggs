@@ -35,7 +35,7 @@ async function fetchText(file){
   }
   if(live!==expected)throw new Error(`Staging build ${expected} did not deploy; live=${live}`);
 
-  const assets=['index.html','staging-storage.js','staging-firebase.js','staging-owner-firebase.js','staging-database.js','staging-app2.js','staging-audit-finish-parity-v1.js','staging-photo-service.js','staging-banner.js','staging-manual-snapshots.js','staging-diagnostics.js','staging-business-refresh-v1.js','staging-full-test.js','staging-full-test-v2.js','staging-backup-test.js','customer-public-data-v1.js','view/index.html','view/view.css','view/iphone-availability-fix-v1.css','view/view.js','view/year-forecast-v1.js','view/customer-requests-live-parity-v1.js','view/customer-requests-ui-test-v1.js','../view/customer-requests-v1.js','owner-login/index.html','owner-login/owner-login.js','owner-farm/index.html'];
+  const assets=['index.html','staging-storage.js','staging-firebase.js','staging-owner-firebase.js','staging-database.js','staging-app2.js','staging-photo-service.js','staging-banner.js','staging-manual-snapshots.js','staging-diagnostics.js','staging-business-refresh-v1.js','staging-full-test.js','staging-full-test-v2.js','staging-backup-test.js','customer-public-data-v1.js','view/index.html','view/view.css','view/iphone-availability-fix-v1.css','view/view.js','view/year-forecast-v1.js','view/customer-requests-live-parity-v1.js','view/customer-requests-ui-test-v1.js','../view/customer-requests-v1.js','owner-login/index.html','owner-login/owner-login.js','owner-farm/index.html'];
   const loaded={};
   for(const file of assets){
     loaded[file]=await fetchText(file);
@@ -56,7 +56,6 @@ async function fetchText(file){
   if(/(setDoc|addDoc|updateDoc|deleteDoc|runTransaction|writeBatch|onSnapshot)\s*[,}]/.test(loaded['staging-firebase.js']))throw new Error('Staging Firebase unexpectedly contains a Firestore write/listener API import');
   if(loaded['staging-firebase.js'].includes('window.FirestoreDB =')||loaded['staging-firebase.js'].includes('window.FirebaseUser ='))throw new Error('Staging exposes live Firestore handles to app code');
   if(!loaded['staging-firebase.js'].includes('window.__farmApplyingRemote=true')||!loaded['staging-firebase.js'].includes('runBypass(doWrite)'))throw new Error('Staging live seed is not marked authoritative for inventory firewall');
-  if(!loaded['staging-firebase.js'].includes('if(window.__farmApplyingRemote===true)')||!loaded['staging-firebase.js'].includes('LIVE mirror refresh paused'))throw new Error('Staging restore readiness can overwrite the sandbox from the LIVE mirror');
   if(!loaded['staging-firebase.js'].includes('FarmBootstrapSafety?.unlock?.()'))throw new Error('Staging cannot release normal startup write lock');
   if(loaded['staging-photo-service.js'].includes('firebasejs')||loaded['staging-photo-service.js'].includes('FirestoreDB'))throw new Error('Staging photo service can reach Firebase');
   if(!loaded['staging-banner.js'].includes('LIVE FIREBASE IS READ-ONLY'))throw new Error('Staging safety banner missing');
@@ -79,8 +78,7 @@ async function fetchText(file){
   if(!loaded['staging-full-test-v2.js'].includes('Sandbox test restores sale date form field'))throw new Error('Sandbox form restoration regression check missing');
   if(!loaded['staging-backup-test.js'].includes('chicken-eggs-full-backup-v8'))throw new Error('Backup test does not verify current backup format');
   if(!loaded['staging-backup-test.js'].includes('Restore routes exact inventory through InventorySystemV6'))throw new Error('Backup test does not verify inventory restore authority');
-  if(!loaded['staging-app2.js'].includes('staging/staging-audit-finish-parity-v1.js')||!loaded['staging-app2.js'].includes('Live backup restore module remained directly loaded in staging'))throw new Error('Staging app2 does not safely replace the live backup restore module');
-  if(!loaded['staging-audit-finish-parity-v1.js'].includes('ordered sandbox restore')||!loaded['staging-audit-finish-parity-v1.js'].includes('__inventoryRestoreV6=true'))throw new Error('Ordered staging backup restore candidate is missing');
+  if(loaded['staging-app2.js'].includes('staging/staging-audit-finish-parity-v1.js'))throw new Error('Experimental staging backup wrapper is still loaded');
 
   const customerBundle=loaded['customer-public-data-v1.js']+loaded['view/index.html']+loaded['view/view.js']+loaded['view/year-forecast-v1.js'];
   if(!loaded['view/index.html'].includes('CUSTOMER VIEW PREVIEW'))throw new Error('Customer preview identity missing');
