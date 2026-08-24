@@ -4,7 +4,16 @@
   window.__StagingCustomerPublicDataV2 = true;
 
   const legacy=window.StagingCustomerPublicData;
-  if(!legacy?.build||!(window.FarmPublicCustomerBuilderV4?.build||window.FarmPublicCustomerBuilderV2?.build))return;
+  if(!legacy?.build)return;
+  if(!window.FarmPublicCustomerBuilderV4?.build){
+    try{
+      const url=new URL("../customer-public-builder-v4.js",document.currentScript?.src||location.href);
+      const xhr=new XMLHttpRequest();xhr.open("GET",url.href,false);xhr.send(null);
+      if((xhr.status>=200&&xhr.status<300)||xhr.status===0)(0,eval)(`${String(xhr.responseText||"")}\n//# sourceURL=staging-customer-public-builder-v4-runtime.js`);
+    }catch(error){console.warn("STAGING customer builder v4 unavailable; using v2 fallback",error);}
+  }
+  if(!(window.FarmPublicCustomerBuilderV4?.build||window.FarmPublicCustomerBuilderV2?.build))return;
+
   const PREFIX="__chicken_eggs_staging__::";
   const PREVIEW_SESSION="chickenEggStagingCustomerPreviewV2";
   const KEYS={app2:"chickenEggApp2V1",inventory:"chickenEggInventoryV2",entries:"chickenEggEntriesV102",settings:"chickenEggSettingsV102",weather:"chickenEggWeatherIntelligenceV2",deluxe:"chickenEggDeluxeV1",photos:"chickenEggLocalBirdPhotosV1",seed:"chickenEggStagingSeedV1"};
