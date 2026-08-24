@@ -27,7 +27,7 @@ async function fetchText(file){
   }
   if(live!==expected)throw new Error(`Staging build ${expected} did not deploy; live=${live}`);
 
-  const assets=['index.html','staging-storage.js','staging-firebase.js','staging-owner-firebase.js','staging-database.js','staging-app2.js','staging-photo-service.js','staging-banner.js','staging-manual-snapshots.js','staging-diagnostics.js','staging-business-refresh-v1.js','staging-full-test.js','staging-full-test-v2.js','staging-backup-test.js','customer-public-data-v1.js','view/index.html','view/view.css','view/view.js','view/year-forecast-v1.js','owner-login/index.html','owner-login/owner-login.js','owner-farm/index.html'];
+  const assets=['index.html','staging-storage.js','staging-firebase.js','staging-owner-firebase.js','staging-database.js','staging-app2.js','staging-photo-service.js','staging-banner.js','staging-manual-snapshots.js','staging-diagnostics.js','staging-business-refresh-v1.js','staging-full-test.js','staging-full-test-v2.js','staging-backup-test.js','customer-public-data-v1.js','view/index.html','view/view.css','view/view.js','view/year-forecast-v1.js','view/customer-requests-live-parity-v1.js','view/customer-requests-ui-test-v1.js','../view/customer-requests-v1.js','owner-login/index.html','owner-login/owner-login.js','owner-farm/index.html'];
   const loaded={};
   for(const file of assets){
     loaded[file]=await fetchText(file);
@@ -80,6 +80,12 @@ async function fetchText(file){
   if(!loaded['customer-public-data-v1.js'].includes('customer-public-v1'))throw new Error('Customer public data contract missing');
   if(!loaded['view/index.html'].includes('Browse the flock')||!loaded['view/index.html'].includes('Chicken of the Day'))throw new Error('Customer preview core viewing features missing');
   if(!loaded['view/year-forecast-v1.js'].includes('predicted this year'))throw new Error('Customer yearly forecast UI missing');
+  if(!loaded['view/index.html'].includes('href="#customerRequestSection"')||!loaded['view/index.html'].includes('Request Eggs / Birds'))throw new Error('Customer preview request link missing');
+  if(!loaded['view/index.html'].includes('customer-requests-live-parity-v1.js'))throw new Error('Customer preview does not load the request parity adapter');
+  if(!loaded['view/customer-requests-live-parity-v1.js'].includes('__chicken_eggs_staging__::')||!loaded['view/customer-requests-live-parity-v1.js'].includes('request form forced ON with sandbox-only writes'))throw new Error('Customer request preview is not forced on inside isolated staging storage');
+  if(/firebasejs|FirestoreDB|FirebaseUser/i.test(loaded['view/customer-requests-live-parity-v1.js']))throw new Error('Customer request staging adapter can reach live Firebase');
+  if(!loaded['../view/customer-requests-v1.js'].includes('addDoc(collection(db,"customer_requests")'))throw new Error('Customer request staging parity is not exercising the real live request form source');
+  if(!loaded['view/customer-requests-ui-test-v1.js'].includes('creates exactly one sandbox request')||!loaded['view/customer-requests-ui-test-v1.js'].includes('No live Firebase request was created'))throw new Error('Customer request browser regression does not prove isolated submission');
 
   const ownerLogin=loaded['owner-login/owner-login.js'];
   if(!loaded['owner-login/index.html'].includes('Test Owner Login'))throw new Error('Owner login verification page identity missing');
@@ -98,5 +104,5 @@ async function fetchText(file){
   if(/\b(setDoc|addDoc|updateDoc|deleteDoc|runTransaction|writeBatch|onSnapshot)\b/.test(ownerFirebase))throw new Error('Owner-gated staging Firebase unexpectedly contains Firestore write/listener APIs');
   if(ownerFirebase.includes('window.FirestoreDB =')||ownerFirebase.includes('window.FirebaseUser ='))throw new Error('Owner-gated staging exposes live Firestore handles');
 
-  console.log(`PASS Staging live smoke — ${expected}, ${assets.length} isolated assets verified including visible profit regression, customer preview, manual bash/restore controls, yearly forecast, and owner-gated test farm`);
+  console.log(`PASS Staging live smoke — ${expected}, ${assets.length} isolated assets verified including visible customer requests, sandbox submission checks, profit regression, manual bash/restore controls, yearly forecast, and owner-gated test farm`);
 })().catch(error=>{console.error('STAGING LIVE SMOKE FAILED:',error);process.exit(1);});

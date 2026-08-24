@@ -120,12 +120,14 @@ try{
     const found=[];
     const walk=(value,path='root')=>{if(!value||typeof value!=='object')return;for(const [key,child] of Object.entries(value)){if(forbidden.has(key))found.push(`${path}.${key}`);walk(child,`${path}.${key}`);}};
     walk(data);
-    const visibleInputs=[...document.querySelectorAll('input,textarea,select')].filter(el=>{const sec=el.closest('#customerRequestSection');return !sec||sec.hidden===false;}).length;
+    const requestSection=document.getElementById('customerRequestSection');
+    const requestControls=requestSection?[...requestSection.querySelectorAll('input,textarea,select')]:[];
     return {
       environment:window.CustomerViewStaging.environment,schema:data.schema,
       available:data.availability.eggs,flockCount:data.flock.length,facts:data.facts.length,
       forbidden:found,firestoreExposed:!!window.FirestoreDB,firebaseUserExposed:!!window.FirebaseUser,
-      visibleInputs,requestSectionHidden:document.getElementById('customerRequestSection')?.hidden!==false,
+      requestSectionVisible:requestSection?.hidden===false,requestControlCount:requestControls.length,
+      requestSendVisible:document.getElementById('reqPubSend')?.getClientRects().length>0,
       sourceSnapshotAt:data.meta.sourceSnapshotAt
     };
   });
@@ -135,7 +137,7 @@ try{
   if(customerState.flockCount!==expectedCustomer.flockCount)throw new Error(`Customer flock count mismatch ${customerState.flockCount} != ${expectedCustomer.flockCount}`);
   if(customerState.firestoreExposed||customerState.firebaseUserExposed)throw new Error('Customer preview exposed a Firebase handle');
   if(customerState.forbidden.length)throw new Error(`Customer public object leaked private keys: ${customerState.forbidden.join(', ')}`);
-  if(!customerState.requestSectionHidden||customerState.visibleInputs!==0)throw new Error('Disabled Customer Request form is visibly editable in preview');
+  if(!customerState.requestSectionVisible||customerState.requestControlCount<8||!customerState.requestSendVisible)throw new Error(`Sandbox Customer Request form is not visibly ready: ${JSON.stringify(customerState)}`);
   if(customerState.facts<30)throw new Error('Customer fact library is unexpectedly small');
 
   const requestUi=await customer.evaluate(()=>window.StagingCustomerRequestUITestV1.run());
