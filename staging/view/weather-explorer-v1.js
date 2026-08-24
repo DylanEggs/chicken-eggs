@@ -130,7 +130,16 @@
       section.className = "weather-history-explorer";
       anchor.insertAdjacentElement("afterend", section);
     }
-    section.innerHTML = `<div class="section-heading"><div><div class="section-kicker">🌦️ Weather & the laying boxes</div><h2>What different kinds of days look like for this flock</h2><p>Using ${data.samples} weather-linked laying days and today’s recent flock pace.</p></div></div>${data.sky.length ? `<div class="weather-history-label">Sky conditions</div><div class="weather-history-grid">${data.sky.map(x => card("sky", x)).join("")}</div>` : ""}${data.temp.length ? `<div class="weather-history-label">Temperature bands</div><div class="weather-history-grid">${data.temp.map(x => card("temp", x)).join("")}</div>` : ""}<div class="weather-history-detail" id="weatherHistoryDetail">Tap a weather type to see how to read these numbers.</div><p class="weather-impact-note">The projected egg count scales each historical weather pattern to the flock’s recent pace, which helps account for the flock changing over time. These are observations, not proof that weather caused the difference.</p>`;
+    section.innerHTML = `<div class="section-heading weather-history-heading"><div><div class="section-kicker">🌦️ Weather & the laying boxes</div><h2>See how this flock lays in different weather</h2><p>${data.samples} weather-linked laying days are ready to explore.</p></div><button type="button" class="weather-history-toggle" id="weatherHistoryToggle" aria-expanded="false" aria-controls="weatherHistoryBody">Explore weather patterns ↓</button></div><div class="weather-history-body" id="weatherHistoryBody" hidden>${data.sky.length ? `<div class="weather-history-label">Sky conditions</div><div class="weather-history-grid">${data.sky.map(x => card("sky", x)).join("")}</div>` : ""}${data.temp.length ? `<div class="weather-history-label">Temperature bands</div><div class="weather-history-grid">${data.temp.map(x => card("temp", x)).join("")}</div>` : ""}<div class="weather-history-detail" id="weatherHistoryDetail">Tap a weather type to see how to read these numbers.</div><p class="weather-impact-note">Projected egg counts scale historical patterns to the flock’s recent pace. These are observations, not proof that weather caused the difference.</p></div>`;
+
+    const body = section.querySelector("#weatherHistoryBody");
+    const toggle = section.querySelector("#weatherHistoryToggle");
+    toggle?.addEventListener("click", () => {
+      const open = toggle.getAttribute("aria-expanded") === "true";
+      toggle.setAttribute("aria-expanded", String(!open));
+      toggle.textContent = open ? "Explore weather patterns ↓" : "Hide weather patterns ↑";
+      if (body) body.hidden = open;
+    });
 
     section.querySelectorAll("[data-weather-story]").forEach(button => button.addEventListener("click", () => {
       const [type, key] = String(button.dataset.weatherStory || "").split(":");
@@ -148,10 +157,10 @@
     style.id = "customerWeatherExplorerCss";
     style.textContent = `
       .weather-history-explorer{margin:18px 0;padding:19px;border-radius:24px;background:rgba(255,255,255,.9);border:1px solid rgba(31,122,58,.12);box-shadow:0 14px 34px rgba(24,68,36,.08)}
-      .weather-history-explorer .section-heading p{margin:4px 0 0;color:#718076;font-size:11px;font-weight:750}.weather-history-label{margin:13px 0 7px;font-size:10px;font-weight:950;text-transform:uppercase;letter-spacing:.08em;color:#66756b}
+      .weather-history-heading{align-items:center}.weather-history-explorer .section-heading p{margin:4px 0 0;color:#718076;font-size:11px;font-weight:750}.weather-history-toggle{width:auto!important;margin:0!important;padding:9px 12px!important;border-radius:999px!important;white-space:nowrap;font-size:10px!important;font-weight:900!important}.weather-history-body[hidden]{display:none!important}.weather-history-label{margin:13px 0 7px;font-size:10px;font-weight:950;text-transform:uppercase;letter-spacing:.08em;color:#66756b}
       .weather-history-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.weather-history-tile{display:grid;grid-template-columns:auto 1fr;grid-template-areas:'emoji copy' 'value value' 'effect effect';gap:3px 7px;min-width:0;padding:11px;border:1px solid rgba(31,122,58,.11);border-radius:16px;background:#f8fbf8;color:#17351f;text-align:left;cursor:pointer}
       .weather-history-tile.active{outline:3px solid rgba(31,122,58,.16);background:#eef8f0}.weather-history-emoji{grid-area:emoji;font-size:21px}.weather-history-tile>span:nth-child(2){grid-area:copy;min-width:0}.weather-history-tile strong{display:block;font-size:11px}.weather-history-tile small{display:block;font-size:8px;color:#7c897f;white-space:nowrap}.weather-history-tile b{grid-area:value;font-size:17px;margin-top:4px}.weather-history-tile em{grid-area:effect;font-size:9px;font-style:normal;font-weight:900;color:#66756b}.weather-history-detail{margin-top:11px;padding:10px 12px;border-radius:14px;background:rgba(245,185,28,.12);font-size:10px;font-weight:800;line-height:1.45;color:#48554b}
-      @media(max-width:560px){.weather-history-grid{grid-template-columns:1fr}.weather-history-tile{grid-template-columns:auto 1fr auto;grid-template-areas:'emoji copy value' 'emoji effect effect';align-items:center}.weather-history-tile b{text-align:right;margin:0}.weather-history-tile small{white-space:normal}}
+      @media(max-width:560px){.weather-history-heading{align-items:flex-start}.weather-history-toggle{margin-top:9px!important}.weather-history-grid{grid-template-columns:1fr}.weather-history-tile{grid-template-columns:auto 1fr auto;grid-template-areas:'emoji copy value' 'emoji effect effect';align-items:center}.weather-history-tile b{text-align:right;margin:0}.weather-history-tile small{white-space:normal}}
     `;
     document.head.appendChild(style);
   }
