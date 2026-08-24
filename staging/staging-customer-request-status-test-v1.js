@@ -11,6 +11,8 @@
     const results=[],check=(name,pass,detail="")=>results.push({name,pass:!!pass,detail:String(detail||"")});
     const data=window.StagingCustomerRequestsLiveParityV1,ui=window.FarmCustomerRequestsV1;
     const KEY=data?.key||"chickenEggCustomerRequestsV1",original=localStorage.getItem(KEY);
+    const cardFor=id=>document.querySelector(`#customerRequests [data-req-save="${CSS.escape(String(id))}"]`)?.closest(".req-card")||null;
+    const closedToggle=()=>document.getElementById("reqToggleClosed");
     try{
       check("Staging uses the live Customer Requests UI source plus candidate fix",!!ui&&String(ui.version).includes("staging-parity-candidate"),String(ui?.version||"missing"));
       check("Live-parity staging data adapter is active",!!data?.firestoreApi&&!!data?.createRequest&&typeof data?.setSuppressEmit==="function");
@@ -45,12 +47,32 @@
         await sleep(160);
         const saved=data.load().requests.find(r=>r.id===row.id);
         check("Exact live Update click persists Cancelled even with snapshot listener suppressed",saved?.status==="Cancelled",saved?.status||"missing");
-        check("Owner UI visibly shows Cancelled without waiting for snapshot listener",document.getElementById("customerRequestOwnerBody")?.textContent?.includes("Cancelled"),document.getElementById("customerRequestOwnerBody")?.textContent?.slice(-180)||"");
+        check("Cancelled request immediately leaves the default open inbox",cardFor(row.id)?.hidden===true,String(cardFor(row.id)?.hidden));
+        check("Cancelled request remains safely archived",closedToggle()?.textContent?.includes("Show closed (1)"),closedToggle()?.textContent||"missing");
+        closedToggle()?.click();await sleep(20);
+        check("Show closed reveals the archived Cancelled request",cardFor(row.id)?.hidden===false&&cardFor(row.id)?.textContent?.includes("Cancelled"),cardFor(row.id)?.textContent||"missing");
+        closedToggle()?.click();await sleep(20);
+        check("Hide closed returns to a clean open inbox",cardFor(row.id)?.hidden===true,closedToggle()?.textContent||"missing");
         data.setSuppressEmit(false);data.emitRequests();
         data.firestoreApi.updateDoc=originalUpdate;
         await sleep(30);
         check("Delayed listener catch-up keeps Cancelled status",data.load().requests.find(r=>r.id===row.id)?.status==="Cancelled");
       }
+
+      const fulfilled=data.createRequest({name:"Live Parity Fulfill Test",category:"eggs",item:"Eggs",quantity:2,email:"fulfilled@example.test"});
+      await sleep(50);
+      select=document.querySelector(`#customerRequests [data-req-status="${CSS.escape(fulfilled.id)}"]`);
+      button=document.querySelector(`#customerRequests [data-req-save="${CSS.escape(fulfilled.id)}"]`);
+      check("Fresh open request remains visible before fulfillment",cardFor(fulfilled.id)?.hidden===false);
+      if(select&&button){select.value="Fulfilled";button.click();await sleep(80);}
+      check("Fulfilled request persists in sandbox storage",data.load().requests.find(r=>r.id===fulfilled.id)?.status==="Fulfilled",data.load().requests.find(r=>r.id===fulfilled.id)?.status||"missing");
+      check("Fulfilled request immediately leaves the default open inbox",cardFor(fulfilled.id)?.hidden===true,String(cardFor(fulfilled.id)?.hidden));
+      check("Closed archive counts both Fulfilled and Cancelled requests",closedToggle()?.textContent?.includes("Show closed (2)"),closedToggle()?.textContent||"missing");
+      check("Default owner inbox reports no open customer requests",document.getElementById("reqOpenInboxEmpty")?.textContent==="No open customer requests.",document.getElementById("reqOpenInboxEmpty")?.textContent||"missing");
+      closedToggle()?.click();await sleep(20);
+      check("Show closed reveals both stored requests",cardFor(row.id)?.hidden===false&&cardFor(fulfilled.id)?.hidden===false);
+      closedToggle()?.click();await sleep(20);
+      check("Closing the archive hides both completed requests again",cardFor(row.id)?.hidden===true&&cardFor(fulfilled.id)?.hidden===true);
     }catch(error){check("Live-parity Customer Requests regression completed without exception",false,String(error?.stack||error));}
     finally{
       try{data?.setSuppressEmit?.(false);}catch{}
@@ -66,10 +88,10 @@
     const baseRun=base.run.bind(base);
     window.StagingFullTest={...base,async run(){const first=await baseRun();const extra=await runParityChecks();const results=[...(first?.results||[]),...extra];const failed=results.filter(x=>!x.pass);return{...first,total:results.length,passed:results.length-failed.length,failed:failed.length,results,suite:`${first?.suite||"staging-full"}+customer-requests-live-parity-v3`};},__customerRequestsLiveParityV1:true};
     window.dispatchEvent(new CustomEvent("staging-final-suite-changed"));
-    console.log("🪞 STAGING Customer Requests live-parity regression attached — delayed/suppressed snapshot Update path included");
+    console.log("🪞 STAGING Customer Requests sandbox regression attached — Cancelled/Fulfilled hide, persistence, archive, and delayed listener paths included");
   }
 
   function waitForParity(){const data=window.StagingCustomerRequestsLiveParityV1,ui=window.FarmCustomerRequestsV1;parityReady=!!data&&!!ui&&String(ui.version||"").includes("staging-parity-candidate");if(!parityReady){setTimeout(waitForParity,120);return;}attachSuite();window.dispatchEvent(new CustomEvent("staging-final-suite-changed"));}
-  window.StagingCustomerRequestStatusTestV1={version:6,parityReady:()=>parityReady,runRegression:runParityChecks};
+  window.StagingCustomerRequestStatusTestV1={version:7,parityReady:()=>parityReady,runRegression:runParityChecks};
   setTimeout(waitForParity,300);
 })();

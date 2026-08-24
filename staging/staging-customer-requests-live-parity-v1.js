@@ -54,15 +54,65 @@
     if(!source.includes(sdkOld))throw new Error("Live Customer Requests data-layer signature changed; staging refused to run a non-parity copy.");
     source=source.replace(sdkOld,sdkNew);
 
+    // Candidate closed-inbox behavior under test. The live owner UI still renders
+    // every stored request first; this staging-only wrapper then keeps Fulfilled
+    // and Cancelled cards out of the default inbox while preserving an explicit
+    // Show closed archive. This lets the sandbox prove the behavior without
+    // deleting request history or changing the live app.
+    const stateOld='  let fs=null,db=null,unsubscribe=null,rows=[],settings={enabled:false,eggs:"auto",birds:"auto"},busy=false,lastError="";';
+    const stateCandidate='  let fs=null,db=null,unsubscribe=null,rows=[],settings={enabled:false,eggs:"auto",birds:"auto"},busy=false,lastError="",showClosed=false;';
+    if(!source.includes(stateOld))throw new Error("Live Customer Requests state signature changed; staging refused to test the closed-inbox candidate.");
+    source=source.replace(stateOld,stateCandidate);
+    if(!source.includes('  function render(){'))throw new Error("Live Customer Requests render signature changed; staging refused to test the closed-inbox candidate.");
+    source=source.replace('  function render(){','  function renderLive(){');
+    const safeRowMarker='  function safeRow(docSnap){';
+    const archiveCandidate=`  function render(){
+    renderLive();
+    const body=document.getElementById("customerRequestOwnerBody");
+    if(!body||!authStatus().connected)return;
+    const closedStatuses=["Fulfilled","Cancelled"];
+    const closedCount=rows.filter(row=>closedStatuses.includes(row.status)).length;
+    const openCount=rows.length-closedCount;
+    const inbox=[...body.querySelectorAll(".farm2-card")].find(card=>card.querySelector(".farm2-kicker")?.textContent?.includes("Request inbox"));
+    if(!inbox)return;
+    const kicker=inbox.querySelector(".farm2-kicker"),heading=inbox.querySelector("h3");
+    const list=[...inbox.children].find(child=>child.tagName==="DIV"&&!child.classList.contains("farm2-kicker"));
+    if(kicker)kicker.textContent=showClosed?"📨 All requests":"📨 Open request inbox";
+    if(heading){
+      const count=showClosed?rows.length:openCount;
+      heading.textContent=count+(showClosed?" total request":" open request")+(count===1?"":"s");
+    }
+    body.querySelectorAll(".req-card").forEach(card=>{
+      const id=card.querySelector("[data-req-save]")?.dataset.reqSave||"";
+      const row=rows.find(item=>item.id===id);
+      card.hidden=!showClosed&&!!row&&closedStatuses.includes(row.status);
+    });
+    if(!showClosed&&openCount===0&&rows.length>0&&list){
+      const empty=document.createElement("div");
+      empty.id="reqOpenInboxEmpty";empty.className="farm2-subtle";empty.textContent="No open customer requests.";
+      list.appendChild(empty);
+    }
+    if(closedCount>0&&heading){
+      const toggle=document.createElement("button");
+      toggle.id="reqToggleClosed";toggle.className="secondary";toggle.type="button";
+      toggle.style.margin="0 0 10px";
+      toggle.textContent=showClosed?"Hide closed ("+closedCount+")":"Show closed ("+closedCount+")";
+      toggle.addEventListener("click",()=>{showClosed=!showClosed;render();});
+      heading.insertAdjacentElement("afterend",toggle);
+    }
+  }`;
+    if(!source.includes(safeRowMarker))throw new Error("Live Customer Requests row signature changed; staging refused to test the closed-inbox candidate.");
+    source=source.replace(safeRowMarker,archiveCandidate+"\n"+safeRowMarker);
+
     // Candidate fix under test. This is the ONLY behavior patch beyond swapping
     // Firebase for the sandbox adapter. If staging proves it, this exact function
     // can replace the live function without being rewritten a second time.
     const updateOld=`  async function updateStatus(id,status){\n    if(!STATUS.includes(status))return;try{const d=await ownerDb(),a=await sdk();await a.updateDoc(a.doc(d,"customer_requests",String(id)),{status,updatedAt:Date.now()});lastError="";}catch(e){lastError=String(e?.message||e);render();}\n  }`;
     const updateCandidate=`  async function updateStatus(id,status){\n    if(busy||!STATUS.includes(status))return;\n    const row=rows.find(r=>r.id===String(id));\n    const previous=row?.status||"";\n    const updatedAt=Date.now();\n    busy=true;lastError="";\n    const btn=document.querySelector(\`[data-req-save="\${CSS.escape(String(id))}"]\`);\n    if(btn){btn.disabled=true;btn.textContent="Updating…";}\n    try{\n      const d=await ownerDb(),a=await sdk();\n      await a.updateDoc(a.doc(d,"customer_requests",String(id)),{status,updatedAt});\n      if(row){row.status=status;row.updatedAt=updatedAt;}\n      lastError="";\n    }catch(e){\n      if(row&&previous)row.status=previous;\n      lastError=String(e?.message||e);\n    }finally{\n      busy=false;render();\n    }\n  }`;
     if(!source.includes(updateOld))throw new Error("Live Customer Requests status-update signature changed; staging refused to test the wrong candidate.");
-    source=source.replace(updateOld,updateCandidate).replace('window.FarmCustomerRequestsV1={version:2,','window.FarmCustomerRequestsV1={version:"2-staging-parity-candidate",');
+    source=source.replace(updateOld,updateCandidate).replace('window.FarmCustomerRequestsV1={version:2,','window.FarmCustomerRequestsV1={version:"2-staging-parity-candidate-closed-inbox-v1",');
     (0,eval)(`${source}\n//# sourceURL=staging-customer-requests-live-parity-runtime.js`);
     if(!window.FarmCustomerRequestsV1)throw new Error("Live Customer Requests UI did not initialize in staging.");
-    console.log("🪞 STAGING Customer Requests candidate active — live UI source + sandbox adapter + exact proposed status-update fix");
+    console.log("🪞 STAGING Customer Requests candidate active — live UI source + sandbox adapter + immediate status update + closed-inbox archive");
   }catch(error){console.error("STAGING Customer Requests live parity failed:",error);}
 })();
