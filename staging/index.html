@@ -36,7 +36,7 @@
         if(!sr.ok)throw new Error(`App shell HTTP ${sr.status}`);
         let html=await sr.text();
 
-        html=html.replace("<head>","<head><base href=\"../\"><meta name=\"robots\" content=\"noindex,nofollow\">"+scriptTag(stageAsset(`staging/staging-local-seed-v1.js`))+scriptTag(stageAsset(`staging/staging-storage.js`)));
+        html=html.replace("<head>","<head><base href=\"../\"><meta name=\"robots\" content=\"noindex,nofollow\">"+scriptTag(stageAsset(`staging/staging-local-seed-v1.js`))+scriptTag(stageAsset(`staging/staging-live-photo-seed-v1.js`))+scriptTag(stageAsset(`staging/staging-storage.js`)));
         html=replaceAsset(html,"style.css","v=100",build);
         html=replaceAsset(html,"app2.css","v=1",build);
         html=replaceAsset(html,"firebase.js","v=6",build);
