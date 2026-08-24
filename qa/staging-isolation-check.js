@@ -42,7 +42,7 @@ check('Live mirror captures native storage before staging patch',seed.includes('
 check('Live mirror requires all core LIVE datasets',seed.includes('chickenEggApp2V1')&&seed.includes('chickenEggInventoryV2')&&seed.includes('chickenEggEntriesV102')&&seed.includes('chickenEggSettingsV102')&&seed.includes('REQUIRED_CORE.every'));
 check('Live mirror excludes private customer requests',seed.includes('/^chickenEggCustomerRequestsV1$/i'));
 check('Live mirror excludes bulky photo caches and snapshots',seed.includes('chickenEggLocalBirdPhotosV1')&&seed.includes('chickenEggBirdPhotoMetaV4')&&seed.includes('chickenEggApp2SnapshotsV1'));
-check('Live mirror verifies every eligible copied value',seed.includes('sourceHash')&&seed.includes('stageHash')&&seed.includes('copied===keys.length')&&seed.includes('skipped===0')&&seed.includes('mismatchedKeys.length===0'));
+check('Live mirror verifies every eligible copied value',seed.includes('sourceHash')&&seed.includes('stageHash')&&seed.includes('authoritativeVerified=keys.every')&&seed.includes('skipped===0')&&seed.includes('mismatchedKeys.length===0'));
 
 check('Staging database has no Firebase imports',!database.includes('firebasejs')&&!database.includes('FirestoreDB'));
 check('Staging photo service has no Firebase imports',!photos.includes('firebasejs')&&!photos.includes('FirestoreDB'));
@@ -56,22 +56,22 @@ check('Staging app2 injects live-parity Customer Requests layer',app2.includes('
 check('Staging app2 loads bird-sales manager through sandboxed runtime',app2.includes('load("bird-sales-v1.js")'));
 check('Staging banner clearly identifies test mode',banner.includes('TEST / STAGING')&&banner.includes('LIVE FIREBASE IS READ-ONLY'));
 
-check('Normal staging startup performs zero Firebase reads',firebase.includes('STAGING-LIVE-BROWSER-MIRROR-6')&&firebase.includes('void localReady();')&&!firebase.includes('void importLive'));
-check('Staging Firebase cloud access remains read-only fallback',firebase.includes('getDoc')&&firebase.includes('getDocs')&&firebase.includes('Firebase fallback')&&!/(setDoc|addDoc|updateDoc|deleteDoc|runTransaction|writeBatch|onSnapshot)\s*[,}]/.test(firebase));
-check('Staging Firebase does not expose live Firestore handles',firebase.includes('No Firestore handles are exposed to legacy staging modules')&&!firebase.includes('window.FirestoreDB =')&&!firebase.includes('window.FirebaseUser ='));
-check('Staging refresh prefers same-origin LIVE browser mirror',firebase.includes('syncFromLiveBrowser')&&firebase.includes('refreshFromLiveApp')&&firebase.includes('0 Firebase reads'));
+check('Normal staging startup uses the local mirror before optional read-only flock repair',firebase.includes('STAGING-READONLY-LIVE-FIREBASE-MEMORY-4')&&firebase.includes('void localReady().then(()=>ensureFlockIfMissing())'));
+check('Staging Firebase cloud access remains read-only',firebase.includes('__STAGING_FIREBASE_READONLY__ = true')&&firebase.includes('getDoc')&&firebase.includes('getDocs')&&!/\b(setDoc|addDoc|updateDoc|deleteDoc|runTransaction|writeBatch|onSnapshot)\b/.test(firebase));
+check('Staging Firebase does not expose live Firestore handles',firebase.includes('__STAGING_FIREBASE_READONLY__ = true')&&!firebase.includes('window.FirestoreDB =')&&!firebase.includes('window.FirebaseUser ='));
+check('Staging refresh loads authoritative Firebase into the memory sandbox only',firebase.includes('fetchLiveFirebaseSnapshot')&&firebase.includes('startQuotaFreeTestMemory')&&firebase.includes('source:"firebase-read-only-memory"')&&firebase.includes('inMemory:true'));
 check('Staging cloud fallback is compact and scoped',firebase.includes('farm_app_2_v1')&&firebase.includes('farm_inventory_v2')&&firebase.includes('farm_deluxe_v1')&&firebase.includes('farm_business_v1')&&firebase.includes('where("type","in",["eggs","sale"])')&&!firebase.includes('getDocs(collection(db,"entries"))'));
 check('Staging writes imported data through remote safety bypass',firebase.includes('__farmApplyingRemote')&&firebase.includes('runBypass(doWrite)'));
 check('Staging refreshes in-memory core/App2 state after mirror',firebase.includes('function refreshAppMemory()')&&firebase.includes('window.loadLocal?.()')&&firebase.includes('window.__reloadFarm2Memory?.()')&&firebase.includes('refreshAppMemory();'));
 check('Staging releases normal startup write lock after mirror',firebase.includes('FarmBootstrapSafety?.unlock?.()')&&firebase.includes('unlockSandbox();'));
 
-check('Customer Preview requires a verified LIVE mirror before opening',previewGuard.includes('syncFromLiveBrowser')&&previewGuard.includes('verified')&&previewGuard.includes('hasLiveBrowserData')&&previewGuard.includes('0 Firebase reads'));
+check('Customer Preview requires a verified read-only LIVE snapshot before opening',previewGuard.includes('refreshSource')&&previewGuard.includes('r?.verified')&&previewGuard.includes('preparePreviewSnapshot')&&previewGuard.includes('sessionStorage.setItem'));
 check('Customer Requests staging parity fetches the real live owner UI source',requestParity.includes('../customer-requests-owner-v1.js')&&requestParity.includes('Live Customer Requests data-layer signature changed'));
-check('Customer Requests parity uses sandbox-only fake Firestore',requestParity.includes('__stagingCustomerRequests')&&requestParity.includes('Staging write blocked')&&!requestParity.includes('firebasejs/11.10.0/firebase-firestore.js'));
+check('Customer Requests parity replaces the live SDK with sandbox-only fake Firestore',requestParity.includes('__stagingCustomerRequests')&&requestParity.includes('Staging write blocked')&&requestParity.includes('fs=window.StagingCustomerRequestsLiveParityV1.firestoreApi')&&requestParity.includes('source=source.replace(sdkOld,sdkNew)'));
 check('Customer status candidate renders success without listener dependency',requestParity.includes('btn.textContent="Updating…"')&&requestParity.includes('if(row){row.status=status')&&requestParity.includes('finally{')&&requestParity.includes('busy=false;render();'));
 check('Status torture test suppresses listener and verifies Cancelled',requestStatusTest.includes('setSuppressEmit(true)')&&requestStatusTest.includes('snapshot listener suppressed')&&requestStatusTest.includes('Cancelled'));
-check('Ready gate blocks testing until mirror and parity are verified',readyGate.includes('requiresVerifiedLiveBrowserMirror:true')&&readyGate.includes('StagingCustomerRequestsV1?.version === "live-parity"'));
-check('Memory runner reverifies LIVE mirror before every destructive run',memoryRunner.includes('refreshVerifiedLiveMirror')&&memoryRunner.includes('syncFromLiveBrowser')&&memoryRunner.includes('Testing verified LIVE mirror'));
+check('Ready gate self-loads parity and delegates a fresh verified source to the memory runner',readyGate.includes('selfRefreshesVerifiedLiveSource:true')&&readyGate.includes('StagingCustomerRequestsV1?.version!=="live-parity"')&&readyGate.includes('StagingTestMemoryRunnerV1.run'));
+check('Memory runner reloads verified read-only LIVE Firebase before every destructive run',memoryRunner.includes('refreshVerifiedLiveSource')&&memoryRunner.includes('StagingSandbox.resetFromLive')&&memoryRunner.includes('Refreshing LIVE test copy'));
 
 check('Full staging runner snapshots and restores sandbox data',fullTest.includes('snap=snapshot()')&&fullTest.includes('restore(snap)'));
 check('Full staging runner exercises egg add/edit/delete',fullTest.includes('Egg collection creates one history entry')&&fullTest.includes('Editing collection applies only the +2 inventory delta')&&fullTest.includes('Deleting collection reverses its inventory effect'));

@@ -55,7 +55,7 @@ async function coherentBuild() {
     'app2.js',
     'firebase.js',
     'database.js',
-    'firebase-safe-v9.js',
+    'firebase-safe-v10.js',
     'storage-health-v1.js',
     'inventory-system-v6.js',
     'business-lifetime-v1.js',
@@ -83,7 +83,16 @@ async function coherentBuild() {
     'bird-photo-recovery-v2.js',
     'flock-manager-v7.js',
     'farm-diagnostics-v1.js',
-    'app-self-test-v1.js'
+    'app-self-test-v1.js',
+    'customer-public-builder-v4.js',
+    'public-customer-publisher-v1.js',
+    'customer-public-reader-v2.js',
+    'view/index.html',
+    'view/stats.html',
+    'view/view.js',
+    'view/stats.js',
+    'view/customer-delight-v1.js',
+    'view/view-v2.css'
   ];
   const loaded = {};
   for (const asset of assets) {
@@ -94,7 +103,7 @@ async function coherentBuild() {
 
   if (!loaded['database.js'].includes('where("type", "in", ["eggs", "sale"])')) throw new Error('Live core history still reads the whole entries collection');
   if (loaded['database.js'].includes('getDocs(collection(window.FirestoreDB, "entries"))')) throw new Error('Live database.js still performs an unscoped entries getDocs');
-  if (!loaded['bird-photo-service-v4.js'].includes('where("type","in",PHOTO_TYPES)')) throw new Error('Live bird photo migration scan is not photo-only');
+  if (!loaded['bird-photo-service-v4.js'].includes('Historical V2/V3 cloud collections are intentionally NOT scanned') || loaded['bird-photo-service-v4.js'].includes('PHOTO_TYPES')) throw new Error('Live bird photo service still contains a legacy cloud migration scan');
   if (!loaded['bird-photo-service-v4.js'].includes('where("type","==",TYPE)')) throw new Error('Live bird photo listener is not V4-only');
   if (!loaded['bird-photo-service-v4.js'].includes('startAfterFarmSync')) throw new Error('Live bird photo service still competes with initial farm sync');
   if (!loaded['bird-photo-service-v4.js'].includes('already-synced')) throw new Error('Live bird photo service may rewrite already-synced photos');
@@ -131,7 +140,17 @@ async function coherentBuild() {
   if (!loaded['inventory-system-v6.js'].includes('s.dozens=3; s.packs18=2; s.loose=8')) throw new Error('Live confirmed carton repair is missing');
   if (!loaded['audit-finish-v1.js'].includes('InventorySystemV6?.replaceFromRestore')) throw new Error('Live backup restore is not routed through InventorySystemV6');
   if ((loaded['firebase.js'].match(/await import/g) || []).length !== 1) throw new Error('Live firebase entrypoint has duplicate imports');
+  if (!loaded['firebase.js'].includes('firebase-safe-v10.js')) throw new Error('Live firebase entrypoint is not using the protected v10 sync engine');
   if (!loaded['index.html'].includes(`FALLBACK_BUILD = "${expectedBuild}"`)) throw new Error('Live index fallback build mismatch');
+
+  if (!loaded['view/index.html'].includes('Live farm view') || loaded['view/index.html'].includes('customer-requests-v1.js')) throw new Error('Live customer Home is missing or exposes request submission UI');
+  if ((loaded['view/stats.html'].match(/<canvas /g) || []).length !== 3) throw new Error('Live customer Stats page is incomplete');
+  if (!loaded['view/view.js'].includes('customer-public-reader-v2.js') || !loaded['view/view.js'].includes('customer-delight-v1.js')) throw new Error('Live customer Home is not using the sanitized public reader and delight module');
+  if (!loaded['view/stats.js'].includes('customer-public-reader-v2.js')) throw new Error('Live customer Stats is not using the sanitized public reader');
+  if (/(localStorage|sessionStorage)/.test(loaded['view/customer-delight-v1.js'])) throw new Error('Live customer delight module reads private browser farm storage');
+  if (/(setDoc|addDoc|updateDoc|deleteDoc|writeBatch|runTransaction)/.test(loaded['view/customer-delight-v1.js'])) throw new Error('Live customer delight module imports a write path');
+  if (!loaded['public-customer-publisher-v1.js'].includes('FarmPublicCustomerBuilderV4')) throw new Error('Live owner publisher does not prefer the sanitized V4 story builder');
+  if (!loaded['customer-public-builder-v4.js'].includes('out.summary.customerStory')) throw new Error('Live sanitized customer story builder is incomplete');
 
   console.log(`PASS Live GitHub Pages smoke test — coherent build ${expectedBuild}, ${assets.length} deployed assets verified`);
 })().catch(error => {

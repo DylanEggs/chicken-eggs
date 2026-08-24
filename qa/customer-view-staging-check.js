@@ -74,10 +74,10 @@ const html=read('staging/view/index.html');
 const banner=read('staging/staging-banner.js');
 check('Customer sanitizer is read-only',!pub.includes('localStorage.setItem')&&!pub.includes('localStorage.removeItem')&&!pub.includes('localStorage.clear'));
 check('Customer view is read-only',!view.includes('localStorage.setItem')&&!view.includes('localStorage.removeItem')&&!view.includes('localStorage.clear'));
-check('Customer view has no Firebase or Firestore code',!/(firebase|firestore|setDoc|addDoc|updateDoc|deleteDoc|FirestoreDB|FirebaseUser)/i.test(view+html));
+check('Customer view loads no live Firebase SDK or farm Firestore handles',!/(firebase-app\.js|firebase-firestore\.js|FirestoreDB|FirebaseUser|\bsetDoc\b|\baddDoc\b|\bupdateDoc\b|\bdeleteDoc\b)/i.test(view+html));
 check('Customer view has no data-entry fields',!/<(input|textarea|select)\b/i.test(html));
 check('Customer view does not load admin app scripts',!/(app2\.js|firebase\.js|database\.js|inventory-system|who-owes)/i.test(html));
-check('Customer page is marked view-only',/view-only/i.test(html));
+check('Customer page is marked sandbox-only',/sandbox preview/i.test(html)&&/do not write to live Firebase/i.test(html));
 check('Staging banner links to customer preview',banner.includes('staging/view/')&&banner.includes('Customer Preview'));
 
 console.log('\nCustomer view staging privacy audit');

@@ -17,7 +17,7 @@ pass('Business bridge reacts to core sale sync',bridge.includes('core-data-synce
 pass('Business bridge updates Egg Sales without replacing calculator HTML',bridge.includes('setStat(home,"Egg Sales"')&&!bridge.includes('home.innerHTML='));
 pass('Business bridge updates visible Net Profit/Loss',bridge.includes('el.id!=="bizCalcResult"')&&bridge.includes('net.textContent='));
 pass('Business bridge captures calculator before event-driven redraw',bridge.includes('captureCalc')&&bridge.includes('addEventListener(name,schedule,true)'));
-pass('Business bridge restores open calculator state',bridge.includes('if(details&&snapshot.open)details.open=true'));
+pass('Business bridge restores the exact calculator open state',bridge.includes('if(details&&details.open!==!!snapshot.open)details.open=!!snapshot.open'));
 pass('V2 test uses the current date for profit regression',v2.includes('saleDate:today()'));
 pass('V2 test simulates real calculator input events',v2.includes('dispatchEvent(new Event("input",{bubbles:true}))'));
 pass('V2 test verifies calculator arithmetic',v2.includes('Profit/Loss Calculator computes typed values correctly'));

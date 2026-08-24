@@ -39,7 +39,7 @@ check('Dashboard extras fallback matches manifest', extrasDashboard.includes(`wi
 check('Core entry reads are scoped to egg and sale docs', database.includes('where("type", "in", ["eggs", "sale"])'));
 check('Core entry reads do not fetch the whole entries collection', !database.includes('getDocs(collection(window.FirestoreDB, "entries"))'));
 check('Core entry listener uses the scoped core query', database.includes('onSnapshot(\n      coreQuery'));
-check('Bird photo migration query is photo-only', birdPhotoService.includes('where("type","in",PHOTO_TYPES)'));
+check('Bird photo service performs no legacy cloud migration scan', birdPhotoService.includes('Historical V2/V3 cloud collections are intentionally NOT scanned') && !birdPhotoService.includes('PHOTO_TYPES'));
 check('Bird photo live listener is V4-only', birdPhotoService.includes('where("type","==",TYPE)'));
 check('Bird photo service defers automatic cloud work until farm sync', birdPhotoService.includes('startAfterFarmSync') && birdPhotoService.includes('farm-sync-ready'));
 check('Bird photo service skips already-synced cloud rewrites', birdPhotoService.includes('sameRecord(known,record)') && birdPhotoService.includes('already-synced'));
@@ -110,7 +110,7 @@ check('InventorySystemV6 has startup self-test', inventory.includes('runPureSelf
 check('Backup restore routes inventory through InventorySystemV6', auditFinish.includes('InventorySystemV6?.replaceFromRestore') && auditFinish.includes('restoreInventory(data.inventoryV2'));
 check('Backup format is current v8', auditFinish.includes('chicken-eggs-full-backup-v8'));
 
-check('Firebase entrypoint starts only protected sync engine', (firebase.match(/await import/g) || []).length === 1 && firebase.includes('firebase-safe-v9.js'));
+check('Firebase entrypoint starts only protected sync engine', (firebase.match(/await import/g) || []).length === 1 && firebase.includes('firebase-safe-v10.js'));
 check('Firebase inventory sync merges carton scalar fields', firebaseSafe.includes('ds.kind === "inventory"') && firebaseSafe.includes('applyScalarDelta(base, local, remote, new Set(["adjustments"]))'));
 check('Firebase inventory sync contains no 18-pack repacker', !firebaseSafe.includes('Math.floor(total / 18)') && !firebaseSafe.includes('setPhysicalTotal'));
 check('Firebase local write hook marks datasets dirty', firebaseSafe.includes('dirty.add(ds.key)') && firebaseSafe.includes('scheduleDatasetSync(ds)'));
