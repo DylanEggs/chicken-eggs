@@ -15,10 +15,38 @@
   function snapshotStorage(){const out={};for(const key of window.StagingStorageSandbox?.listKeys?.()||[]){const v=localStorage.getItem(key);if(v!==null)out[key]=v;}return out;}
   function restoreStorage(snap){const oldRemote=window.__farmApplyingRemote,oldRestore=window.__inventoryRestoreV6;window.__farmApplyingRemote=true;window.__inventoryRestoreV6=true;try{localStorage.clear();for(const [k,v] of Object.entries(snap||{}))localStorage.setItem(k,v);}finally{window.__farmApplyingRemote=oldRemote;window.__inventoryRestoreV6=oldRestore;}try{window.loadLocal?.();}catch{}try{window.loadFarmSettings?.();}catch{}try{window.__reloadFarm2Memory?.();}catch{}try{window.updateApp?.();}catch{}window.dispatchEvent(new CustomEvent("core-data-synced",{detail:{staging:true,completeBackupRestore:true}}));window.dispatchEvent(new CustomEvent("farm-data-synced",{detail:{staging:true,completeBackupRestore:true,key:"restore"}}));}
 
+  // The full torture suite runs inside StagingStorageSandbox's in-memory overlay.
+  // Storage.key() is virtualized there, but the browser's native Storage.length is not.
+  // CompleteSafetyBackupV3 correctly enumerates normal LIVE localStorage with length+key();
+  // this temporary STAGING-only shim makes length match the virtual key list while this
+  // regression runs, so the test exercises the real backup API without touching LIVE.
+  function patchVirtualStorageLength(){
+    const proto=Storage.prototype;
+    const descriptor=Object.getOwnPropertyDescriptor(proto,"length");
+    const nativeGet=descriptor?.get;
+    if(!nativeGet||descriptor?.configurable===false) return ()=>{};
+    try{
+      Object.defineProperty(proto,"length",{
+        configurable:descriptor.configurable,
+        enumerable:descriptor.enumerable,
+        get(){
+          if(this===window.localStorage&&window.__ChickenEggsStagingMode&&window.StagingStorageSandbox?.overlayActive?.()){
+            return (window.StagingStorageSandbox.listKeys?.()||[]).length;
+          }
+          return nativeGet.call(this);
+        }
+      });
+      return ()=>{try{Object.defineProperty(proto,"length",descriptor);}catch{}};
+    }catch{
+      return ()=>{};
+    }
+  }
+
   async function runBackupRegression(){
     const results=[];
     const check=(name,pass,detail="")=>results.push({name,pass:!!pass,detail:String(detail||"")});
     const snap=snapshotStorage();
+    const restoreLength=patchVirtualStorageLength();
     try{
       const api=window.CompleteSafetyBackupV3;
       check("Complete Safety Backup v3 API is loaded",!!api?.build&&!!api?.applyBackup&&!!api?.validate);
@@ -58,7 +86,7 @@
       unsafe.datasets["firebase-auth-token"]="nope";
       check("Restore validation rejects non-farm storage keys",api.validate(unsafe).ok===false);
     }catch(error){check("Complete backup regression completed without exception",false,String(error?.stack||error));}
-    finally{restoreStorage(snap);await sleep(100);}
+    finally{restoreLength();restoreStorage(snap);await sleep(100);}
     return results;
   }
 
