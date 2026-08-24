@@ -24,3 +24,4 @@ function render(value){current=value||current;const d=data(),missing=$("missingD
 $("nextFact")?.addEventListener("click",()=>{factIndex++;showFact();});document.querySelectorAll(".filter").forEach(btn=>btn.addEventListener("click",()=>{filter=btn.dataset.filter||"all";document.querySelectorAll(".filter").forEach(x=>x.classList.toggle("active",x===btn));const d=data();if(d)renderFlock(d);}));document.querySelectorAll("[data-close-profile]").forEach(x=>x.addEventListener("click",closeProfile));document.addEventListener("keydown",e=>{if(e.key==="Escape")closeProfile();});
 window.CustomerViewPublic={version:3,getData:data,getFilter:()=>filter,openProfile,closeProfile};
 try{api.subscribe(render,()=>render(null));const initial=await api.load();render(initial);}catch{render(null);}
+await import("./customer-delight-v1.js?v=20260824-2010");
