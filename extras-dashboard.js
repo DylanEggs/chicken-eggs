@@ -37,6 +37,20 @@
       'function filePhoto(e){let f=e.target.files?.[0],id=uploadId;if(!f||!id)return;let svc=window.FarmBirdPhotosV4||window.FarmBirdPhotosV3||window.FarmBirdPhotosV2;if(svc?.saveFile){svc.saveFile(id,f).then(()=>render());return;}'
     );
 
+    // Use the same deterministic no-repeat rotation that the public Customer View
+    // receives. Every active bird gets one automatic turn before a new round starts.
+    {
+      const birdStart=source.indexOf("function bird(){");
+      const birdEnd=source.indexOf("window.xChangeBird",birdStart);
+      if(birdStart<0||birdEnd<0)throw new Error("Chicken of the Day selector signature changed");
+      const birdSource='function bird(){let f=app().flock||[];let q=window.FarmChickenOfDayRotationV1?.pick?.(f,dt(),st);return q||null}\n';
+      source=source.slice(0,birdStart)+birdSource+source.slice(birdEnd);
+      source=source.replace(
+        'window.xChangeBird=()=>{let f=app().flock||[],cur=bird(),a=f.filter(x=>x.id!==cur?.id);',
+        'window.xChangeBird=()=>{let f=window.FarmChickenOfDayRotationV1?.eligible?.(app().flock||[])||[],cur=bird(),a=f.filter(x=>x.id!==cur?.id);'
+      );
+    }
+
     // Flock Manager V7 owns profile/photo controls. Do not let this legacy
     // dashboard layer add its old Photo / URL / Remove buttons to those cards.
     source = source.replace(
@@ -48,10 +62,11 @@
     if (source.includes('cloudLoad();setInterval')) throw new Error("Legacy Deluxe cloud loader/timer was not removed");
     if (source.includes('function pic(id){return pics()[id]||st.birdPhotoUrls[id]||""}')) throw new Error("Chicken of the Day still uses the old photo cache");
     if (!source.includes('FarmBirdPhotosV4')) throw new Error("Current flock photo service was not wired into Chicken of the Day");
+    if (!source.includes('FarmChickenOfDayRotationV1')) throw new Error("No-repeat Chicken of the Day rotation was not wired in");
     if (source.includes('renderBird();patchFlock();patchCust()')) throw new Error("Legacy flock photo patch is still active");
 
     (0, eval)(`${source}\n//# sourceURL=extras-dashboard-safe-runtime.js`);
-    console.log("✅ Dashboard/Insights UI active; Chicken of the Day uses current flock photos; duplicate Deluxe cloud/photo paths retired");
+    console.log("✅ Dashboard/Insights UI active; Chicken of the Day uses current flock photos + no-repeat rotation; duplicate Deluxe cloud/photo paths retired");
   } catch (error) {
     console.error("Safe dashboard loader failed:", error);
   }
