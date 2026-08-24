@@ -23,7 +23,6 @@
     );
 
     source = source.replace('load("storage-health-v1.js");', 'load("staging/staging-storage-health-v1.js");');
-    source = source.replace('load("audit-finish-v1.js");', 'load("staging/staging-audit-finish-parity-v1.js");');
 
     if (source.includes('load("twelve-pack-default-v1.js");')) {
       source = source.replace('load("twelve-pack-default-v1.js");', 'load("staging/staging-12-pack-default-v1.js");\n  load("staging/staging-12-pack-full-suite-v1.js");\n  load("staging/staging-sale-edit-back-regression-v1.js");');
@@ -54,8 +53,6 @@
 
     if (source.includes('load("storage-health-v1.js")')) throw new Error("Live storage health remained in staging");
     if (!source.includes('load("staging/staging-storage-health-v1.js")')) throw new Error("Staging-safe storage health was not injected");
-    if (source.includes('load("audit-finish-v1.js")')) throw new Error("Live backup restore module remained directly loaded in staging");
-    if (!source.includes('load("staging/staging-audit-finish-parity-v1.js")')) throw new Error("Staging backup restore candidate was not injected");
     if (source.includes('load("staging/staging-customer-requests-owner-v1.js")')) throw new Error("Old homemade staging Customer Requests UI remained loaded");
     if (source.includes('load("customer-requests-owner-v1.js")')) throw new Error("Live Customer Requests owner module remained directly connected in staging");
     if (source.includes('load("sale-edit-back-v1.js")')) throw new Error("Live sale edit back module remained in staging");
