@@ -85,15 +85,27 @@ try{
     const mirror=await window.StagingTestMemoryRunnerV1.refreshVerifiedLiveMirror();
     const overlay=window.StagingStorageSandbox.beginMemoryOverlay();
     if(!overlay?.active)throw new Error('Memory overlay did not start');
+    let result=null,restoredMirror=null;
     try{
-      const result=await window.StagingFullTest.run();
-      return {result,mirror};
-    }finally{window.StagingStorageSandbox.endMemoryOverlay(true);}
+      result=await window.StagingFullTest.run();
+      await new Promise(resolve=>setTimeout(resolve,500));
+    }finally{
+      window.StagingStorageSandbox.endMemoryOverlay(true);
+      restoredMirror=window.StagingLocalSeedV1?.syncFromLiveBrowser?.()||null;
+      try{window.loadLocal?.();}catch{}
+      try{window.loadFarmSettings?.();}catch{}
+      try{window.__reloadFarm2Memory?.();}catch{}
+      try{window.updateApp?.();}catch{}
+      window.dispatchEvent(new CustomEvent('core-data-synced',{detail:{staging:true,e2ePostSuiteRestore:true}}));
+      window.dispatchEvent(new CustomEvent('farm-data-synced',{detail:{staging:true,e2ePostSuiteRestore:true,key:'restore'}}));
+    }
+    return {result,mirror,restoredMirror};
   });
   console.log(`FULL SANDBOX RESULT ${full.result.passed}/${full.result.total} passed; mirror ${full.mirror.copied}/${full.mirror.eligible}`);
   for(const r of full.result.results||[])console.log(`${r.pass?'PASS':'FAIL'} ${r.name}${r.detail?` — ${r.detail}`:''}`);
   if(full.result.failed)throw new Error(`Full sandbox test had ${full.result.failed} failures`);
   if(!full.mirror?.verified)throw new Error('Full test did not use a verified LIVE mirror');
+  if(!full.restoredMirror?.verified)throw new Error(`Browser LIVE mirror was not restored after the destructive suite: ${JSON.stringify(full.restoredMirror)}`);
 
   const backup=await page.evaluate(()=>window.StagingBackupTest.run());
   console.log(`BACKUP RESTORE RESULT ${backup.passed}/${backup.total} passed`);
@@ -101,10 +113,19 @@ try{
   if(backup.failed)throw new Error(`Backup restore test had ${backup.failed} failures`);
 
   const expectedCustomer=await page.evaluate(()=>{
-    const app=JSON.parse(localStorage.getItem('chickenEggApp2V1')||'{}');
-    const flock=(Array.isArray(app.flock)?app.flock:[]).filter(b=>b&&!/^(sold|removed|rehomed|deceased|inactive)$/i.test(String(b.status||'Active').trim()));
-    return {available:window.InventorySystemV6.available(),flockCount:flock.length,seedAt:window.StagingSandbox?.seedInfo?.()?.importedAt||0};
+    const old=window.__ChickenEggsStagingMode;
+    let app={},inventory={};
+    window.__ChickenEggsStagingMode=false;
+    try{
+      app=JSON.parse(localStorage.getItem('chickenEggApp2V1')||'{}');
+      inventory=JSON.parse(localStorage.getItem('chickenEggInventoryV2')||'{}');
+    }finally{window.__ChickenEggsStagingMode=old;}
+    const active=rows=>(Array.isArray(rows)?rows:[]).filter(b=>b&&!/^(sold|removed|rehomed|deceased|inactive)$/i.test(String(b.status||'Active').trim()));
+    const onHand=Math.max(0,Math.round(Number(inventory.dozens)||0))*12+Math.max(0,Math.round(Number(inventory.packs18)||0))*18+Math.max(0,Math.round(Number(inventory.loose)||0));
+    const reserved=(Array.isArray(app.orders)?app.orders:[]).filter(o=>o?.status==='pending').reduce((sum,o)=>sum+Math.max(0,Math.round(Number(o.dozen)||0))*12+Math.max(0,Math.round(Number(o.packs18)||0))*18,0);
+    return {available:Math.max(0,onHand-reserved),stageAvailable:window.InventorySystemV6.available(),flockCount:active(app.flock).length,stageFlockCount:active(JSON.parse(localStorage.getItem('chickenEggApp2V1')||'{}').flock).length};
   });
+  if(expectedCustomer.stageAvailable!==expectedCustomer.available||expectedCustomer.stageFlockCount!==expectedCustomer.flockCount)throw new Error(`Farm staging did not return to its verified browser mirror after tests: ${JSON.stringify(expectedCustomer)}`);
 
   // Launch Customer Preview through the real staging button so the verified
   // mirror guard is tested too; direct navigation would bypass that protection.
