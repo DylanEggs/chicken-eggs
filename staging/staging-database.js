@@ -3,6 +3,16 @@
   if (window.__ChickenEggsStagingDatabase) return;
   window.__ChickenEggsStagingDatabase = true;
 
+  try {
+    const rotationUrl=new URL("staging-chicken-of-day-rotation-v1.js",document.currentScript?.src||location.href);
+    rotationUrl.searchParams.set("stage",String(window.__ChickenEggsStagingBuild||Date.now()));
+    const xhr=new XMLHttpRequest();xhr.open("GET",rotationUrl.href,false);xhr.send(null);
+    if(!(xhr.status>=200&&xhr.status<300)&&xhr.status!==0)throw new Error(`rotation HTTP ${xhr.status}`);
+    (0,eval)(`${String(xhr.responseText||"")}\n//# sourceURL=staging-chicken-of-day-rotation-v1.js`);
+  } catch (error) {
+    console.error("STAGING Chicken of the Day rotation preload failed:",error);
+  }
+
   const ENTRIES = "chickenEggEntriesV102";
   const SETTINGS = "chickenEggSettingsV102";
   const listeners = new Set();
