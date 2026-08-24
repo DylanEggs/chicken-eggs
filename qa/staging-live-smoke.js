@@ -35,7 +35,7 @@ async function fetchText(file){
   }
   if(live!==expected)throw new Error(`Staging build ${expected} did not deploy; live=${live}`);
 
-  const assets=['index.html','staging-storage.js','staging-firebase.js','staging-owner-firebase.js','staging-database.js','staging-app2.js','staging-audit-finish-parity-v1.js','staging-photo-service.js','staging-banner.js','staging-manual-snapshots.js','staging-diagnostics.js','staging-business-refresh-v1.js','staging-full-test.js','staging-full-test-v2.js','staging-backup-test.js','customer-public-data-v1.js','view/index.html','view/view.css','view/view.js','view/year-forecast-v1.js','view/customer-requests-live-parity-v1.js','view/customer-requests-ui-test-v1.js','../view/customer-requests-v1.js','owner-login/index.html','owner-login/owner-login.js','owner-farm/index.html'];
+  const assets=['index.html','staging-storage.js','staging-firebase.js','staging-owner-firebase.js','staging-database.js','staging-app2.js','staging-audit-finish-parity-v1.js','staging-photo-service.js','staging-banner.js','staging-manual-snapshots.js','staging-diagnostics.js','staging-business-refresh-v1.js','staging-full-test.js','staging-full-test-v2.js','staging-backup-test.js','customer-public-data-v1.js','view/index.html','view/view.css','view/iphone-availability-fix-v1.css','view/view.js','view/year-forecast-v1.js','view/customer-requests-live-parity-v1.js','view/customer-requests-ui-test-v1.js','../view/customer-requests-v1.js','owner-login/index.html','owner-login/owner-login.js','owner-farm/index.html'];
   const loaded={};
   for(const file of assets){
     loaded[file]=await fetchText(file);
@@ -90,6 +90,7 @@ async function fetchText(file){
   if(/localStorage\.(setItem|removeItem|clear)/.test(customerBundle))throw new Error('Customer preview contains a browser data writer');
   if(!loaded['customer-public-data-v1.js'].includes('customer-public-v1'))throw new Error('Customer public data contract missing');
   if(!loaded['view/index.html'].includes('Browse the flock')||!loaded['view/index.html'].includes('Chicken of the Day'))throw new Error('Customer preview core viewing features missing');
+  if(!loaded['view/index.html'].includes('iphone-availability-fix-v1.css')||!loaded['view/iphone-availability-fix-v1.css'].includes('margin-inline-end: .2em'))throw new Error('Customer preview iPhone availability spacing fix missing');
   if(!loaded['view/year-forecast-v1.js'].includes('predicted this year'))throw new Error('Customer yearly forecast UI missing');
   if(!loaded['view/index.html'].includes('href="#customerRequestSection"')||!loaded['view/index.html'].includes('Request Eggs / Birds'))throw new Error('Customer preview request link missing');
   if(!loaded['view/index.html'].includes('customer-requests-live-parity-v1.js'))throw new Error('Customer preview does not load the request parity adapter');

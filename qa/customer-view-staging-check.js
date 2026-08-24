@@ -71,6 +71,7 @@ walk(out);
 const pub=read('staging/customer-public-data-v1.js');
 const view=read('staging/view/view.js');
 const html=read('staging/view/index.html');
+const availabilityFix=read('staging/view/iphone-availability-fix-v1.css');
 const banner=read('staging/staging-banner.js');
 const requestParity=read('staging/view/customer-requests-live-parity-v1.js');
 const requestTest=read('staging/view/customer-requests-ui-test-v1.js');
@@ -81,6 +82,7 @@ check('Customer view loads no live Firebase SDK or farm Firestore handles',!/(fi
 check('Static customer shell has no admin data-entry fields',!/<(input|textarea|select)\b/i.test(html));
 check('Customer view does not load admin app scripts',!/(app2\.js|firebase\.js|database\.js|inventory-system|who-owes)/i.test(html));
 check('Customer page is marked sandbox-only',/sandbox preview/i.test(html)&&/do not write to live Firebase/i.test(html));
+check('Customer preview keeps multi-digit availability clear on iPhone',html.includes('iphone-availability-fix-v1.css')&&availabilityFix.includes('#availabilityTitle #availableEggs')&&availabilityFix.includes('margin-inline-end: .2em'));
 check('Customer preview advertises the request form',html.includes('href="#customerRequestSection"')&&html.includes('Request Eggs / Birds'));
 check('Customer preview loads request UI through its staging parity adapter',html.includes('customer-requests-live-parity-v1.js')&&requestParity.includes('StagingCustomerRequestPublicParityV1'));
 check('Staging request storage is namespaced and isolated',requestParity.includes('__chicken_eggs_staging__::')&&requestParity.includes('staging-live-parity'));

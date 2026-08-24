@@ -144,12 +144,19 @@ try{
     walk(data);
     const requestSection=document.getElementById('customerRequestSection');
     const requestControls=requestSection?[...requestSection.querySelectorAll('input,textarea,select')]:[];
+    const number=document.getElementById('availableEggs'),title=document.getElementById('availabilityTitle');
+    const numberRect=number?.getBoundingClientRect?.();
+    const labelNode=[...(title?.childNodes||[])].find(node=>node.nodeType===Node.TEXT_NODE&&/eggs available/i.test(node.data||''));
+    let labelRect=null;
+    if(labelNode){const start=String(labelNode.data||'').search(/\S/);if(start>=0){const range=document.createRange();range.setStart(labelNode,start);range.setEnd(labelNode,Math.min(labelNode.length,start+4));labelRect=range.getBoundingClientRect();}}
+    const availabilityOverlap=!!(numberRect&&labelRect&&numberRect.left<labelRect.right&&numberRect.right>labelRect.left&&numberRect.top<labelRect.bottom&&numberRect.bottom>labelRect.top);
     return {
       environment:window.CustomerViewStaging.environment,schema:data.schema,
       available:data.availability.eggs,flockCount:data.flock.length,facts:data.facts.length,
       forbidden:found,firestoreExposed:!!window.FirestoreDB,firebaseUserExposed:!!window.FirebaseUser,
       requestSectionVisible:requestSection?.hidden===false,requestControlCount:requestControls.length,
       requestSendVisible:document.getElementById('reqPubSend')?.getClientRects().length>0,
+      availabilityOverlap,availabilityNumberRight:numberRect?.right||0,availabilityLabelLeft:labelRect?.left||0,
       sourceSnapshotAt:data.meta.sourceSnapshotAt
     };
   });
@@ -160,6 +167,7 @@ try{
   if(customerState.firestoreExposed||customerState.firebaseUserExposed)throw new Error('Customer preview exposed a Firebase handle');
   if(customerState.forbidden.length)throw new Error(`Customer public object leaked private keys: ${customerState.forbidden.join(', ')}`);
   if(!customerState.requestSectionVisible||customerState.requestControlCount<8||!customerState.requestSendVisible)throw new Error(`Sandbox Customer Request form is not visibly ready: ${JSON.stringify(customerState)}`);
+  if(customerState.availabilityOverlap)throw new Error(`Customer availability number overlaps its label on iPhone: ${JSON.stringify(customerState)}`);
   if(customerState.facts<30)throw new Error('Customer fact library is unexpectedly small');
 
   const requestUi=await customer.evaluate(()=>window.StagingCustomerRequestUITestV1.run());
