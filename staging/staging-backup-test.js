@@ -55,8 +55,21 @@
           entries:[...(data.entries||[]),{id:marker,type:"eggs",date:"2099-12-31",eggs:6,dozenSold:0,dozenPrice:0,packSold:0,packPrice:0,createdAt:Date.now(),updatedAt:Date.now()}]
         };
         const file=new Blob([JSON.stringify(restored)],{type:"application/json"});
+        const restoreComplete=new Promise(resolve=>{
+          let timer=0;
+          const done=event=>{
+            if(event?.detail?.key!=="restore")return;
+            clearTimeout(timer);window.removeEventListener("farm-data-synced",done);resolve(true);
+          };
+          window.addEventListener("farm-data-synced",done);
+          timer=setTimeout(()=>{window.removeEventListener("farm-data-synced",done);resolve(false);},5000);
+        });
         window.restoreData({target:{files:[file],value:"test"}});
-        await waitFor(()=>read("chickenEggEntriesV102",[]).some(x=>x.id===marker)&&Number(read("chickenEggInventoryV2",{}).dozens)===2,5000);
+        await restoreComplete;
+        await waitFor(()=>{
+          const app=read("chickenEggApp2V1",{}),inv=read("chickenEggInventoryV2",{}),biz=read("chickenEggBusinessV1",{}),settings=read("chickenEggSettingsV102",{}),entries=read("chickenEggEntriesV102",[]);
+          return entries.some(x=>x.id===marker)&&settings.farmName==="STAGING RESTORE TEST"&&(app.customers||[]).some(x=>x.id===marker)&&Number(inv.dozens)===2&&Number(inv.packs18)===1&&Number(inv.loose)===7&&(biz.chickenSales||[]).some(x=>x.id===marker);
+        },2000);
         const app=read("chickenEggApp2V1",{}),inv=read("chickenEggInventoryV2",{}),biz=read("chickenEggBusinessV1",{}),settings=read("chickenEggSettingsV102",{}),entries=read("chickenEggEntriesV102",[]);
         add(results,"Restore merges test history into staging",entries.some(x=>x.id===marker&&Number(x.eggs)===6));
         add(results,"Restore updates staging settings",settings.farmName==="STAGING RESTORE TEST",settings.farmName);
@@ -71,6 +84,7 @@
       URL.createObjectURL=oldCreate;URL.revokeObjectURL=oldRevoke;HTMLAnchorElement.prototype.click=oldClick;window.alert=oldAlert;
       try{restoreSnapshot(snap);add(results,"Staging data restored after backup test",true);}catch(error){add(results,"Staging data restored after backup test",false,error);}
       const failed=results.filter(x=>!x.pass);const report={at:Date.now(),total:results.length,passed:results.length-failed.length,failed:failed.length,results};
+      for(const row of results)console.log(`${row.pass?"PASS":"FAIL"} STAGING backup: ${row.name}${row.detail?` — ${row.detail}`:""}`);
       try{localStorage.setItem(REPORT,JSON.stringify(report));}catch{}
       window.dispatchEvent(new CustomEvent("staging-backup-test-complete",{detail:report}));
       return report;

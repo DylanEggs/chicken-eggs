@@ -18,9 +18,9 @@ try{
 
   const page=await context.newPage();
   await page.goto(`${base}view/stats.html?t=${Date.now()}`,{waitUntil:'domcontentloaded',timeout:120000});
-  await page.waitForFunction(()=>window.CustomerStatsStaging?.getData?.()?.publicVersion===2,null,{timeout:30000});
+  await page.waitForFunction(()=>Number(window.CustomerStatsStaging?.getData?.()?.publicVersion)>=2,null,{timeout:30000});
   const state=await page.evaluate(()=>{const d=window.CustomerStatsStaging.getData();return {version:d.publicVersion,schema:d.schema,daily:d.stats?.daily30?.length,weekly:d.stats?.weekly8?.length,monthly:d.stats?.monthly12?.length,lifetime:d.stats?.records?.lifetimeEggs,factors:d.weatherInsights?.factors?.length,inputs:document.querySelectorAll('input,textarea,select').length,canvases:document.querySelectorAll('canvas').length,text:document.body.innerText};});
-  if(state.version!==2||state.schema!=='customer-public-v1')throw new Error('Stats page did not load public v2 data');
+  if(Number(state.version)<2||state.schema!=='customer-public-v1')throw new Error('Stats page did not load the current public customer snapshot');
   if(state.daily!==30||state.weekly!==8||state.monthly!==12)throw new Error('Public chart series lengths are wrong');
   if(!Number.isFinite(Number(state.lifetime)))throw new Error('Lifetime egg count is not numeric');
   if(Number(state.factors)>4)throw new Error('Weather factors exceeded public limit');

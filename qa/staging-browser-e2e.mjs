@@ -97,6 +97,7 @@ try{
 
   const backup=await page.evaluate(()=>window.StagingBackupTest.run());
   console.log(`BACKUP RESTORE RESULT ${backup.passed}/${backup.total} passed`);
+  for(const r of backup.results||[])console.log(`${r.pass?'PASS':'FAIL'} ${r.name}${r.detail?` — ${r.detail}`:''}`);
   if(backup.failed)throw new Error(`Backup restore test had ${backup.failed} failures`);
 
   const expectedCustomer=await page.evaluate(()=>{
