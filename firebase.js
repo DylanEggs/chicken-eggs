@@ -1,7 +1,7 @@
 // Firebase compatibility entrypoint. The regular app loader already installs
 // UI/audit guards before deferred modules run, so this file starts only the
 // protected cloud-first sync engine. That avoids loading duplicate wrappers.
-const BUILD = String(window.__ChickenEggsBuild || "20260824-2012");
+const BUILD = String(window.__ChickenEggsBuild || "20260824-2013");
 const src = file => `./${file}?v=${encodeURIComponent(BUILD)}`;
 
 window.__ChickenEggsFirebaseEntrypointBuild = BUILD;
