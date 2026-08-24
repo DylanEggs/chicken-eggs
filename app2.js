@@ -54,6 +54,7 @@
   load("customer-public-builder-v1.js");
   load("customer-public-builder-v2.js");
   load("customer-public-builder-v3.js");
+  load("customer-public-builder-v4.js");
   load("public-customer-owner-auth-v1.js");
   load("customer-requests-owner-v1.js");
   load("public-customer-publisher-v1.js");
