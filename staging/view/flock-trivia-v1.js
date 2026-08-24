@@ -4,7 +4,8 @@
   window.__StagingCustomerFlockTriviaV1 = true;
 
   const $ = id => document.getElementById(id);
-  let index = 0;
+  let mode = "fun";
+  const indexes = { fun: 0, flock: 0 };
 
   const clean = value => String(value ?? "").trim();
   const sexGroup = bird => ["Hen", "Pullet"].includes(clean(bird?.sex)) ? "hen" : ["Rooster", "Cockerel"].includes(clean(bird?.sex)) ? "rooster" : "other";
@@ -16,7 +17,11 @@
     return Number.isNaN(date.getTime()) ? null : date;
   }
 
-  function buildFacts(data = window.CustomerViewStaging?.getData?.()) {
+  function getData() {
+    return window.CustomerViewStaging?.getData?.() || window.StagingCustomerPublicData?.build?.() || null;
+  }
+
+  function buildFacts(data = getData()) {
     const flock = Array.isArray(data?.flock) ? data.flock.filter(Boolean) : [];
     if (!flock.length) return [];
 
@@ -49,46 +54,121 @@
     return facts;
   }
 
+  function funFacts(data = getData()) {
+    return Array.isArray(data?.facts) ? data.facts.filter(Boolean).map(String) : [];
+  }
+
+  function factsForMode(which = mode, data = getData()) {
+    const flock = buildFacts(data);
+    const fun = funFacts(data);
+    if (which === "flock") return flock.length ? flock : fun;
+    return fun.length ? fun : flock;
+  }
+
   function pool() {
-    const data = window.CustomerViewStaging?.getData?.();
-    const flockFacts = buildFacts(data);
-    const general = Array.isArray(data?.facts) ? data.facts.filter(Boolean) : [];
-    return [...flockFacts, ...general];
+    const data = getData();
+    return [...buildFacts(data), ...funFacts(data)];
+  }
+
+  function updateSwitch() {
+    document.querySelectorAll("[data-fact-mode]").forEach(button => {
+      const active = button.dataset.factMode === mode;
+      button.classList.toggle("active", active);
+      button.setAttribute("aria-pressed", active ? "true" : "false");
+    });
   }
 
   function render(next = false) {
-    const facts = pool();
+    const facts = factsForMode(mode);
     if (!facts.length) return false;
-    if (next) index = (index + 1) % facts.length;
-    else index = Math.abs(Number(index) || 0) % facts.length;
+    if (next) indexes[mode] = (indexes[mode] + 1) % facts.length;
+    else indexes[mode] = Math.abs(Number(indexes[mode]) || 0) % facts.length;
+
     const text = $("factText");
     const title = $("factTitle");
+    const nextButton = $("nextFact");
+    const emoji = document.querySelector(".fact-card .fact-emoji");
+    const index = indexes[mode];
+
     if (text) text.textContent = facts[index];
-    if (title) title.textContent = index < buildFacts().length ? "A fact about this flock" : "Chicken fact of the visit";
+    if (title) title.textContent = mode === "flock" ? "A fact about this flock" : "Chicken fact of the visit";
+    if (nextButton) nextButton.textContent = mode === "flock" ? "Another flock fact 🐔" : "Another fun fact ✨";
+    if (emoji) emoji.textContent = mode === "flock" ? "🐔🥚" : "💡🐓";
+    updateSwitch();
     return true;
   }
 
-  function install() {
-    const button = $("nextFact");
-    if (!button || button.dataset.flockTriviaInstalled === "1") return false;
-    button.dataset.flockTriviaInstalled = "1";
-    button.addEventListener("click", () => setTimeout(() => render(true), 0));
+  function setMode(nextMode) {
+    if (nextMode !== "fun" && nextMode !== "flock") return false;
+    mode = nextMode;
     render(false);
     return true;
   }
 
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => setTimeout(install, 0), { once: true });
-  else setTimeout(install, 0);
+  function injectCss() {
+    if ($("customerFactModeCss")) return;
+    const style = document.createElement("style");
+    style.id = "customerFactModeCss";
+    style.textContent = `
+      .fact-mode-switch{display:inline-flex;gap:4px;margin-top:12px;padding:4px;border-radius:999px;background:rgba(23,53,31,.07);border:1px solid rgba(23,53,31,.08)}
+      .fact-mode-switch button{border:0;border-radius:999px;padding:8px 10px;background:transparent;color:#5f6559;font:inherit;font-size:11px;font-weight:900;cursor:pointer;white-space:nowrap}
+      .fact-mode-switch button.active{background:#17351f;color:#fff;box-shadow:0 5px 12px rgba(23,53,31,.14)}
+      .fact-mode-switch button:focus-visible{outline:3px solid rgba(31,122,58,.24);outline-offset:2px}
+      @media(max-width:430px){.fact-mode-switch{display:grid;grid-template-columns:1fr 1fr;width:100%}.fact-mode-switch button{width:100%;padding:9px 7px}}
+    `;
+    document.head.appendChild(style);
+  }
+
+  function install() {
+    const button = $("nextFact");
+    const copy = document.querySelector(".fact-card .fact-copy");
+    if (!button || !copy) return false;
+
+    injectCss();
+    if (!$("customerFactModeSwitch")) {
+      const switcher = document.createElement("div");
+      switcher.id = "customerFactModeSwitch";
+      switcher.className = "fact-mode-switch";
+      switcher.setAttribute("role", "group");
+      switcher.setAttribute("aria-label", "Choose fact type");
+      switcher.innerHTML = `<button type="button" data-fact-mode="fun" aria-pressed="true">💡 Fun facts</button><button type="button" data-fact-mode="flock" aria-pressed="false">🐔 Flock facts</button>`;
+      copy.appendChild(switcher);
+      switcher.querySelectorAll("[data-fact-mode]").forEach(item => item.addEventListener("click", () => setMode(item.dataset.factMode)));
+    }
+
+    if (button.dataset.flockTriviaInstalled !== "2") {
+      button.dataset.flockTriviaInstalled = "2";
+      button.addEventListener("click", () => setTimeout(() => render(true), 0));
+    }
+    render(false);
+    return true;
+  }
+
+  function start() {
+    if (install()) return;
+    const observer = new MutationObserver(() => {
+      if (install()) observer.disconnect();
+    });
+    observer.observe(document.documentElement, { childList: true, subtree: true });
+    setTimeout(() => observer.disconnect(), 10000);
+  }
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => setTimeout(start, 0), { once: true });
+  else setTimeout(start, 0);
 
   window.StagingCustomerFlockTriviaV1 = {
-    version: 1,
+    version: 2,
     environment: "staging-customer-preview",
     firebaseReads: 0,
     firebaseWrites: 0,
     networkCalls: 0,
     buildFacts,
+    funFacts,
+    factsForMode,
     pool,
     render,
-    install
+    install,
+    setMode,
+    currentMode: () => mode
   };
 })();
