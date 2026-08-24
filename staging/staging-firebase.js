@@ -69,11 +69,6 @@ if (!window.__ChickenEggsStagingFirebase) {
   }
 
   function localReady(){
-    if(window.__farmApplyingRemote===true){
-      readyState=true;unlockSandbox();
-      setStatus("STAGING • isolated restore in progress — LIVE mirror refresh paused");
-      return Promise.resolve(true);
-    }
     if(window.StagingStorageSandbox?.overlayActive?.() && lastLiveSourceResult?.verified){
       readyState=true;refreshAppMemory();unlockSandbox();
       setStatus(`STAGING • verified LIVE Firebase snapshot • ${Number(lastLiveSourceResult.copied)||0}/${Number(lastLiveSourceResult.eligible)||0} datasets • memory sandbox`);
