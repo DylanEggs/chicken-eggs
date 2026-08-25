@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const BUILD = String(window.__ChickenEggsBuild || "20260824-2014");
+  const BUILD = String(window.__ChickenEggsBuild || "20260825-2015");
   const load = (src, module = false) => document.write(`<script${module?' type="module"':''} src="${src}?v=${encodeURIComponent(BUILD)}"><\/script>`);
 
   load("sync-safety-preload-v1.js");
@@ -12,9 +12,9 @@
   // only photo copies already verified in Firebase if localStorage is full.
   load("storage-health-v1.js");
 
-  // ONE physical-inventory authority. The 12-pack layer changes only owner-side
-  // packaging/display: exact total remains authoritative, 12-packs are automatic,
-  // 18-packs are owner-designated, and the hidden remainder is never displayed.
+  // ONE physical-inventory authority. Manual inventory can set exact 12-packs,
+  // 18-packs and individual eggs; subsequent normal activity defaults back to
+  // 12-packs while preserving manually designated 18-packs.
   load("inventory-system-v6.js");
   load("twelve-pack-default-v1.js");
 
