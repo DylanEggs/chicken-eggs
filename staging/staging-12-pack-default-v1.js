@@ -110,10 +110,13 @@
     try { await api.replaceFromRestore(next); }
     finally { window.__stagingManualInventoryExactWrite=old; }
 
-    const saved=displayState(api.state?.()||{});
+    const rawSaved=api.state?.()||next;
+    const saved=displayState(rawSaved);
     if(saved.dozens!==dozens||saved.packs18!==packs18||saved.remainder!==loose) throw new Error("Exact manual inventory verification failed");
     window.dispatchEvent(new CustomEvent("inventory-authority-changed",{detail:{before:beforeTotal,after:saved.total,reason:"Exact inventory count",staging:true,manualExact:true,at:Date.now()}}));
-    return saved;
+    // Return the real inventory shape (including .loose), not the display-only
+    // {remainder} shape. Tests and callers must see the exact stored values.
+    return rawSaved;
   }
 
   async function saveInventory() {
@@ -163,7 +166,7 @@
     window.addEventListener("core-data-synced",()=>setTimeout(patchVisible,0));
   }
 
-  window.StagingTwelvePackDefaultV1={version:3,normalized,displayState,packageText,total,setManual18(totalEggs,packs18){return normalized({dozens:0,packs18:0,loose:whole(totalEggs)},packs18);},saveManualExact,refresh:patchVisible};
+  window.StagingTwelvePackDefaultV1={version:4,normalized,displayState,packageText,total,setManual18(totalEggs,packs18){return normalized({dozens:0,packs18:0,loose:whole(totalEggs)},packs18);},saveManualExact,refresh:patchVisible};
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",start,{once:true});else start();
-  console.log("📦 STAGING inventory v3 — exact manual 12/18/individual save; normal changes return to 12-pack default");
+  console.log("📦 STAGING inventory v4 — exact manual 12/18/individual save; normal changes return to 12-pack default");
 })();
