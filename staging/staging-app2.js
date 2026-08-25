@@ -25,9 +25,9 @@
     source = source.replace('load("storage-health-v1.js");', 'load("staging/staging-storage-health-v1.js");');
 
     if (source.includes('load("twelve-pack-default-v1.js");')) {
-      source = source.replace('load("twelve-pack-default-v1.js");', 'load("staging/staging-12-pack-default-v1.js");\n  load("staging/staging-12-pack-full-suite-v1.js");\n  load("staging/staging-sale-edit-back-regression-v1.js");');
+      source = source.replace('load("twelve-pack-default-v1.js");', 'load("staging/staging-12-pack-default-v1.js");\n  load("staging/staging-12-pack-full-suite-v1.js");\n  load("staging/staging-manual-inventory-regression-v1.js");\n  load("staging/staging-sale-edit-back-regression-v1.js");');
     } else {
-      source = source.replace('load("inventory-system-v6.js");', 'load("inventory-system-v6.js");\n  load("staging/staging-12-pack-default-v1.js");\n  load("staging/staging-12-pack-full-suite-v1.js");\n  load("staging/staging-sale-edit-back-regression-v1.js");');
+      source = source.replace('load("inventory-system-v6.js");', 'load("inventory-system-v6.js");\n  load("staging/staging-12-pack-default-v1.js");\n  load("staging/staging-12-pack-full-suite-v1.js");\n  load("staging/staging-manual-inventory-regression-v1.js");\n  load("staging/staging-sale-edit-back-regression-v1.js");');
     }
 
     const requestStack='load("staging/staging-customer-requests-live-parity-v1.js");\n  load("staging/staging-customer-requests-parity-compat-v1.js");\n  load("staging/staging-customer-request-status-test-v1.js");\n  load("staging/staging-customer-requests-regression-v1.js");\n  load("staging/staging-test-ready-gate-v1.js");\n  load("staging/staging-test-memory-runner-v1.js");\n  load("staging/staging-app-polish-refresh-v1.js");';
@@ -66,6 +66,7 @@
     if (source.includes('load("twelve-pack-default-v1.js")')) throw new Error("Live 12-pack module remained in staging");
     if (!source.includes('load("staging/staging-12-pack-default-v1.js")')) throw new Error("12-pack staging layer was not injected");
     if (!source.includes('load("staging/staging-12-pack-full-suite-v1.js")')) throw new Error("12-pack full-suite staging layer was not injected");
+    if (!source.includes('load("staging/staging-manual-inventory-regression-v1.js")')) throw new Error("Manual inventory regression was not injected");
     if (!source.includes('load("staging/staging-sale-edit-back-regression-v1.js")')) throw new Error("Sale edit return staging regression was not injected");
     if (!source.includes('load("staging/staging-customer-requests-live-parity-v1.js")')) throw new Error("Live-parity Customer Requests owner layer was not injected");
     if (!source.includes('load("staging/staging-customer-requests-parity-compat-v1.js")')) throw new Error("Customer Requests parity test bridge was not injected");
