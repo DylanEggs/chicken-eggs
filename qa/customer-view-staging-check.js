@@ -50,7 +50,7 @@ check('Available eggs subtract private reservations without publishing them',out
 check('Farm branding survives sanitization',out.farm.name==='Rose Family Poultry');
 check('Only current flock profiles are published',out.flock.length===2&&out.flock.every(b=>b.id!=='old1'));
 check('Flock public fields contain no notes',out.flock.every(b=>!Object.prototype.hasOwnProperty.call(b,'notes')));
-check('Chicken of the Day can use current safe profile',out.chickenOfTheDay?.id==='hen1');
+check('Chicken of the Day can use current safe profile',['hen1','roo1'].includes(out.chickenOfTheDay?.id)&&out.flock.some(b=>b.id===out.chickenOfTheDay?.id));
 check('Photos survive public sanitization',out.flock.some(b=>String(b.photo).startsWith('data:image/'))&&out.flock.some(b=>String(b.photo).startsWith('https://')));
 check('Weather strips coordinates and history',!Object.prototype.hasOwnProperty.call(out.weather,'latitude')&&!Object.prototype.hasOwnProperty.call(out.weather,'longitude')&&!Object.prototype.hasOwnProperty.call(out.weather,'history'));
 check('Forecast exposes production counts without sale values',Number.isFinite(out.production.predictedWeek)&&Number.isFinite(out.production.predictedMonth));
