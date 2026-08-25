@@ -55,7 +55,7 @@ check('Staging app2 keeps the proven live backup UI inside the isolated storage 
 check('Staging app2 rejects old homemade Customer Requests UI',app2.includes('Old homemade staging Customer Requests UI remained loaded'));
 check('Staging app2 injects live-parity Customer Requests layer',app2.includes('staging/staging-customer-requests-live-parity-v1.js'));
 check('Staging app2 loads bird-sales manager through sandboxed runtime',app2.includes('load("bird-sales-v1.js")'));
-check('Staging banner clearly identifies test mode',banner.includes('TEST / STAGING')&&banner.includes('LIVE FIREBASE IS READ-ONLY'));
+check('Staging banner clearly identifies test mode',banner.includes('TEST / STAGING')&&banner.includes('LIVE FIREBASE READ-ONLY'));
 
 check('Normal staging startup uses the local mirror before optional read-only flock repair',firebase.includes('STAGING-READONLY-LIVE-FIREBASE-MEMORY-4')&&firebase.includes('void localReady().then(()=>ensureFlockIfMissing())'));
 check('Staging Firebase cloud access remains read-only',firebase.includes('__STAGING_FIREBASE_READONLY__ = true')&&firebase.includes('getDoc')&&firebase.includes('getDocs')&&!/\b(setDoc|addDoc|updateDoc|deleteDoc|runTransaction|writeBatch|onSnapshot)\b/.test(firebase));
