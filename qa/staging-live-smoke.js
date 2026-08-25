@@ -58,7 +58,7 @@ async function fetchText(file){
   if(!loaded['staging-firebase.js'].includes('window.__farmApplyingRemote=true')||!loaded['staging-firebase.js'].includes('runBypass(doWrite)'))throw new Error('Staging live seed is not marked authoritative for inventory firewall');
   if(!loaded['staging-firebase.js'].includes('FarmBootstrapSafety?.unlock?.()'))throw new Error('Staging cannot release normal startup write lock');
   if(loaded['staging-photo-service.js'].includes('firebasejs')||loaded['staging-photo-service.js'].includes('FirestoreDB'))throw new Error('Staging photo service can reach Firebase');
-  if(!loaded['staging-banner.js'].includes('LIVE FIREBASE IS READ-ONLY'))throw new Error('Staging safety banner missing');
+  if(!loaded['staging-banner.js'].includes('TEST / STAGING')||!loaded['staging-banner.js'].includes('LIVE FIREBASE READ-ONLY'))throw new Error('Staging safety banner missing');
   if(!loaded['staging-banner.js'].includes('Refresh Test Data From Live'))throw new Error('Staging live-to-test refresh control missing');
   if(!loaded['staging-banner.js'].includes('Save Test Baseline')||!loaded['staging-banner.js'].includes('Restore Test Baseline'))throw new Error('Staging manual baseline controls missing');
   if(!loaded['staging-banner.js'].includes('Run Full Sandbox Test'))throw new Error('Staging full-test button missing');
