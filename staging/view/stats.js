@@ -2,6 +2,7 @@
   "use strict";
   const api=window.StagingCustomerPublicData;
   if(!api?.build){document.getElementById("statsMissing")?.removeAttribute("hidden");return;}
+  const BRAND="Rose Family Poultry";
   let dailyChart=null,weeklyChart=null,monthlyChart=null;
   const $=id=>document.getElementById(id);
   const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
@@ -34,13 +35,13 @@
   function render(){
     const data=api.build();const ready=Number(data.meta?.sourceSnapshotAt)>0||data.flock?.length||data.availability?.updatedAt>0;
     const missing=$("statsMissing");if(missing)missing.hidden=!!ready;if(!ready)return;
-    setText("statsFarmName",data.farm.name);setText("statsFarmLocation",data.farm.location);setText("statsFooterFarm",data.farm.name);document.title=`${data.farm.name} — Egg Stats`;
+    setText("statsFarmName",BRAND);setText("statsFarmLocation",data.farm.location);setText("statsFooterFarm",BRAND);document.title=`${BRAND} — Egg Stats`;
     renderRecords(data);renderWeather(data);
     const s=data.stats||{};
     dailyChart=chart(dailyChart,"dailyPublicChart",(s.daily30||[]).map(x=>shortDate(x.date)),(s.daily30||[]).map(x=>Number(x.eggs)||0),"Daily eggs");
     weeklyChart=chart(weeklyChart,"weeklyPublicChart",(s.weekly8||[]).map(x=>shortDate(x.start)),(s.weekly8||[]).map(x=>Number(x.eggs)||0),"Weekly eggs");
     monthlyChart=chart(monthlyChart,"monthlyPublicChart",(s.monthly12||[]).map(x=>monthLabel(x.month)),(s.monthly12||[]).map(x=>Number(x.eggs)||0),"Monthly eggs");
   }
-  window.CustomerStatsStaging={version:2,refresh:render,getData:()=>api.build()};
+  window.CustomerStatsStaging={version:3,refresh:render,getData:()=>api.build()};
   render();setInterval(render,15000);
 })();
