@@ -4,7 +4,7 @@
   window.__extrasDashboardSafeLoaderV4 = true;
 
   try {
-    const build = String(window.__ChickenEggsBuild || "20260825-2015");
+    const build = String(window.__ChickenEggsBuild || "20260828-2016");
     const xhr = new XMLHttpRequest();
     xhr.open("GET", `extras-dashboard-legacy-v1.js?v=${encodeURIComponent(build)}`, false);
     xhr.send(null);
