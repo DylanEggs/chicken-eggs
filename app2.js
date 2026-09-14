@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const BUILD = String(window.__ChickenEggsBuild || "20260828-2016");
+  const BUILD = String(window.__ChickenEggsBuild || "20260914-2017");
   const load = (src, module = false) => document.write(`<script${module?' type="module"':''} src="${src}?v=${encodeURIComponent(BUILD)}"><\/script>`);
 
   load("sync-safety-preload-v1.js");
@@ -33,6 +33,7 @@
   // Simplified owner business workflow. Uses the same APP2 expense source as Home
   // and stores receipts inside the existing protected business dataset.
   load("receipts-expenses-v1.js");
+  load("tax-expense-report-v1.js");
   load("records-daily-totals-v1.js");
   load("prediction-fix-v1.js");
   load("weather-intelligence-v2.js");
